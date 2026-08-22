@@ -19,8 +19,9 @@ class SetLocaleMiddleware
 
         if (in_array($locale, ['ar', 'en'], true)) {
             App::setLocale($locale);
+        } else {
+            App::setLocale('ar');
         }
-
         return $next($request);
     }
 }

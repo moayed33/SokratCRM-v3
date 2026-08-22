@@ -18,6 +18,7 @@ class CalendarEvent extends Model
     protected $table = 'calendar_events';
 
     protected $fillable = [
+        'branch_id',
         'user_id',
         'lead_id',
         'title',
@@ -40,6 +41,40 @@ class CalendarEvent extends Model
             'synced_at' => 'datetime',
             'reminder_minutes_before' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        static::creating(static function (CalendarEvent $event): void {
+            if (empty($event->branch_id)) {
+                if ($event->lead && ! empty($event->lead->branch_id)) {
+                    $event->branch_id = $event->lead->branch_id;
+                } elseif ($event->user && ! empty($event->user->branch_id)) {
+                    $event->branch_id = $event->user->branch_id;
+                } elseif (auth()->check() && ! empty(auth()->user()->branch_id)) {
+                    $event->branch_id = auth()->user()->branch_id;
+                }
+            }
+        });
+    }
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function scopeForBranch(Builder $query, int|string|null $branchId = null): Builder
+    {
+        if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {
+            return $query->where(function (Builder $q) use ($branchId): void {
+                $q->where('calendar_events.branch_id', (int) $branchId)
+                    ->orWhereHas('lead', function (Builder $leadQuery) use ($branchId): void {
+                        $leadQuery->where('leads.branch_id', (int) $branchId);
+                    });
+            });
+        }
+
+        return $query;
     }
 
     public function isSynced(): bool
@@ -116,6 +151,33 @@ class CalendarEvent extends Model
 
     public function scopeAccessibleTo(Builder $query, User $user): Builder
     {
+        if (! $user->isSuperAdmin()) {
+            if ($user->branch_id !== null) {
+                $query->where(function (Builder $branchQuery) use ($user): void {
+                    $branchQuery->where('calendar_events.branch_id', (int) $user->branch_id)
+                        ->orWhere(function (Builder $fallbackQuery) use ($user): void {
+                            $fallbackQuery->whereNull('calendar_events.branch_id')
+                                ->where(function (Builder $ownerOrLeadQuery) use ($user): void {
+                                    $ownerOrLeadQuery->where('calendar_events.user_id', $user->getKey())
+                                        ->orWhereHas('lead', function (Builder $leadQuery) use ($user): void {
+                                            $leadQuery->where('leads.branch_id', (int) $user->branch_id);
+                                        });
+                                });
+                        });
+                });
+            }
+        } else {
+            $selectedBranch = session(\App\Support\BranchContext::SESSION_KEY);
+            if ($selectedBranch !== null && $selectedBranch !== '' && $selectedBranch !== 'all') {
+                $query->where(function (Builder $branchQuery) use ($selectedBranch): void {
+                    $branchQuery->where('calendar_events.branch_id', (int) $selectedBranch)
+                        ->orWhereHas('lead', function (Builder $leadQuery) use ($selectedBranch): void {
+                            $leadQuery->where('leads.branch_id', (int) $selectedBranch);
+                        });
+                });
+            }
+        }
+
         if ($user->isSuperAdmin() || $user->hasPermission(CrmPermission::LEADS_SCOPE_ALL)) {
             return $query;
         }
@@ -127,8 +189,8 @@ class CalendarEvent extends Model
         }
 
         return $query->where(function (Builder $accessQuery) use ($user, $groupIds): void {
-            $accessQuery->where('user_id', $user->getKey())
-                ->orWhereHas('lead', function (Builder $leadQuery) use ($user, $groupIds): void {
+            $accessQuery->where('calendar_events.user_id', $user->getKey())
+                ->orWhereHas('lead', function (Builder $leadQuery) use ($user): void {
                     $leadQuery->accessibleTo($user);
                 });
 

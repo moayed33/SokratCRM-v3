@@ -45,7 +45,7 @@
             <p>{{ __('crm.pairing_instructions') }}</p>
         </div>
         @if($isConfigured)
-            <form method="POST" action="{{ route('v2.settings.voip.disconnect') }}" onsubmit="return confirm('هل أنت تأكد من رغبتك في فصل الارتباط عن سيرفر السنترال؟ سيتم حذف بيانات الاعتماد وتوقيف الربط.')">
+            <form method="POST" action="{{ route('v2.settings.voip.disconnect') }}" onsubmit="return confirm(@json(__('crm.confirm_disconnect_voip')))">
                 @csrf
                 <button type="submit" class="btn danger soft" style="color:#b42332;border-color:#f1bbc1;background:#fff0f1">
                     {{ __('crm.disconnect_pbx') }}
@@ -98,22 +98,22 @@
             <tbody>
                 <tr>
                     <td><strong>{{ __('crm.call_history') }}</strong></td>
-                    <td><span class="badge {{ !empty($capabilities['supported']['call_history']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['call_history']) ? 'مفعل' : __('crm.inactive') }}</span></td>
+                    <td><span class="badge {{ !empty($capabilities['supported']['call_history']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['call_history']) ? __('crm.active_feature') : __('crm.inactive') }}</span></td>
                     <td><code>calls:read</code></td>
                 </tr>
                 <tr>
                     <td><strong>{{ __('crm.recordings') }}</strong></td>
-                    <td><span class="badge {{ !empty($capabilities['supported']['recordings']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['recordings']) ? 'مفعل' : __('crm.inactive') }}</span></td>
+                    <td><span class="badge {{ !empty($capabilities['supported']['recordings']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['recordings']) ? __('crm.active_feature') : __('crm.inactive') }}</span></td>
                     <td><code>recordings:read</code></td>
                 </tr>
                 <tr>
                     <td><strong>{{ __('crm.extension_statistics') }}</strong></td>
-                    <td><span class="badge {{ !empty($capabilities['supported']['extension_stats']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['extension_stats']) ? 'مفعل' : __('crm.inactive') }}</span></td>
+                    <td><span class="badge {{ !empty($capabilities['supported']['extension_stats']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['extension_stats']) ? __('crm.active_feature') : __('crm.inactive') }}</span></td>
                     <td><code>stats:read</code></td>
                 </tr>
                 <tr>
                     <td><strong>{{ __('crm.live_panel') }}</strong></td>
-                    <td><span class="badge {{ !empty($capabilities['supported']['live_panel']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['live_panel']) ? 'مفعل' : __('crm.inactive') }}</span></td>
+                    <td><span class="badge {{ !empty($capabilities['supported']['live_panel']) ? 'active' : 'inactive' }}">{{ !empty($capabilities['supported']['live_panel']) ? __('crm.active_feature') : __('crm.inactive') }}</span></td>
                     <td><code>live:read</code></td>
                 </tr>
                 <tr>

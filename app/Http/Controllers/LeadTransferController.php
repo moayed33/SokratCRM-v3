@@ -394,7 +394,7 @@ class LeadTransferController extends Controller
                     $data['assigned_employee'] = $assignee->name;
                     $data['created_by_user_id'] = $actor->id;
                     $data['created_by'] = $actor->name;
-
+                    $data['branch_id'] = $assignee->branch_id ?? $actor->branch_id ?? \App\Models\Branch::value('id');
                     $phone = $this
                         ->normalizePhone(
                             (string)
@@ -1085,6 +1085,7 @@ class LeadTransferController extends Controller
 
         $statuses =
             $this->statuses();
+        $statusByCode = $statuses->keyBy('code');
 
         $statusMap = [];
 
@@ -1102,6 +1103,34 @@ class LeadTransferController extends Controller
             ] = $status;
         }
 
+        $aliases = [
+            'interested' => 'new',
+            'no-answer' => 'no_answer',
+            'donor_no_answer' => 'no_answer',
+            'لم يرد' => 'no_answer',
+            'not-interested' => 'not_interested',
+            'donation_confirmed' => 'donor',
+            'donation_collected' => 'donor',
+            'active_donor' => 'donor',
+            'completed' => 'donor',
+            'meeting' => 'new',
+            'quotation' => 'new',
+            'discussion' => 'new',
+            'contract_closed' => 'donor',
+            'contract-closed' => 'donor',
+            'contract_closing' => 'donor',
+            'contract-closing' => 'donor',
+            'execution' => 'donor',
+        ];
+
+        foreach ($aliases as $alias => $targetCode) {
+            $targetStatus = $statusByCode->get($targetCode);
+            if ($targetStatus !== null) {
+                $statusMap[
+                    $this->normalizeToken($alias)
+                ] = $targetStatus;
+            }
+        }
         $actor = auth()->user();
         $userIdMap = [];
 
@@ -1512,27 +1541,6 @@ class LeadTransferController extends Controller
                     .'يمكن استكمال السبب لاحقًا.';
             }
 
-            $quotationCodes = [
-                'quotation',
-                'discussion',
-                'contract_closed',
-                'execution',
-            ];
-
-            if (
-                $status !== null
-                && in_array(
-                    $status->code,
-                    $quotationCodes,
-                    true
-                )
-                && $solutionType === null
-            ) {
-                $warnings[] =
-                    'الحالة ضمن مراحل عرض السعر '
-                    .'ولا يوجد نوع نظام؛ يمكن '
-                    .'استكماله من المتابعة لاحقًا.';
-            }
 
             $normalizedPhone =
                 $this->normalizePhone(

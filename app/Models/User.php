@@ -7,6 +7,8 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
@@ -14,6 +16,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
 #[Fillable([
+    'branch_id',
     'name',
     'username',
     'email',
@@ -42,6 +45,20 @@ class User extends Authenticatable
         ];
     }
 
+
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
+    }
+
+    public function scopeForBranch(Builder $query, int|string|null $branchId = null): Builder
+    {
+        if ($branchId !== null && $branchId !== '' && $branchId !== 'all') {
+            return $query->where('users.branch_id', (int) $branchId);
+        }
+
+        return $query;
+    }
     public function groups(): BelongsToMany
     {
         return $this->belongsToMany(Group::class);

@@ -16,25 +16,17 @@ class TaskStatusController extends Controller
     private const STATUS_MAP = [
         'new' => 'new',
         'no-answer' => 'no_answer',
-        'interested' => 'interested',
+        'no_answer' => 'no_answer',
         'not-interested' => 'not_interested',
-        'meeting' => 'meeting',
-        'quotation' => 'quotation',
-        'discussion' => 'discussion',
-        'contract-closing' => 'contract_closed',
-        'execution' => 'execution',
+        'not_interested' => 'not_interested',
+        'donor' => 'donor',
     ];
 
     private const STATUS_LABELS = [
         'new' => 'جديد',
-        'no-answer' => 'لم يرد',
-        'interested' => 'مهتم',
-        'not-interested' => 'غير مهتم',
-        'meeting' => 'مقابلة',
-        'quotation' => 'عرض سعر',
-        'discussion' => 'مناقشة',
-        'contract-closing' => 'تقفيل عقد',
-        'execution' => 'تنفيذ',
+        'no_answer' => 'لم يتم الرد',
+        'not_interested' => 'غير مهتم',
+        'donor' => 'متبرع',
     ];
 
     private const SCOPE_LABELS = [
@@ -83,15 +75,14 @@ class TaskStatusController extends Controller
             ),
             404
         );
+        $canonicalSlug = self::STATUS_MAP[$status];
 
         $statusRecord =
             LeadStatus::query()
                 ->with('stage')
                 ->where(
                     'code',
-                    self::STATUS_MAP[
-                        $status
-                    ]
+                    $canonicalSlug
                 )
                 ->firstOrFail();
 
@@ -212,8 +203,7 @@ class TaskStatusController extends Controller
         return view(
             'tasks.status',
             [
-                'statusSlug' => $status,
-
+                'statusSlug' => $canonicalSlug,
                 'statusRecord' => $statusRecord,
 
                 'statusLinks' => self::STATUS_LABELS,

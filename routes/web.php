@@ -14,8 +14,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\QuotationController;
+use App\Http\Controllers\Settings\BranchController;
 use App\Http\Controllers\Settings\GroupController;
 use App\Http\Controllers\Settings\NotificationRuleController;
+use App\Http\Controllers\Settings\PipelineStageController;
 use App\Http\Controllers\Settings\PermissionController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\UserController;
@@ -51,6 +53,9 @@ Route::post('/webhooks/twilio/notification-status', TwilioNotificationStatusCont
 Route::middleware(['auth', 'active'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
+
+    Route::match(['get', 'post'], '/switch-branch', [BranchController::class, 'switchBranch'])
+        ->name('v2.branch.switch');
 
     Route::get('/notifications', [NotificationController::class, 'index'])
         ->name('v2.notifications.index');
@@ -121,6 +126,9 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         Route::patch('/calendar/events/{event}/reschedule', [CalendarController::class, 'reschedule'])
             ->whereNumber('event')
             ->name('v2.calendar.reschedule');
+        Route::patch('/calendar/leads/{lead}/reschedule', [CalendarController::class, 'rescheduleLead'])
+            ->whereNumber('lead')
+            ->name('v2.calendar.lead.reschedule');
         Route::post('/calendar/events/{event}/sync', [CalendarController::class, 'syncExternal'])
             ->whereNumber('event')
             ->name('v2.calendar.sync');
@@ -249,7 +257,7 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             [TaskStatusController::class, 'show'],
         )->where(
             'status',
-            'new|no-answer|interested|not-interested|meeting|quotation|discussion|contract-closing|execution',
+            'new|no-answer|no_answer|not-interested|not_interested|donor',
         )->name('v2.tasks.status');
 
         Route::get('/tasks/followups/{scope}', static function (string $scope) {
@@ -344,6 +352,53 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->group(function (): void {
             Route::get('/', [SettingsController::class, 'index'])
                 ->name('');
+
+
+            Route::get('/branches', [BranchController::class, 'index'])
+                ->middleware('can:branches.view')
+                ->name('.branches.index');
+            Route::get('/branches/create', [BranchController::class, 'create'])
+                ->middleware('can:branches.create')
+                ->name('.branches.create');
+            Route::post('/branches', [BranchController::class, 'store'])
+                ->middleware('can:branches.create')
+                ->name('.branches.store');
+            Route::get('/branches/{branch}/edit', [BranchController::class, 'edit'])
+                ->whereNumber('branch')
+                ->middleware('can:branches.update')
+                ->name('.branches.edit');
+            Route::patch('/branches/{branch}', [BranchController::class, 'update'])
+                ->whereNumber('branch')
+                ->middleware('can:branches.update')
+                ->name('.branches.update');
+            Route::patch('/branches/{branch}/toggle', [BranchController::class, 'toggleActive'])
+                ->whereNumber('branch')
+                ->middleware('can:branches.update')
+                ->name('.branches.toggle');
+            Route::delete('/branches/{branch}', [BranchController::class, 'destroy'])
+                ->whereNumber('branch')
+                ->middleware('can:branches.delete')
+                ->name('.branches.destroy');
+            Route::get('/stages', [PipelineStageController::class, 'index'])
+                ->name('.stages.index');
+            Route::post('/stages', [PipelineStageController::class, 'store'])
+                ->name('.stages.store');
+            Route::patch('/stages/{stage}', [PipelineStageController::class, 'update'])
+                ->whereNumber('stage')
+                ->name('.stages.update');
+            Route::delete('/stages/{stage}', [PipelineStageController::class, 'destroy'])
+                ->whereNumber('stage')
+                ->name('.stages.destroy');
+            Route::post('/stages/donation-types', [PipelineStageController::class, 'storeDonationType'])
+                ->name('.stages.donation-types.store');
+            Route::patch('/stages/donation-types/{type}', [PipelineStageController::class, 'toggleDonationType'])
+                ->whereNumber('type')
+                ->name('.stages.donation-types.toggle');
+            Route::post('/stages/donation-purposes', [PipelineStageController::class, 'storeDonationPurpose'])
+                ->name('.stages.donation-purposes.store');
+            Route::patch('/stages/donation-purposes/{purpose}', [PipelineStageController::class, 'toggleDonationPurpose'])
+                ->whereNumber('purpose')
+                ->name('.stages.donation-purposes.toggle');
 
             Route::get('/users', [UserController::class, 'index'])
                 ->middleware('can:users.view')

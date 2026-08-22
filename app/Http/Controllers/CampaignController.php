@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreCampaignRequest;
+use App\Models\Branch;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\LeadStatus;
@@ -36,6 +37,7 @@ class CampaignController extends Controller
 
         $query = Campaign::query()
             ->with([
+                'branch:id,name_ar,name_en,code',
                 'creator:id,name',
                 'users:id,name',
             ])
@@ -124,7 +126,12 @@ class CampaignController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('campaigns.create', compact('users'));
+        $branches = Branch::query()
+            ->where('is_active', true)
+            ->orderBy('name_ar')
+            ->get();
+
+        return view('campaigns.create', compact('users', 'branches'));
     }
 
     public function store(StoreCampaignRequest $request): RedirectResponse
@@ -145,7 +152,9 @@ class CampaignController extends Controller
                 $request,
                 $validated,
             ): Campaign {
+                $branchId = ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : ($request->user()->branch_id ?? null);
                 $campaign = Campaign::query()->create([
+                    'branch_id' => $branchId,
                     'name' => trim($validated['name']),
                     'image_path' => $imagePath,
                     'cost' => $validated['cost'],
@@ -153,7 +162,6 @@ class CampaignController extends Controller
                     'ends_at' => $validated['ends_at'],
                     'created_by_user_id' => $request->user()->id,
                 ]);
-
                 $campaign->users()->sync($validated['user_ids']);
 
                 return $campaign;
@@ -185,9 +193,14 @@ class CampaignController extends Controller
             ->orderBy('name')
             ->get();
 
+        $branches = Branch::query()
+            ->where('is_active', true)
+            ->orderBy('name_ar')
+            ->get();
         return view('campaigns.create', [
             'campaign' => $campaign,
             'users' => $users,
+            'branches' => $branches,
             'editing' => true,
         ]);
     }
@@ -213,8 +226,14 @@ class CampaignController extends Controller
                 $campaign,
                 $newImagePath,
                 $validated,
+                $request,
             ): void {
+                $branchId = array_key_exists('branch_id', $validated)
+                    ? (! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null)
+                    : ($request->user()->branch_id ?? $campaign->branch_id);
+
                 $campaign->update([
+                    'branch_id' => $branchId,
                     'name' => trim($validated['name']),
                     'image_path' => $newImagePath ?? $campaign->image_path,
                     'cost' => $validated['cost'],
@@ -230,7 +249,6 @@ class CampaignController extends Controller
 
             throw $exception;
         }
-
         if ($newImagePath !== null && $currentImagePath !== null) {
             Storage::disk('public')->delete($currentImagePath);
         }
@@ -248,8 +266,9 @@ class CampaignController extends Controller
         $campaignName = $campaign->name;
         $imagePath = $campaign->image_path;
 
+        $campaign->leads()->detach();
+        $campaign->users()->detach();
         $campaign->delete();
-
         if ($imagePath !== null) {
             Storage::disk('public')->delete($imagePath);
         }

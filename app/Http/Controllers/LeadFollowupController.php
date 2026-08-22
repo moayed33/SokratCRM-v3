@@ -280,20 +280,10 @@ class LeadFollowupController extends Controller
             );
 
         $businessStatusCodes = [
-            'interested',
+            'new',
             'no_answer',
-            'meeting',
-            'quotation',
-            'discussion',
-            'contract_closed',
-            'execution',
-        ];
-
-        $quotationStageCodes = [
-            'quotation',
-            'discussion',
-            'contract_closed',
-            'execution',
+            'not_interested',
+            'donor',
         ];
 
         $hasBusinessDetails = in_array(
@@ -302,11 +292,7 @@ class LeadFollowupController extends Controller
             true
         );
 
-        $isQuotationStage = in_array(
-            $status->code,
-            $quotationStageCodes,
-            true
-        );
+        $isQuotationStage = false;
 
         $currentQuotationPath = trim(
             (string)
@@ -355,16 +341,7 @@ class LeadFollowupController extends Controller
          * destination status is:
          * new, not_interested or execution.
          */
-        $requiresNextFollowUp =
-            ! in_array(
-                $followupStatusCode,
-                [
-                    'new',
-                    'not_interested',
-                    'execution',
-                ],
-                true
-            );
+        $requiresNextFollowUp = $followupStatusCode === 'no_answer';
 
         /* CRM FOLLOWUP CONDITIONAL DATE V2 END */
 
@@ -399,7 +376,7 @@ class LeadFollowupController extends Controller
                     $requiresNextFollowUp
                         ? 'required'
                         : 'nullable',
-                    'date_format:Y-m-d\TH:i',
+                    'date',
                 ],
 
                 'company_name' => [
@@ -616,26 +593,16 @@ class LeadFollowupController extends Controller
                     ]
             ) !== ''
         ) {
-            $nextFollowUpAt =
-                Carbon::createFromFormat(
-                    'Y-m-d\TH:i',
-                    (string)
-                        $validated[
-                            'next_follow_up_at'
-                        ],
-                    (string)
-                        config(
-                            'app.timezone',
-                            'UTC'
-                        )
+            try {
+                $nextFollowUpAt = Carbon::parse(
+                    (string) $validated['next_follow_up_at'],
+                    (string) config('app.timezone', 'UTC')
                 );
+            } catch (\Throwable) {
+                $nextFollowUpAt = null;
+            }
         }
-
-        /*
-         * CRM NEW EXECUTION NO FOLLOWUP V7
-         * SERVER ENFORCEMENT
-         */
-        if (! $requiresNextFollowUp) {
+        if ($status->code === 'not_interested') {
             $nextFollowUpAt = null;
         }
 
@@ -1051,7 +1018,9 @@ class LeadFollowupController extends Controller
                             $stageData,
                             [
                                 'lead_status_id' => $newStatusId,
-
+                                'response_details' => $outcome,
+                                'contact_date' => now(),
+                                'responding_user_id' => $currentUserId,
                                 'next_follow_up_at' => $nextFollowUpAt,
                                 'assigned_user_id' => $targetUser?->id
                                     ?? $lockedLead->assigned_user_id,

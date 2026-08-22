@@ -24,6 +24,7 @@ class UpdateUserRequest extends FormRequest
         $managedUser = $this->route('user');
 
         return [
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'name' => ['required', 'string', 'max:150'],
             'username' => [
                 'required',

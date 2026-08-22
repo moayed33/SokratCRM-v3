@@ -11,11 +11,14 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('notification_rules')) {
+            return;
+        }
+
         Schema::table('notification_rules', function (Blueprint $table): void {
             $table->string('name_ar', 150)->nullable()->after('name');
             $table->string('name_en', 150)->nullable()->after('name_ar');
         });
-
         DB::table('notification_rules')->update([
             'name_ar' => DB::raw('name'),
             'name_en' => DB::raw('name'),
@@ -49,6 +52,10 @@ return new class extends Migration
 
     public function down(): void
     {
+        if (! Schema::hasTable('notification_rules')) {
+            return;
+        }
+
         Schema::table('notification_rules', function (Blueprint $table): void {
             $table->string('name', 150)->nullable()->after('id');
         });

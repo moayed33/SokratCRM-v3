@@ -195,7 +195,7 @@
                             </div>
                             <div class="detail-row">
                                 <span>{{ __('الطرف الآخر') }}:</span>
-                                <strong>+201012345678</strong>
+                                <strong dir="ltr">+201012345678</strong>
                             </div>
                         </div>
                         <div class="call-actions-wrap">

@@ -4,9 +4,14 @@ declare(strict_types=1);
 
 namespace Database\Seeders;
 
+use App\Models\DonationPurpose;
+use App\Models\DonationType;
 use App\Models\Group;
 use App\Models\Lead;
+use App\Models\LeadPhone;
+use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
+use App\Models\LeadStatusHistory;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Seeder;
@@ -125,45 +130,30 @@ class DemoDataSeeder extends Seeder
                 'email' => 'agent5.demo@' . self::DEMO_EMAIL_DOMAIN,
                 'group' => 'sales-agent',
             ],
-            [
-                'key' => 'support1',
-                'name' => 'Support Demo 1',
-                'username' => 'demo.support1',
-                'email' => 'support1.demo@' . self::DEMO_EMAIL_DOMAIN,
-                'group' => 'read-only',
-            ],
-            [
-                'key' => 'support2',
-                'name' => 'Support Demo 2',
-                'username' => 'demo.support2',
-                'email' => 'support2.demo@' . self::DEMO_EMAIL_DOMAIN,
-                'group' => 'read-only',
-            ],
         ];
 
-        $groups = Group::query()->pluck('id', 'code');
-        $usersMap = [];
+        $users = [];
 
-        foreach ($userDefinitions as $def) {
-            /** @var User $user */
+        foreach ($userDefinitions as $definition) {
             $user = User::query()->updateOrCreate(
-                ['email' => $def['email']],
+                ['username' => $definition['username']],
                 [
-                    'name' => $def['name'],
-                    'username' => $def['username'],
+                    'name' => $definition['name'],
+                    'email' => $definition['email'],
                     'password' => $passwordHash,
                     'is_active' => true,
                 ]
             );
 
-            if (isset($groups[$def['group']])) {
-                $user->groups()->syncWithoutDetaching([$groups[$def['group']]]);
+            $group = Group::query()->where('code', $definition['group'])->first();
+            if ($group !== null) {
+                $user->groups()->syncWithoutDetaching([$group->id]);
             }
 
-            $usersMap[$def['key']] = $user;
+            $users[$definition['key']] = $user;
         }
 
-        return $usersMap;
+        return $users;
     }
 
     /**
@@ -172,38 +162,25 @@ class DemoDataSeeder extends Seeder
     private function seedDemoLeads(array $users): void
     {
         $statusMap = LeadStatus::query()->pluck('id', 'code')->all();
+        $donationTypes = DonationType::query()->where('is_active', true)->get();
+        $donationPurposes = DonationPurpose::query()->where('is_active', true)->get();
 
-        // 100 leads status breakdown:
-        // 25 New ('new')
-        // 20 Contacted / No Answer ('no_answer')
-        // 15 Interested / Qualified ('interested')
-        // 15 Follow-up / Meeting ('meeting')
-        // 10 Negotiation ('quotation': 5, 'discussion': 5)
-        // 10 Converted / Contract / Execution ('contract_closed': 5, 'execution': 5)
-        // 5 Not Interested / Lost ('not_interested')
+        // 100 leads status breakdown for the 4 canonical statuses:
+        // Stage 1 (new):
+        // 40 New ('new')
+        // 20 No Answer ('no_answer')
+        // 5 Not Interested ('not_interested')
+        // Stage 2 (donor):
+        // 35 Donor ('donor')
         $statusDistribution = array_merge(
-            array_fill(0, 25, 'new'),
+            // 65% in "new" stage
+            array_fill(0, 40, 'new'),
             array_fill(0, 20, 'no_answer'),
-            array_fill(0, 15, 'interested'),
-            array_fill(0, 15, 'meeting'),
-            array_fill(0, 5, 'quotation'),
-            array_fill(0, 5, 'discussion'),
-            array_fill(0, 5, 'contract_closed'),
-            array_fill(0, 5, 'execution'),
-            array_fill(0, 5, 'not_interested')
+            array_fill(0, 5, 'not_interested'),
+            // 35% in "donor" stage
+            array_fill(0, 35, 'donor')
         );
 
-        // Assignees distribution (100 total unevenly across Sales Agents, Team Leaders, Managers):
-        // Agent 1: 18
-        // Agent 2: 16
-        // Agent 3: 14
-        // Agent 4: 12
-        // Agent 5: 11
-        // Team Leader 1: 9
-        // Team Leader 2: 8
-        // Team Leader 3: 6
-        // Manager 1: 4
-        // Manager 2: 2
         $assigneesList = array_merge(
             array_fill(0, 18, $users['agent1']),
             array_fill(0, 16, $users['agent2']),
@@ -232,52 +209,27 @@ class DemoDataSeeder extends Seeder
             'العدوي', 'غانم', 'حماد', 'بركات', 'خليل', 'أبو النصر', 'سعيد', 'راشد', 'مبارك', 'الشافعي',
         ];
 
-        $companyPrefixes = [
-            'شركة', 'مجموعة', 'مؤسسة', 'مركز', 'شركة النيل لـ', 'الشركة المصرية لـ', 'القمة لـ', 'أفق لـ',
-        ];
-
-        $companyNouns = [
-            'الحلول البرمجية', 'التوريدات العامة', 'الاستثمار العقاري', 'الصناعات الغذائية', 'الخدمات اللوجستية',
-            'التطوير التكنولوجي', 'المقاولات العامة', 'الحلول المتكاملة', 'الإعلام والتسوق', 'الاستشارات الإدارية',
-            'الاتصالات وتقنية المعلومات', 'الهندسة الحديثة', 'الاستيراد والتصدير', 'التوزيع والخدمات', 'الشحن الدولي',
-            'إدارة المنشآت', 'التصنيع الدقيق', 'التسويق الرقمي', 'حلول الطاقة', 'الرعاية الصحية',
-        ];
-
         $governorates = [
             'القاهرة', 'الجيزة', 'الإسكندرية', 'المنصورة', 'طنطا', 'أسيوط', 'الزقازيق', 'بورسعيد', 'السويس', 'الإسماعيلية',
         ];
 
-        $activities = [
-            'تكنولوجيا المعلومات', 'المقاولات والبناء', 'التجارة والتوزيع', 'الاستثمار العقاري', 'الصناعات الغذائية',
-            'الخدمات اللوجستية', 'الاستشارات الهندسية', 'التسويق والإعلام', 'الاستيراد والتصدير', 'الرعاية الصحية',
-        ];
-
         $sources = [
-            'موقع إلكتروني', 'توصية عميل', 'حملة فيسبوك', 'إعلان جوجل', 'معرض تجاري', 'تواصل مباشر', 'لينكد إن',
+            'موقع إلكتروني', 'توصية عميل', 'حملة فيسبوك', 'إعلان جوجل', 'معرض تجاري', 'تواصل مباشر', 'واتساب',
         ];
 
-        // Max 20 chars for solution_type (varchar(20))
-        $solutionTypes = [
-            'CRM سحابي',
-            'إدارة مبيعات',
-            'نظام ERP',
-            'حسابات ومخازن',
-            'إدارة عملاء',
-            'كول سنتر',
+        $cycles = ['one_time', 'monthly', 'quarterly', 'semi_annual', 'annual'];
+        $values = [250, 500, 1000, 1500, 2000, 3000, 5000, 10000, 25000];
+
+        $responseResponses = [
+            'تم التواصل وشرح برامج التبرع وأبدى العميل اهتماماً كبيراً بالمساهمة الشهرية.',
+            'تم الاتصال ولم يتم الرد، وسيتم إعادة المحاولة في موعد المتابعة القادم.',
+            'أكد المتبرع رغبته في تحويل مبلغ الزكاة وسيقوم بإرسال الإيصال.',
+            'طلب العميل إرسال تفاصيل الحالات الحرجة عبر الواتساب للاطلاع عليها.',
+            'تم الاتفاق على كفالة طفلين شهرياً وتحديث وسيلة الدفع.',
+            'أفاد العميل بأنه غير قادر على التبرع في الوقت الحالي لظروف خاصة.',
         ];
 
-        $jobTitles = [
-            'مدير عام', 'مدير المشتريات', 'مدير تكنولوجيا المعلومات', 'مدير المبيعات', 'الرئيس التنفيذي',
-            'صاحب الشركة', 'مدير العمليات', 'مدير التخطيط',
-        ];
-
-        $disinterestReasons = [
-            'ارتفاع السعر مقارنة بالميزانية',
-            'عدم الحاجة للنظام في الوقت الحالي',
-            'التعاقد مع شركة منافسة مؤخراً',
-            'تأجيل المشروع للربع القادم',
-            'تغيير نشاط الشركة',
-        ];
+        $relationshipTypes = ['زوج / زوجة', 'ابن / ابنة', 'مندوب العميل', 'محاسب العميل', 'شريك', 'مساعد'];
 
         $creatorUser = $users['superadmin'];
 
@@ -289,8 +241,6 @@ class DemoDataSeeder extends Seeder
             $lastName = $lastNames[($i * 3) % count($lastNames)];
             $fullName = "{$firstName} {$lastName}";
 
-            $companyName = $companyPrefixes[$i % count($companyPrefixes)] . ' ' . $companyNouns[($i * 7) % count($companyNouns)];
-
             // Phone format: 010, 011, 012, 015 + 8 digits
             $prefixes = ['010', '011', '012', '015'];
             $phonePrefix = $prefixes[$i % count($prefixes)];
@@ -298,57 +248,117 @@ class DemoDataSeeder extends Seeder
             $phone = $phonePrefix . $phoneDigits;
 
             $statusCode = $statusDistribution[$i];
-            $statusId = $statusMap[$statusCode];
+            $statusId = $statusMap[$statusCode] ?? array_values($statusMap)[0];
 
             $assignedUser = $assigneesList[$i];
 
-            // Spread created_at across last 180 days (6 months)
-            // Evenly staggered back in time
             $daysAgo = (int) floor(($i * 1.8) + ($i % 3));
             $createdAt = Carbon::now()->subDays($daysAgo)->subHours($i % 24)->subMinutes(($i * 7) % 60);
 
             $nextFollowUpAt = null;
-            if (! in_array($statusCode, ['not_interested', 'execution'], true)) {
+            if (! in_array($statusCode, ['not_interested', 'completed'], true)) {
                 $nextFollowUpAt = (clone $createdAt)->addDays(($i % 10) + 2)->setHour(10 + ($i % 6));
             }
 
-            $disinterestReason = null;
-            if ($statusCode === 'not_interested') {
-                $disinterestReason = $disinterestReasons[$i % count($disinterestReasons)];
-            }
+            $donationTypeObj = $donationTypes->isNotEmpty() ? $donationTypes[$i % $donationTypes->count()] : null;
+            $donationPurposeObj = $donationPurposes->isNotEmpty() ? $donationPurposes[$i % $donationPurposes->count()] : null;
+            $donationCycle = $cycles[$i % count($cycles)];
+            $donationVal = $values[$i % count($values)];
+            $responseDetail = $responseResponses[$i % count($responseResponses)];
 
-            $quotationSent = in_array($statusCode, ['quotation', 'discussion', 'contract_closed', 'execution'], true);
-
-            Lead::query()->updateOrCreate(
+            $lead = Lead::query()->updateOrCreate(
                 ['email' => $email],
                 [
                     'lead_status_id' => $statusId,
                     'name' => $fullName,
                     'first_name' => $firstName,
                     'last_name' => $lastName,
-                    'company_name' => $companyName,
-                    'activity' => $activities[$i % count($activities)],
                     'governorate' => $governorates[$i % count($governorates)],
                     'address' => 'شارع ' . ($i + 1) . ' - ' . $governorates[$i % count($governorates)],
-                    'users_count' => ($i % 15) + 2,
-                    'branches_count' => ($i % 5) + 1,
-                    'job_title' => $jobTitles[$i % count($jobTitles)],
-                    'disinterest_reason' => $disinterestReason,
-                    'solution_type' => $solutionTypes[$i % count($solutionTypes)],
-                    'lines_count' => ($i % 8) + 1,
-                    'extensions' => 'داخلي ' . (($i % 20) + 101),
-                    'departments' => 'المبيعات والحسابات',
                     'phone' => $phone,
                     'source' => $sources[$i % count($sources)],
-                    'quotation_sent' => $quotationSent,
                     'assigned_employee' => $assignedUser->name,
                     'assigned_user_id' => $assignedUser->id,
+                    'responding_user_id' => $assignedUser->id,
                     'created_by' => $creatorUser->name,
                     'created_by_user_id' => $creatorUser->id,
-                    'notes' => 'بيانات عميل توضيحي (Demo Customer #' . $leadNumber . ')',
+                    'donation_type' => $donationTypeObj?->name_ar,
+                    'donation_type_id' => $donationTypeObj?->id,
+                    'donation_cycle' => $donationCycle,
+                    'donation_value' => $donationVal,
+                    'donation_purpose' => $donationPurposeObj?->name_ar,
+                    'donation_purpose_id' => $donationPurposeObj?->id,
+                    'response_details' => $responseDetail,
+                    'contact_date' => (clone $createdAt)->addHours(2),
+                    'notes' => 'سجل متبرع توضيحي (Demo Customer #' . $leadNumber . ')',
                     'next_follow_up_at' => $nextFollowUpAt,
                     'created_at' => $createdAt,
                     'updated_at' => $createdAt,
+                ]
+            );
+
+            // Sync Primary Phone in lead_phones
+            LeadPhone::query()->updateOrCreate(
+                [
+                    'lead_id' => $lead->id,
+                    'phone' => $phone,
+                ],
+                [
+                    'is_primary' => true,
+                    'label' => 'أساسي',
+                ]
+            );
+
+            // Add secondary phone for some leads
+            if ($i % 3 === 0) {
+                $secPrefix = $prefixes[($i + 1) % count($prefixes)];
+                $secDigits = sprintf('%08d', 20000000 + ($i * 765432) % 79999999);
+                $secPhone = $secPrefix . $secDigits;
+
+                LeadPhone::query()->updateOrCreate(
+                    [
+                        'lead_id' => $lead->id,
+                        'phone' => $secPhone,
+                    ],
+                    [
+                        'is_primary' => false,
+                        'label' => $i % 2 === 0 ? 'واتساب' : 'عمل',
+                    ]
+                );
+            }
+
+            // Add related person for some leads
+            if ($i % 4 === 0) {
+                $relFirst = $firstNames[($i + 5) % count($firstNames)];
+                $relType = $relationshipTypes[$i % count($relationshipTypes)];
+                $relPhoneDigits = sprintf('%08d', 30000000 + ($i * 987654) % 69999999);
+                $relPhone = '012' . $relPhoneDigits;
+
+                LeadRelatedPerson::query()->updateOrCreate(
+                    [
+                        'lead_id' => $lead->id,
+                        'name' => "{$relFirst} {$lastName}",
+                    ],
+                    [
+                        'phone' => $relPhone,
+                        'relationship_type' => $relType,
+                        'notes' => 'جهة اتصال مرتبطة للتنسيق والمتابعة',
+                    ]
+                );
+            }
+
+            // Initial status history
+            LeadStatusHistory::query()->firstOrCreate(
+                [
+                    'lead_id' => $lead->id,
+                    'to_status_id' => $statusId,
+                ],
+                [
+                    'from_status_id' => null,
+                    'changed_by_user_id' => $creatorUser->id,
+                    'changed_by' => $creatorUser->name,
+                    'changed_at' => $createdAt,
+                    'note' => 'إنشاء سجل العميل المتبرع الأولي',
                 ]
             );
         }

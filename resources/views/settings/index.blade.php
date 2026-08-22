@@ -32,6 +32,16 @@
         </div>
     </div>
     <div class="grid stats-grid">
+        @can('branches.view')
+            <a class="stat-card action-card" href="{{ route('v2.settings.branches.index') }}">
+                <span>{{ __('crm.branches') }}</span>
+                <b style="font-size:20px">{{ __('crm.manage_branches') }}</b>
+            </a>
+        @endcan
+        <a class="stat-card action-card" href="{{ route('v2.settings.stages.index') }}">
+            <span>{{ __('crm.custom_pipeline_stages') }}</span>
+            <b style="font-size:20px">{{ __('crm.customize_pipeline_stages') }}</b>
+        </a>
         @can('users.view')
             <a class="stat-card action-card" href="{{ route('v2.settings.users.index') }}">
                 <span>{{ __('crm.users') }}</span>

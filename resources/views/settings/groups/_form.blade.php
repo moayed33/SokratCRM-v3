@@ -23,6 +23,6 @@
     </div>
 </div>
 <div class="actions" style="margin-top:20px">
-    <button class="btn primary">{{ $isEdit ? 'حفظ التعديلات' : 'إنشاء المجموعة' }}</button>
+    <button class="btn primary">{{ $isEdit ? __('crm.save_changes') : __('crm.create_group') }}</button>
     <a class="btn" href="{{ route('v2.settings.groups.index') }}">{{ __('crm.cancel') }}</a>
 </div>

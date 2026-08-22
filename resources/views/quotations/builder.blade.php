@@ -7,7 +7,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>{{ $crmQuotationReadOnly ? 'عرض سعر محفوظ' : 'إنشاء عرض سعر' }} | CRM v2</title>
+  <title>{{ $crmQuotationReadOnly ? __('crm.saved_quotation_title') : __('crm.create_quotation') }} | CRM v2</title>
   <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}" />
   <meta name="csrf-token" content="{{ csrf_token() }}" />
   <link rel="stylesheet" href="{{ asset('quotation-generator/styles.css') }}?v=quotation-v36" />
@@ -39,7 +39,7 @@
 
       <form id="quoteForm" autocomplete="off">
         <section class="panel">
-          <h2>بيانات العميل</h2>
+          <h2>{{ __('crm.client_data') }}</h2>
           <div class="grid two">
             <label>
               <span>{{ __('crm.client_company_name') }}</span>
@@ -82,7 +82,7 @@
               <button type="button" id="addItemBtn" class="btn small">{{ __('crm.add_financial_item') }}</button>
             </div>
           </div>
-          <p class="helper">يمكنك تحديد ظهور كل منتج في <strong>المقايسة المالية</strong> أو في <strong>الملحقات فقط</strong>. البنود غير المحددة للمقايسة المالية لا تدخل في الإجمالي العام.</p>
+          <p class="helper">{{ __('crm.quotation_item_inclusion_helper') }}</p>
           <div class="items-head desktop-only">
             <span>{{ __('crm.item') }}</span><span>{{ __('crm.quantity') }}</span><span>{{ __('crm.unit_price') }}</span><span>{{ __('crm.unit') }}</span><span>{{ __('crm.total') }}</span><span>{{ __('crm.estimate') }}</span><span>{{ __('crm.accessories') }}</span><span></span>
           </div>
@@ -111,7 +111,7 @@
             <span>{{ __('crm.financial_note') }}</span>
             <textarea id="financialNote" rows="4" placeholder="{{ __('crm.financial_note_placeholder') }}">تم الاتفاق على عمل عرض خاص لكم بإجمالي {total} جنيه مصري فقط لا غير
 ويتم العمل بهذا العرض حسب الاتفاق</textarea>
-            <small class="helper">يمكنك تعديل النص بالكامل أو تركه فارغًا. استخدم <strong>{subtotal}</strong> لإجمالي البنود، و<strong>{total}</strong> للإجمالي النهائي بعد الضريبة/الخدمات/الخصومات.</small>
+            <small class="helper">{{ __('crm.financial_note_helper') }}</small>
           </label>
         </section>
 
@@ -135,7 +135,7 @@
               </select>
             </label>
             <label>
-              <span>حجم الخط: <strong id="quoteFontSizeValue">100%</strong></span>
+              <span>{{ __('crm.font_size') }}: <strong id="quoteFontSizeValue">100%</strong></span>
               <input id="quoteFontSize" class="font-size-range" type="range" min="85" max="130" step="5" value="100" />
             </label>
             <div class="color-control">
@@ -192,7 +192,7 @@
 
         <section class="panel collapsible">
           <button class="collapse-trigger" type="button" data-target="featuresEditor">
-            <span>مميزات نظام الكول سنتر</span><span>⌄</span>
+            <span>{{ __('crm.call_center_features') }}</span><span>⌄</span>
           </button>
           <div id="featuresEditor" class="collapse-body">
             <textarea id="features" rows="12">- الرسالة المسجلة التفاعلية.
@@ -235,7 +235,7 @@
         </div>
         <div class="preview-toolbar-actions">
           <button type="button" id="wordTopBtn" class="btn word small">{{ __('crm.export_word') }}</button>
-          <button type="button" id="printTopBtn" class="btn primary small">طباعة / حفظ PDF</button>
+          <button type="button" id="printTopBtn" class="btn primary small">{{ __('crm.print_save_pdf') }}</button>
         </div>
       </div>
       <div id="quotePreview" class="quote-preview"></div>
@@ -256,7 +256,7 @@
       </div>
       <div><label class="mobile-label">{{ __('crm.quantity') }}</label><input class="item-qty" type="number" min="0" step="1" value="1" /></div>
       <div><label class="mobile-label">{{ __('crm.unit_price') }}</label><input class="item-price" type="number" min="0" step="0.01" value="0" /></div>
-      <div><label class="mobile-label">{{ __('crm.unit') }}</label><input class="item-unit" type="text" value="قطعه" /></div>
+      <div><label class="mobile-label">{{ __('crm.unit') }}</label><input class="item-unit" type="text" value="{{ __('crm.unit_piece') }}" /></div>
       <div class="item-total-cell"><label class="mobile-label">{{ __('crm.total') }}</label><strong class="item-total">0</strong></div>
       <div class="financial-inclusion-cell"><label class="mobile-label">{{ __('crm.in_financial_estimate') }}</label><input class="item-in-financial" type="checkbox" checked title="{{ __('crm.include_in_estimate_title') }}" /></div>
       <div class="product-page-cell"><label class="mobile-label">{{ __('crm.in_accessories') }}</label><input class="item-show-product" type="checkbox" title="{{ __('crm.show_accessory_title') }}" /></div>

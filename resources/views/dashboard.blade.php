@@ -1,2028 +1,1002 @@
 <!doctype html>
- <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
+<html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SokratCRM — {{ __('crm.dashboard') }}</title>
+<link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-<title>SokratCRM — {{ __('لوحة التحكم') }}</title>
+<link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
 <style>
-:root{--red:#dc2637;--dark:#182033;--text:#4b5568;--muted:#8b94a5;--line:#e7e9ef;--bg:#f5f6f9;--card:#fff;--shadow:0 12px 35px #1720330d}*{box-sizing:border-box}body{margin:0;min-width:320px;background:radial-gradient(circle at 8% 0,#dc26370c,transparent 25rem),var(--bg);color:var(--dark);font-family:Tahoma,Arial,sans-serif}button,input,select{font:inherit}a{color:inherit}.app{display:grid;grid-template-columns:minmax(0,1fr) 270px;min-height:100vh}.side{grid-column:2;position:sticky;top:0;height:100vh;overflow:auto;padding:24px 17px;background:#fff;border-inline-start:1px solid var(--line);z-index:20}.brand{display:flex;align-items:center;gap:11px;padding:4px 8px 20px;margin-bottom:17px;border-bottom:1px solid var(--line);text-decoration:none}.logo{width:58px;height:58px;display:block;flex:0 0 58px;object-fit:contain}.brand strong{display:block;color:var(--red);font:900 22px Arial}.brand small{display:block;margin-top:5px;color:var(--muted);font-size:10px}.caption{margin:0 12px 9px;color:#a0a7b4;font-size:10px;font-weight:bold}.nav{display:grid;gap:6px}.link,.toggle{width:100%;min-height:49px;display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid transparent;border-radius:13px;background:transparent;color:#566175;text-decoration:none;text-align:right;cursor:pointer;transition:.2s}.link:hover,.toggle:hover{color:var(--red);background:#fff5f6;transform:translateX(-2px)}.link.active{color:#fff;background:linear-gradient(135deg,#e83243,#c91d2e);box-shadow:0 11px 25px #dc263737}.ico{width:32px;height:32px;flex:0 0 32px;display:grid;place-items:center;border-radius:10px;background:#f0f2f6;font-size:17px}.active .ico{background:#ffffff2b}.label{flex:1;font-size:13px;font-weight:800}.count{min-width:24px;height:24px;display:grid;place-items:center;padding:0 6px;border-radius:99px;background:#eef0f4;color:#7e8796;font:800 10px Arial}.active .count{color:#fff;background:#ffffff2b}.arrow{font-size:11px;color:#a2a9b5;transition:.2s}.toggle[aria-expanded=true] .arrow{transform:rotate(180deg)}.sub{display:grid;grid-template-rows:0fr;transition:.22s}.sub.open{grid-template-rows:1fr}.sub>div{min-height:0;overflow:hidden}.sub nav{display:grid;gap:2px;margin:3px 28px 7px 0;padding-inline-end:14px;border-inline-end:1px solid var(--line)}.sub a{padding:8px 10px;border-radius:8px;color:#788294;text-decoration:none;font-size:11px;font-weight:bold}.sub a:hover{color:var(--red);background:#fff2f4}.mode{margin-top:20px;padding:12px;border:1px solid #f2d9dd;border-radius:13px;background:#fff8f9;color:#9a4b55;font-size:10px;line-height:1.7}.dot{display:inline-block;width:8px;height:8px;margin-inline-start:6px;border-radius:50%;background:#eca51d;box-shadow:0 0 0 4px #eca51d1f}.main{grid-column:1;min-width:0;padding:20px clamp(15px,2.5vw,34px) 38px}.top{min-height:70px;display:flex;align-items:center;gap:13px;padding:12px 15px;margin-bottom:18px;border:1px solid var(--line);border-radius:17px;background:#ffffffed;box-shadow:var(--shadow)}.menu{display:none;width:40px;height:40px;border:1px solid var(--line);border-radius:11px;background:#fff;font-size:20px}.title{flex:1}.title h1{margin:0;font-size:23px}.title p{margin:5px 0 0;color:var(--muted);font-size:10px}.offline{padding:9px 11px;border:1px solid #efd59f;border-radius:10px;background:#fff9ed;color:#9b6810;font-size:10px;font-weight:bold;white-space:nowrap}.bell{position:relative;width:40px;height:40px;display:grid;place-items:center;border:1px solid var(--line);border-radius:11px;background:#fff}.bell b{position:absolute;top:-5px;left:-5px;min-width:18px;height:18px;display:grid;place-items:center;border:2px solid #fff;border-radius:99px;background:var(--red);color:#fff;font:800 8px Arial}.user{display:flex;align-items:center;gap:8px}.avatar{width:40px;height:40px;display:grid;place-items:center;border-radius:12px;background:var(--dark);color:#fff;font-weight:900}.user strong{display:block;max-width:105px;overflow:hidden;text-overflow:ellipsis;font-size:11px}.user small{color:var(--muted);font-size:8px}.logout{width:32px;height:32px;border:0;border-radius:9px;background:#fff0f2;color:var(--red);cursor:pointer}.hero{position:relative;overflow:hidden;min-height:180px;padding:30px;border-radius:22px;background:linear-gradient(120deg,#171f31,#30394c);color:#fff;box-shadow:0 20px 48px #1720332e}.hero:after{display:none}.hero small{color:#f4aab2;font-weight:bold}.hero h2{max-width:620px;margin:11px 0 8px;font-size:clamp(24px,3vw,35px)}.hero p{max-width:620px;margin:0;color:#c5cad4;font-size:11px;line-height:1.8}.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:18px}.btn{min-height:40px;display:inline-flex;align-items:center;justify-content:center;padding:8px 15px;border:0;border-radius:10px;background:var(--red);color:#fff;text-decoration:none;font-size:10px;font-weight:900;cursor:pointer;box-shadow:0 10px 22px #dc263738}.btn.ghost{border:1px solid #ffffff2b;background:#ffffff12;box-shadow:none}.filters{display:flex;align-items:end;flex-wrap:wrap;gap:10px;padding:14px;margin-top:16px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow)}.field{min-width:145px;flex:1}.field label{display:block;margin:0 3px 6px;color:#7e8797;font-size:9px;font-weight:bold}.field select,.field input{width:100%;height:40px;padding:0 10px;border:1px solid #dfe3ea;border-radius:10px;background:#fafbfc;color:#556074;font-size:10px;outline:none}.filter-actions{display:flex;gap:7px}.filter-actions .btn{height:40px;min-width:78px}.btn.light{border:1px solid var(--line);background:#f6f7f9;color:#697386;box-shadow:none}.heading{display:flex;align-items:end;justify-content:space-between;margin:23px 2px 12px}.heading h2{margin:0;font-size:16px}.heading p{margin:5px 0 0;color:var(--muted);font-size:9px}.heading a{color:var(--red);font-size:9px;font-weight:bold;text-decoration:none}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{--color:#3478f6;min-height:120px;padding:15px;border:1px solid var(--line);border-radius:16px;background:#fff;box-shadow:var(--shadow);transition:.2s}.stat:hover{transform:translateY(-4px);box-shadow:0 18px 42px #17203317}.stat.green{--color:#169a64}.stat.red{--color:#dc2637}.stat.orange{--color:#e59b16}.stat.purple{--color:#7b61df}.stat .sico{width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:color-mix(in srgb,var(--color) 10%,white);color:var(--color);font-size:17px}.stat strong{display:inline-block;margin-top:12px;font:900 30px Arial}.stat small{margin-inline-end:4px;color:#9ba3b0;font-size:8px}.stat p{margin:6px 0 0;color:#596477;font-size:10px;font-weight:bold}.grid{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(270px,.65fr);gap:13px;margin-top:13px}.panel{min-width:0;padding:17px;border:1px solid var(--line);border-radius:17px;background:#fff;box-shadow:var(--shadow)}.panel-head{display:flex;align-items:center;justify-content:space-between;padding-bottom:13px;border-bottom:1px solid #eff1f4}.panel-head h3{margin:0;font-size:12px}.panel-head p{margin:4px 0 0;color:var(--muted);font-size:8px}.badge{padding:6px 8px;border-radius:8px;background:#f2f4f7;color:#818998;font:800 8px Arial}.chart{height:225px;position:relative;display:flex;align-items:end;gap:12px;padding:30px 14px 30px;direction:ltr;background:repeating-linear-gradient(to bottom,transparent 0,transparent 53px,#eef0f4 54px)}.bar{height:3px;flex:1;border-radius:5px;background:var(--red);position:relative}.bar span{position:absolute;top:13px;inset-inline-start:50%;transform:translateX(-50%);color:#8d96a5;font-size:8px}.empty{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;z-index:2}.empty i{width:45px;height:45px;display:grid;place-items:center;margin-bottom:8px;border-radius:13px;background:#f3f5f7;color:#9ba4b2;font-style:normal;font-size:19px}.empty strong{color:#687385;font-size:10px}.empty p{max-width:270px;margin:6px 0 0;color:#9ba3b1;font-size:8px;line-height:1.7}.dist{display:grid;gap:16px;padding-top:18px}.dist div div{display:flex;justify-content:space-between;color:#606b7d;font-size:9px;font-weight:bold}.dist b{color:#929aa7;font:800 9px Arial}.progress{height:6px!important;display:block!important;margin-top:7px;border-radius:99px;background:#f0f2f5}.progress span{width:0}.bottom{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);gap:13px;margin-top:13px}.table{width:100%;border-collapse:collapse}.table th{padding:11px;border-bottom:1px solid var(--line);color:#8c95a4;font-size:8px;text-align:right}.table .empty{position:static;min-height:170px}.quick{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding-top:14px}.quick a{min-height:76px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;border:1px solid var(--line);border-radius:12px;background:#fafbfc;color:#697386;text-decoration:none;font-size:8px;font-weight:bold;transition:.2s}.quick a:hover{color:var(--red);border-color:#f2bdc4;background:#fff4f5;transform:translateY(-2px)}.quick i{font-style:normal;font-size:18px}.overlay{display:none;position:fixed;inset:0;border:0;background:#11182770;z-index:15}.toast{position:fixed;inset-inline-start:20px;bottom:20px;z-index:50;padding:12px 15px;border:1px solid #dbece3;border-radius:12px;background:#fff;color:#47705a;box-shadow:0 15px 40px #17203326;font-size:9px;font-weight:bold;opacity:0;visibility:hidden;transform:translateY(12px);transition:.2s}.toast.show{opacity:1;visibility:visible;transform:none}@media(max-width:1120px){.stats{grid-template-columns:repeat(2,1fr)}.hero:after{display:none}}@media(max-width:900px){.app{display:block}.side{position:fixed;inset-inline-end:0;width:min(270px,calc(100vw - 45px));transform:translateX(105%);transition:.25s}.side-open{overflow:hidden}.side-open .side{transform:none}.side-open .overlay{display:block}.main{padding:13px}.menu{display:block}.offline{display:none}.grid,.bottom{grid-template-columns:1fr}}@media(max-width:600px){.title p,.user div{display:none}.hero{padding:24px 20px}.stats{gap:8px}.stat{padding:13px}.field{flex-basis:100%}.filter-actions{width:100%}.filter-actions .btn{flex:1}.bell{display:none}}@media(max-width:390px){.stats{grid-template-columns:1fr}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
-
-/* Dashboard follow-ups and meetings popup controls */
-.dashboard-launchers{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px;margin-top:13px}
-.dashboard-launch{--launch-color:#dc2637;width:100%;min-height:92px;display:flex;align-items:center;gap:14px;padding:16px 18px;border:1px solid var(--line);border-radius:17px;background:#fff;color:var(--dark);text-align:right;cursor:pointer;box-shadow:var(--shadow);transition:.2s}
-.dashboard-launch:hover{transform:translateY(-3px);border-color:color-mix(in srgb,var(--launch-color) 35%,var(--line));box-shadow:0 18px 42px #17203317}
-.dashboard-launch.meetings{--launch-color:#7b61df}
-
-
-.dashboard-launch-icon{width:50px;height:50px;flex:0 0 50px;display:grid;place-items:center;border-radius:14px;background:color-mix(in srgb,var(--launch-color) 11%,white);color:var(--launch-color);font-size:23px}
-.dashboard-launch-text{flex:1}
-.dashboard-launch-text strong{display:block;font-size:16px}
-.dashboard-launch-text small{display:block;margin-top:6px;color:var(--muted);font-size:11px;line-height:1.6}
-.dashboard-launch-arrow{color:var(--launch-color);font-size:20px;font-weight:900}
-.crm-modal[hidden]{display:none}
-.crm-modal{position:fixed;inset:0;z-index:100;display:grid;place-items:center;padding:20px}
-.crm-modal-backdrop{position:absolute;inset:0;border:0;background:#11182799;backdrop-filter:blur(3px);cursor:pointer}
-.crm-dialog{position:relative;width:min(520px,100%);max-height:calc(100vh - 40px);overflow:auto;padding:20px;border:1px solid #ffffff33;border-radius:22px;background:#fff;box-shadow:0 30px 90px #1118274d}
-.crm-dialog-head{display:flex;align-items:center;gap:12px;padding-bottom:15px;border-bottom:1px solid var(--line)}
-.crm-dialog-title{flex:1}
-.crm-dialog-title h3{margin:0;font-size:19px}
-.crm-dialog-title p{margin:6px 0 0;color:var(--muted);font-size:11px}
-.crm-modal-close{width:38px;height:38px;display:grid;place-items:center;border:1px solid var(--line);border-radius:11px;background:#f8f9fb;color:#6d7686;font-size:20px;cursor:pointer}
-.crm-modal-close:hover{color:var(--red);background:#fff1f3}
-.crm-choice-list{display:grid;gap:10px;padding-top:16px}
-.crm-choice{display:flex;align-items:center;gap:12px;min-height:72px;padding:13px;border:1px solid var(--line);border-radius:14px;background:#fafbfc;color:var(--dark);text-decoration:none;transition:.2s}
-.crm-choice:hover{border-color:#efb8bf;background:#fff5f6;transform:translateX(-3px)}
-.crm-choice-icon{width:42px;height:42px;flex:0 0 42px;display:grid;place-items:center;border-radius:12px;background:#fff0f2;color:var(--red);font-size:18px}
-.crm-choice.meeting-choice .crm-choice-icon{background:#f2efff;color:#7b61df}
-.crm-choice-text{flex:1}
-.crm-choice-text strong{display:block;font-size:14px}
-.crm-choice-text small{display:block;margin-top:5px;color:var(--muted);font-size:10px}
-.crm-choice-count{min-width:36px;height:36px;display:grid;place-items:center;border-radius:11px;background:#eef0f4;color:#687385;font:900 14px Arial}
-body.crm-modal-open{overflow:hidden}
-@media(max-width:600px){.dashboard-launchers{grid-template-columns:1fr}.crm-modal{padding:12px}.crm-dialog{padding:16px;border-radius:18px}.dashboard-launch{min-height:82px}}
-
-
-/* Dashboard sales pipeline */
-.pipeline-head{align-items:flex-start;gap:12px}
-.pipeline-summary{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:7px}
-.pipeline-success{background:#ecf8f2;color:#168158}
-
-.sales-pipeline{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;padding-top:16px}
-.pipeline-stage{--stage-color:#3478f6;position:relative;min-width:0;min-height:155px;padding:14px;border:1px solid var(--line);border-top:4px solid var(--stage-color);border-radius:15px;background:linear-gradient(180deg,color-mix(in srgb,var(--stage-color) 7%,white),#fff 42%);transition:.2s}
-.pipeline-stage:hover{transform:translateY(-3px);box-shadow:0 14px 32px #17203312}
-.pipeline-stage.interest{--stage-color:#169a64}
-.pipeline-stage.negotiation{--stage-color:#e59b16}
-.pipeline-stage.closing{--stage-color:#7b61df}
-.pipeline-stage-top{display:flex;align-items:center;gap:9px}
-.pipeline-step{width:31px;height:31px;flex:0 0 31px;display:grid;place-items:center;border-radius:10px;background:var(--stage-color);color:#fff;font:900 13px Arial}
-.pipeline-stage-name{min-width:0;flex:1}
-.pipeline-stage-name strong{display:block;font-size:13px}
-.pipeline-stage-name small{display:block;margin-top:4px;color:var(--muted);font-size:9px;line-height:1.5}
-.pipeline-stage-total{color:var(--stage-color);font:900 24px Arial}
-.pipeline-statuses{display:grid;gap:6px;margin-top:14px}
-.pipeline-statuses span{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 9px;border:1px solid #eceef2;border-radius:9px;background:#fff;color:#5d687a;font-size:10px;font-weight:bold}
-.pipeline-statuses b{color:var(--stage-color);font:900 11px Arial}
-
-
-
-
-.pipeline-kanban-btn{display:flex;align-items:center;gap:13px;min-height:76px;margin-top:14px;padding:14px 17px;border:1px solid #30394c;border-radius:15px;background:linear-gradient(135deg,#182033,#30394c);color:#fff;text-decoration:none;box-shadow:0 15px 32px #18203324;transition:.2s}
-.pipeline-kanban-btn:hover{transform:translateY(-3px);border-color:#dc2637;background:linear-gradient(135deg,#dc2637,#bd1f2f);box-shadow:0 18px 38px #dc26372b}
-.pipeline-kanban-icon{width:46px;height:46px;flex:0 0 46px;display:grid;place-items:center;border-radius:13px;background:#ffffff17;color:#fff;font-size:22px}
-.pipeline-kanban-copy{min-width:0;flex:1}
-.pipeline-kanban-copy strong{display:block;font-size:15px}
-.pipeline-kanban-copy small{display:block;margin-top:6px;color:#cbd0da;font-size:10px;line-height:1.6}
-.pipeline-kanban-arrow{font-size:21px;font-weight:900}
-@media(max-width:600px){.pipeline-kanban-btn{min-height:70px;padding:12px}.pipeline-kanban-icon{width:42px;height:42px;flex-basis:42px}}
-@media(max-width:1250px){.sales-pipeline{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media(max-width:600px){.sales-pipeline{grid-template-columns:1fr}.pipeline-summary{width:100%;justify-content:flex-start}.pipeline-head{flex-wrap:wrap}}
-
-/* V2 RTL placement and readable typography fix */
-body{font-size:15px}
-.app{display:flex;flex-direction:row;align-items:flex-start;min-height:100vh}
-.side{grid-column:auto;order:0;flex:0 0 288px;width:288px;}
-.main{grid-column:auto;order:1;flex:1 1 auto;width:calc(100% - 288px);min-height:100vh;}
-.brand small,.caption{font-size:12px}.label{font-size:15px}.sub a{font-size:13px}.mode{font-size:12px}
-.title h1{font-size:28px}.title p{font-size:13px}.offline{font-size:12px}
-.user strong{font-size:13px}.user small{font-size:10px}.hero small{font-size:13px}.hero p{font-size:14px}
-.btn{font-size:13px}.field label{font-size:12px}.field select,.field input{font-size:13px}
-.heading h2{font-size:20px}.heading p,.heading a{font-size:12px}
-.stat p{font-size:13px}.stat small{font-size:11px}.stat strong{font-size:34px}
-.panel-head h3{font-size:16px}.panel-head p{font-size:11px}.badge{font-size:11px}
-.empty strong{font-size:13px}.empty p{font-size:11px}.dist div div{font-size:12px}.dist b{font-size:11px}
-.table th{font-size:11px}.quick a{font-size:12px}.toast{font-size:12px}
-@media(max-width:900px){.app{display:block}.side{width:min(288px,calc(100vw - 45px))}.main{width:100%;min-height:100vh}}
-
-/* CRM LIVE DASHBOARD DATA STYLES */
-.table td{
- padding:12px 11px;
- border-bottom:1px solid #f0f2f5;
- color:#566175;
- font-size:12px;
- line-height:1.55;
- vertical-align:middle
+:root {
+    --red: #dc2637;
+    --red-hover: #b81829;
+    --dark: #182033;
+    --text: #475569;
+    --muted: #64748b;
+    --line: #e2e8f0;
+    --bg: #f8fafc;
+    --card: #ffffff;
+    --shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
+    --radius: 16px;
 }
-.table tbody tr:last-child td{
- border-bottom:0
+html.dark-mode {
+    --dark: #f1f5f9;
+    --text: #cbd5e1;
+    --muted: #94a3b8;
+    --line: #334155;
+    --bg: #0f172a;
+    --card: #1e293b;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 }
-.progress>span{
- min-width:0;
- transition:.2s
-}
-/* CRM LIVE DASHBOARD END */
-
-
-/* CRM DASHBOARD STATUS CARD LINK DESIGN START */
-
-.dashboard-status-link{
- color:inherit;
- text-decoration:none;
- cursor:pointer
-}
-
-.dashboard-status-link:hover{
- text-decoration:none
-}
-
-.dashboard-status-link:focus-visible{
- outline:3px solid
-  color-mix(
-   in srgb,
-   var(--color) 38%,
-   transparent
-  );
- outline-offset:3px
-}
-
-.dashboard-status-link .sico{
- transition:.18s
-}
-
-.dashboard-status-link:hover .sico{
- transform:scale(1.06)
-}
-
-/* CRM DASHBOARD STATUS CARD LINK DESIGN END */
-
-/* ===================================================
-   PART 1 & PART 2: CRM WELCOME INTRO & HERO BANNER
-   =================================================== */
-
-/* ===================================================
-   PART 1: WELCOME INTRO ANIMATION OVERLAY STYLES
-   =================================================== */
-.crm-welcome-intro {
-    position: fixed;
-    inset: 0;
-    z-index: 999999;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    background: radial-gradient(circle at 50% 32%, #172033 0%, #0d121f 58%, #080c14 100%);
-    opacity: 1;
-    visibility: visible;
-    transition: opacity 0.5s cubic-bezier(0.16, 1, 0.3, 1), transform 0.5s cubic-bezier(0.16, 1, 0.3, 1), visibility 0.5s;
-    user-select: none;
-}
-
-.crm-welcome-intro.is-dismissing {
-    opacity: 0;
-    transform: scale(1.025);
-    pointer-events: none;
-    visibility: hidden;
-}
-
-/* Ambient Background on Intro */
-.crm-intro-ambient {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    overflow: hidden;
-}
-.crm-intro-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(70px);
-    opacity: 0.18;
-}
-.crm-intro-orb.orb-1 {
-    top: 15%;
-    left: 20%;
-    width: 340px;
-    height: 340px;
-    background: #dc2637;
-    animation: crmIntroOrbFloat 8s ease-in-out infinite alternate;
-}
-.crm-intro-orb.orb-2 {
-    bottom: 15%;
-    right: 20%;
-    width: 380px;
-    height: 380px;
-    background: #3b82f6;
-    animation: crmIntroOrbFloat 9s ease-in-out infinite alternate-reverse;
-}
-@keyframes crmIntroOrbFloat {
-    0% { transform: translate(0, 0) scale(1); opacity: 0.14; }
-    100% { transform: translate(25px, -20px) scale(1.15); opacity: 0.22; }
-}
-
-.crm-intro-net-svg {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    opacity: 0.25;
-}
-.crm-intro-line {
-    stroke: rgba(255, 255, 255, 0.12);
-    stroke-width: 1.2;
-    stroke-dasharray: 4 6;
-    fill: none;
-    animation: crmDashStream 25s linear infinite;
-}
-.crm-intro-pulse {
-    fill: #dc2637;
-    filter: drop-shadow(0 0 6px #dc2637);
-    animation: crmIntroPulseFly 3s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.crm-intro-pulse.pulse-1 { animation-delay: 0.4s; }
-.crm-intro-pulse.pulse-2 { animation-delay: 1.2s; }
-.crm-intro-pulse.pulse-3 { animation-delay: 2.0s; }
-
-/* Intro Main Stage Container */
-.crm-intro-stage {
-    position: relative;
-    z-index: 2;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    text-align: center;
-    max-width: 580px;
-    padding: 24px;
-}
-
-/* Branded Mark with Concentric Aura */
-.crm-intro-logo-wrap {
-    position: relative;
-    width: 106px;
-    height: 106px;
-    display: grid;
-    place-items: center;
-    border-radius: 28px;
-    background: rgba(255, 255, 255, 0.04);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.15);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    animation: crmIntroLogoIn 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-
-.crm-intro-logo-wrap::before {
-    content: "";
-    position: absolute;
-    inset: -9px;
-    border-radius: 36px;
-    border: 2px solid rgba(220, 38, 55, 0.3);
-    animation: crmIntroAuraPulse 2.4s ease-out infinite;
-}
-
-@keyframes crmIntroAuraPulse {
-    0% { transform: scale(0.92); opacity: 0.8; }
-    70%, 100% { transform: scale(1.15); opacity: 0; }
-}
-
-.crm-intro-logo {
-    width: 68px;
-    height: 68px;
-    object-fit: contain;
-    filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.35));
-    animation: crmIntroLogoFloat 3s ease-in-out infinite;
-}
-@keyframes crmIntroLogoFloat {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-4px); }
-}
-
-.crm-intro-brand {
-    margin-top: 16px;
-    color: #ffffff;
-    font-size: 20px;
-    letter-spacing: 0.5px;
-    font-family: var(--font-primary, inherit);
-    animation: crmIntroItemFade 0.7s cubic-bezier(0.16, 1, 0.3, 1) 0.3s both;
-}
-.crm-intro-brand span { color: #f4aab2; font-weight: 700; }
-.crm-intro-brand strong { color: #dc2637; font-weight: 900; }
-
-/* Welcoming Message */
-.crm-intro-message-wrap {
-    margin-top: 14px;
-}
-.crm-intro-title {
+* { box-sizing: border-box; }
+body {
     margin: 0;
-    font-size: clamp(22px, 3.8vw, 30px);
-    font-weight: 900;
-    color: #ffffff;
-    line-height: 1.35;
-    animation: crmIntroItemFade 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.55s both;
-}
-.crm-intro-subtitle {
-    margin: 8px 0 0;
-    color: #94a3b8;
-    font-size: clamp(13px, 2vw, 15px);
-    line-height: 1.6;
-    animation: crmIntroItemFade 0.75s cubic-bezier(0.16, 1, 0.3, 1) 0.75s both;
-}
-
-/* CRM Workflow Modules (العملاء، المهام، المتابعات، التقارير) */
-.crm-intro-modules {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-wrap: wrap;
-    gap: 10px;
-    margin-top: 22px;
-}
-.crm-intro-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    padding: 6px 13px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    color: #e2e8f0;
-    font-size: 12px;
-    font-weight: 700;
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.2);
-    animation: crmIntroChipIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-}
-.crm-intro-chip i { font-size: 13px; color: #dc2637; }
-.crm-intro-chip .chip-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: #10b981;
-    box-shadow: 0 0 6px #10b981;
-}
-.crm-intro-chip.chip-1 { animation-delay: 1.0s; }
-.crm-intro-chip.chip-2 { animation-delay: 1.2s; }
-.crm-intro-chip.chip-3 { animation-delay: 1.4s; }
-.crm-intro-chip.chip-4 { animation-delay: 1.6s; }
-
-/* System Ready Progress Line */
-.crm-intro-progress-wrap {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 9px;
-    margin-top: 24px;
-    width: 220px;
-    animation: crmIntroItemFade 0.6s ease 1.7s both;
-}
-.crm-intro-progress-bar {
-    width: 100%;
-    height: 4px;
-    border-radius: 99px;
-    background: rgba(255, 255, 255, 0.1);
-    overflow: hidden;
-}
-.crm-intro-progress-fill {
-    width: 0%;
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #dc2637, #ef4444 60%, #38bdf8);
-    animation: crmIntroProgressFill 1.3s cubic-bezier(0.4, 0, 0.2, 1) 1.8s forwards;
-}
-.crm-intro-status-text {
-    font-size: 11px;
-    color: #64748b;
-    font-weight: 700;
-}
-
-@keyframes crmIntroProgressFill {
-    0% { width: 0%; }
-    100% { width: 100%; }
-}
-
-/* Quick Skip Button */
-.crm-intro-skip-btn {
-    position: absolute;
-    top: 24px;
-    inset-inline-end: 24px;
-    z-index: 10;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    padding: 7px 14px;
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.06);
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    color: #cbd5e1;
-    font-size: 12px;
-    font-weight: 800;
-    cursor: pointer;
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    transition: all 0.2s ease;
-    animation: crmIntroItemFade 0.5s ease 0.4s both;
-}
-.crm-intro-skip-btn:hover {
-    background: rgba(220, 38, 55, 0.2);
-    border-color: rgba(220, 38, 55, 0.45);
-    color: #ffffff;
-    transform: translateY(-1px);
-}
-
-@keyframes crmIntroLogoIn {
-    from { opacity: 0; transform: translateY(16px) scale(0.85); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes crmIntroItemFade {
-    from { opacity: 0; transform: translateY(8px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-@keyframes crmIntroChipIn {
-    from { opacity: 0; transform: translateY(10px) scale(0.9); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-/* ===================================================
-   PART 2: ANIMATED HERO BANNER STYLES
-   =================================================== */
-.crm-hero-banner {
-    position: relative;
-    overflow: hidden;
-    min-height: 195px;
-    padding: 32px 34px;
-    border-radius: 22px;
-    background: linear-gradient(120deg, #131a2b, #222c40 55%, #182033);
-    color: #fff;
-    box-shadow: 0 20px 48px rgba(23, 32, 51, 0.28);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-}
-
-/* Background Ambient Network Layer */
-.crm-hero-network-wrap {
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    z-index: 1;
-    overflow: hidden;
-}
-
-.crm-hero-parallax-layer {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    transform: translate3d(var(--p-x, 0px), var(--p-y, 0px), 0);
-    transition: transform 0.18s cubic-bezier(0.25, 1, 0.5, 1);
-    will-change: transform;
-}
-
-/* Subtle Background Ambient Mesh Glow */
-.crm-hero-glow-orb {
-    position: absolute;
-    border-radius: 50%;
-    filter: blur(50px);
-    opacity: 0.12;
-    pointer-events: none;
-    animation: crmOrbFloat 14s ease-in-out infinite alternate;
-}
-.crm-hero-glow-orb.orb-red {
-    top: -20px;
-    inset-inline-end: 25%;
-    width: 240px;
-    height: 200px;
-    background: #dc2637;
-}
-.crm-hero-glow-orb.orb-blue {
-    bottom: -30px;
-    inset-inline-end: 5%;
-    width: 280px;
-    height: 220px;
-    background: #3b82f6;
-    animation-delay: -7s;
-}
-
-@keyframes crmOrbFloat {
-    0% { transform: translate(0, 0) scale(1); opacity: 0.1; }
-    50% { transform: translate(12px, -8px) scale(1.1); opacity: 0.16; }
-    100% { transform: translate(-10px, 10px) scale(0.95); opacity: 0.12; }
-}
-
-/* SVG Connection Lines & Moving Data Pulses */
-.crm-network-svg {
-    position: absolute;
-    inset-inline-end: 0;
-    top: 0;
-    width: min(600px, 60vw);
-    height: 100%;
-    pointer-events: none;
-}
-
-.crm-net-path {
-    stroke: rgba(255, 255, 255, 0.07);
-    stroke-width: 1.2;
-    fill: none;
-    stroke-dasharray: 4 6;
-    animation: crmDashStream 30s linear infinite;
-}
-.crm-net-path.path-accent {
-    stroke: rgba(220, 38, 55, 0.18);
-    stroke-width: 1.4;
-}
-
-@keyframes crmDashStream {
-    to { stroke-dashoffset: -300; }
-}
-
-/* Floating Network Nodes (Customers, Leads, Deals) */
-.crm-node-dot {
-    position: absolute;
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.28);
-    box-shadow: 0 0 8px rgba(255, 255, 255, 0.15);
-    animation: crmNodePulse 7s ease-in-out infinite;
-}
-.crm-node-dot.dot-red {
-    background: #dc2637;
-    box-shadow: 0 0 10px rgba(220, 38, 55, 0.75), 0 0 4px #dc2637;
-}
-.crm-node-dot.dot-blue {
-    background: #38bdf8;
-    box-shadow: 0 0 8px rgba(56, 189, 248, 0.6);
-}
-.crm-node-dot.dot-green {
-    background: #10b981;
-    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
-}
-
-@keyframes crmNodePulse {
-    0%, 100% { transform: scale(1); opacity: 0.35; }
-    50% { transform: scale(1.35); opacity: 0.85; }
-}
-
-/* ===================================================
-   FLOATING 5-STAGE CRM FLOW CARDS
-   (عميل جديد → اتصال → مقابلة → عرض سعر → تعاقد ✓)
-   =================================================== */
-.crm-hero-flow-stage {
-    position: absolute;
-    inset-inline-end: 24px;
-    top: 50%;
-    transform: translateY(-50%) translate3d(var(--p-x, 0px), var(--p-y, 0px), 0);
-    width: min(520px, 52%);
-    height: 154px;
-    pointer-events: none;
-    z-index: 2;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: transform 0.2s cubic-bezier(0.25, 1, 0.5, 1);
-    will-change: transform;
-}
-
-.crm-flow-cluster {
-    position: relative;
-    width: 100%;
-    height: 100%;
-}
-
-/* Individual Glassmorphic Flow Cards */
-.crm-flow-card {
-    position: absolute;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    padding: 6px 10px;
-    border-radius: 12px;
-    background: rgba(21, 28, 44, 0.78);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.11);
-    box-shadow: 0 10px 24px rgba(10, 15, 26, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.08);
-    color: #fff;
-    opacity: 0.55;
-    transform: scale(0.96) translateZ(0);
-    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
-    white-space: nowrap;
-    user-select: none;
-}
-
-/* 5 Flow Positions in Stage */
-.crm-flow-card.card-lead {
-    top: 4px;
-    inset-inline-start: 6px;
-    animation: crmCardLeadFlow5 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.crm-flow-card.card-call {
-    top: 6px;
-    inset-inline-start: 175px;
-    animation: crmCardCallFlow5 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.crm-flow-card.card-meeting {
-    top: 8px;
-    inset-inline-start: 335px;
-    animation: crmCardMeetingFlow5 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.crm-flow-card.card-quote {
-    bottom: 6px;
-    inset-inline-start: 60px;
-    animation: crmCardQuoteFlow5 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-.crm-flow-card.card-deal {
-    bottom: 6px;
-    inset-inline-start: 245px;
-    animation: crmCardDealFlow5 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-}
-
-/* Card Icons */
-.crm-flow-icon {
-    width: 26px;
-    height: 26px;
-    flex: 0 0 26px;
-    display: grid;
-    place-items: center;
-    border-radius: 8px;
-    font-size: 12px;
-}
-.card-lead .crm-flow-icon {
-    background: rgba(56, 189, 248, 0.16);
-    color: #38bdf8;
-    border: 1px solid rgba(56, 189, 248, 0.3);
-}
-.card-call .crm-flow-icon {
-    background: rgba(245, 158, 11, 0.16);
-    color: #fbbf24;
-    border: 1px solid rgba(245, 158, 11, 0.3);
-}
-.card-meeting .crm-flow-icon {
-    background: rgba(139, 92, 246, 0.16);
-    color: #a78bfa;
-    border: 1px solid rgba(139, 92, 246, 0.3);
-}
-.card-quote .crm-flow-icon {
-    background: rgba(251, 146, 60, 0.16);
-    color: #fb923c;
-    border: 1px solid rgba(251, 146, 60, 0.3);
-}
-.card-deal .crm-flow-icon {
-    background: rgba(16, 185, 129, 0.18);
-    color: #34d399;
-    border: 1px solid rgba(16, 185, 129, 0.35);
-}
-
-.crm-flow-text {
-    display: flex;
-    flex-direction: column;
-    text-align: start;
-    line-height: 1.25;
-}
-.crm-flow-title {
-    font-size: 11px;
-    font-weight: 800;
-    color: #f1f5f9;
-}
-.crm-flow-sub {
-    font-size: 8.5px;
-    color: #94a3b8;
-    margin-top: 1px;
-}
-.card-deal .crm-flow-sub {
-    color: #34d399;
-    font-weight: 700;
-}
-
-.crm-flow-status-dot {
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.25);
-    margin-inline-start: 2px;
-}
-
-/* Connecting Paths */
-.crm-flow-connectors {
-    position: absolute;
-    inset: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-.crm-flow-svg-line {
-    stroke: rgba(255, 255, 255, 0.1);
-    stroke-width: 1.3;
-    stroke-linecap: round;
-    stroke-dasharray: 4 5;
-    fill: none;
-    animation: crmFlowDashMove 18s linear infinite;
-}
-@keyframes crmFlowDashMove {
-    to { stroke-dashoffset: -180; }
-}
-
-/* ===================================================
-   7-SECOND SYNCHRONIZED SEQUENTIAL LOOP (5 STEPS)
-   0.0s - 1.2s: Initial subtle drift
-   1.4s: Step 1 (Lead / عميل جديد) (20%)
-   2.2s: Step 2 (Call / اتصال) (31%)
-   3.0s: Step 3 (Meeting / مقابلة) (42%)
-   3.8s: Step 4 (Quotation / عرض سعر) (54%)
-   4.6s: Step 5 (Deal Won / تعاقد ✓) (65%)
-   5.6s: Primary CTA subtle glow (80%)
-   7.0s: Seamless reset (100%)
-   =================================================== */
-
-/* Card 1: Lead */
-@keyframes crmCardLeadFlow5 {
-    0%, 13% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-    20%, 30% {
-        opacity: 1;
-        transform: scale(1.03) translateY(-2px) translateZ(0);
-        border-color: rgba(56, 189, 248, 0.55);
-        box-shadow: 0 12px 30px rgba(56, 189, 248, 0.22), 0 0 15px rgba(56, 189, 248, 0.15);
-    }
-    36%, 90% {
-        opacity: 0.75;
-        transform: scale(1) translateZ(0);
-        border-color: rgba(56, 189, 248, 0.25);
-    }
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-}
-
-/* Card 2: Call */
-@keyframes crmCardCallFlow5 {
-    0%, 24% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-    31%, 41% {
-        opacity: 1;
-        transform: scale(1.03) translateY(-2px) translateZ(0);
-        border-color: rgba(245, 158, 11, 0.55);
-        box-shadow: 0 12px 30px rgba(245, 158, 11, 0.22), 0 0 15px rgba(245, 158, 11, 0.15);
-    }
-    47%, 90% {
-        opacity: 0.75;
-        transform: scale(1) translateZ(0);
-        border-color: rgba(245, 158, 11, 0.25);
-    }
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-}
-
-/* Card 3: Meeting */
-@keyframes crmCardMeetingFlow5 {
-    0%, 35% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-    42.8%, 52% {
-        opacity: 1;
-        transform: scale(1.03) translateY(-2px) translateZ(0);
-        border-color: rgba(139, 92, 246, 0.55);
-        box-shadow: 0 12px 30px rgba(139, 92, 246, 0.22), 0 0 15px rgba(139, 92, 246, 0.15);
-    }
-    58%, 90% {
-        opacity: 0.75;
-        transform: scale(1) translateZ(0);
-        border-color: rgba(139, 92, 246, 0.25);
-    }
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-}
-
-/* Card 4: Quotation */
-@keyframes crmCardQuoteFlow5 {
-    0%, 46% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-    54.2%, 64% {
-        opacity: 1;
-        transform: scale(1.03) translateY(-2px) translateZ(0);
-        border-color: rgba(251, 146, 60, 0.55);
-        box-shadow: 0 12px 30px rgba(251, 146, 60, 0.22), 0 0 15px rgba(251, 146, 60, 0.15);
-    }
-    70%, 90% {
-        opacity: 0.75;
-        transform: scale(1) translateZ(0);
-        border-color: rgba(251, 146, 60, 0.25);
-    }
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-}
-
-/* Card 5: Deal Closed ✓ */
-@keyframes crmCardDealFlow5 {
-    0%, 58% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-    65.7%, 82% {
-        opacity: 1;
-        transform: scale(1.04) translateY(-2px) translateZ(0);
-        border-color: rgba(16, 185, 129, 0.65);
-        box-shadow: 0 12px 32px rgba(16, 185, 129, 0.26), 0 0 18px rgba(16, 185, 129, 0.2);
-    }
-    88%, 94% {
-        opacity: 0.8;
-        transform: scale(1) translateZ(0);
-        border-color: rgba(16, 185, 129, 0.3);
-    }
-    100% {
-        opacity: 0.55;
-        transform: scale(0.96) translateZ(0);
-        border-color: rgba(255, 255, 255, 0.11);
-    }
-}
-
-/* ===================================================
-   TEXT & CTA STAGGERED ENTRANCE AND MICRO-INTERACTIONS
-   =================================================== */
-.crm-hero-content {
-    position: relative;
-    z-index: 10;
-    max-width: 580px;
-}
-
-.crm-hero-eyebrow {
-    display: inline-block;
-    color: #f4aab2;
-    font-weight: 700;
-    font-size: 13px;
-    letter-spacing: 0.3px;
-    animation: crmHeroFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: 0.3s;
-}
-
-.crm-hero-title {
-    max-width: 620px;
-    margin: 10px 0 8px;
-    font-size: clamp(24px, 3vw, 34px);
-    font-weight: 800;
-    line-height: 1.35;
-    color: #ffffff;
-    animation: crmHeroTitleSlide 0.75s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: 0.6s;
-}
-
-.crm-hero-actions {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 10px;
-    margin-top: 18px;
-    animation: crmHeroFadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) both;
-    animation-delay: 0.9s;
-}
-
-@keyframes crmHeroFadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
-@keyframes crmHeroTitleSlide {
-    from {
-        opacity: 0;
-        transform: translateY(8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Primary CTA Button Subtle Glow Loop */
-.crm-btn-primary {
-    position: relative;
-    animation: crmPrimaryCtaGlow 7s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-
-@keyframes crmPrimaryCtaGlow {
-    0%, 74% {
-        box-shadow: 0 10px 24px rgba(220, 38, 55, 0.24);
-    }
-    80%, 88% {
-        box-shadow: 0 12px 30px rgba(220, 38, 55, 0.52), 0 0 20px rgba(220, 38, 55, 0.36);
-        transform: translateY(-1px);
-    }
-    94%, 100% {
-        box-shadow: 0 10px 24px rgba(220, 38, 55, 0.24);
-        transform: translateY(0);
-    }
-}
-
-.crm-btn-primary:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 14px 34px rgba(220, 38, 55, 0.45);
-}
-
-/* Secondary Ghost CTA Button Hover Interaction */
-.crm-btn-secondary {
-    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
-}
-.crm-btn-secondary .crm-btn-ghost-ico {
-    display: inline-block;
+    min-width: 320px;
+    background: var(--bg);
+    color: var(--dark);
+    font-family: var(--font-primary);
     font-size: 14px;
-    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
-.crm-btn-secondary:hover .crm-btn-ghost-ico {
-    transform: translateX(-4px);
+button, input, select { font: inherit; }
+a { color: inherit; }
+.app { display: flex; min-height: 100vh; }
+.main { flex: 1; min-width: 0; padding: 24px 32px 60px; }
+
+/* Topbar */
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.topbar h1 { margin: 0; font-size: 24px; font-weight: 900; }
+.topbar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+.topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.btn-leads-pill {
+    display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px;
+    border-radius: 999px; border: 1px solid var(--line); background: var(--card);
+    color: var(--dark); font-size: 13px; font-weight: 800; text-decoration: none;
+    cursor: pointer; transition: all .2s cubic-bezier(.4, 0, .2, 1);
+    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
 }
-html[dir="ltr"] .crm-btn-secondary:hover .crm-btn-ghost-ico {
-    transform: translateX(4px);
+.btn-leads-pill i { font-size: 15px; color: var(--red); }
+.btn-leads-pill:hover, .btn-leads-pill:focus-visible {
+    background: #fff5f6; border-color: rgba(220, 38, 55, 0.4); color: var(--red);
+    transform: translateY(-1px); box-shadow: 0 4px 14px rgba(220, 38, 55, 0.12);
+}
+html.dark-mode .btn-leads-pill {
+    background: var(--bg-card, rgba(24, 24, 27, .75)) !important;
+    border-color: var(--line, rgba(255, 255, 255, .1)) !important;
+    color: var(--text-primary, #f4f4f5) !important;
+    box-shadow: var(--shadow-glass) !important;
+}
+html.dark-mode .btn-leads-pill:hover, html.dark-mode .btn-leads-pill:focus-visible {
+    background: rgba(239, 68, 68, .18) !important;
+    border-color: rgba(239, 68, 68, .45) !important;
+    color: #f87171 !important;
+}
+@media (max-width: 768px) {
+    .topbar { flex-direction: column; align-items: stretch; gap: 14px; }
+    .topbar-actions { width: 100%; justify-content: flex-start; gap: 8px; }
+}
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 7px;
+    min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px;
+    background: var(--card); color: var(--dark); font-weight: 700; cursor: pointer; text-decoration: none;
+    transition: .15s; font-size: 13px;
+}
+.btn:hover { border-color: #cbd5e1; background: #f1f5f9; }
+.btn.primary { background: var(--red); border-color: var(--red); color: #fff; box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); }
+.btn.primary:hover { background: var(--red-hover); border-color: var(--red-hover); }
+.btn.soft { background: #f1f5f9; border-color: transparent; }
+.btn.small { min-height: 32px; padding: 0 10px; font-size: 12px; }
+
+/* Hero Banner & Animated Journey */
+.hero {
+    position: relative;
+    overflow: hidden;
+    min-height: 180px;
+    padding: 28px 32px;
+    border-radius: 20px;
+    background: linear-gradient(125deg, #131a29 0%, #1e283d 50%, #26334d 100%);
+    color: #fff;
+    box-shadow: 0 20px 48px rgba(19, 26, 41, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 24px;
+}
+.hero-bg-ambient {
+    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;
+}
+.hero-glow-orb {
+    position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.18; pointer-events: none;
+}
+.hero-glow-red {
+    width: 220px; height: 220px; top: -60px; inset-inline-start: -40px;
+    background: radial-gradient(circle, #dc2637 0%, transparent 70%);
+}
+.hero-glow-green {
+    width: 260px; height: 260px; bottom: -80px; inset-inline-end: 60px;
+    background: radial-gradient(circle, #22c55e 0%, transparent 70%);
+}
+.hero-main-content { position: relative; z-index: 10; max-width: 520px; }
+.hero-subheading { display: block; color: #94a3b8; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
+.hero-heading { margin: 0 0 18px; font-size: 24px; font-weight: 900; line-height: 1.3; }
+.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+
+.hero-cta-btn {
+    animation: ctaReadyGlow 8s ease-in-out infinite;
+}
+@keyframes ctaReadyGlow {
+    0%, 75%, 100% { box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); transform: translateY(0); }
+    85% { box-shadow: 0 0 22px rgba(220, 38, 55, 0.6), 0 0 35px rgba(220, 38, 55, 0.3); transform: translateY(-1px); }
+    92% { box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); transform: translateY(0); }
 }
 
-/* Responsive Rules */
+/* Desktop & Tablet Animated 4-Card Pipeline Journey (Section 10) */
+.hero-pipeline-wrap {
+    position: absolute;
+    inset-inline-end: 32px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 440px;
+    height: 120px;
+    pointer-events: none;
+    z-index: 5;
+}
+.pipeline-svg {
+    position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
+}
+.pipeline-stream {
+    stroke-dasharray: 8 160;
+    animation: streamFlow 8s linear infinite;
+}
+@keyframes streamFlow {
+    0% { stroke-dashoffset: 0; }
+    100% { stroke-dashoffset: -340; }
+}
+.pipeline-pulse-dot {
+    position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #ffffff;
+    box-shadow: 0 0 10px #38bdf8, 0 0 20px #22c55e;
+    offset-path: path('M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88');
+    animation: pulseDotTravel 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    pointer-events: none; z-index: 10;
+}
+@keyframes pulseDotTravel {
+    0% { offset-distance: 0%; opacity: 0; transform: scale(0.5); }
+    4% { opacity: 1; transform: scale(1); }
+    70% { offset-distance: 100%; opacity: 1; transform: scale(1.4); }
+    76% { offset-distance: 100%; opacity: 0; transform: scale(1.8); }
+    100% { offset-distance: 100%; opacity: 0; transform: scale(0.5); }
+}
+
+.pipeline-card {
+    position: absolute; transform: translate(-50%, -50%);
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 6px 12px; border-radius: 12px;
+    background: rgba(22, 30, 46, 0.75); border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    color: #e2e8f0; font-size: 12px; font-weight: 800; white-space: nowrap;
+    animation-duration: 8s; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
+}
+.pipeline-card-icon { font-size: 13px; display: inline-flex; align-items: center; }
+
+/* Card 1: جديد */
+.pipeline-card.stage-1 { animation-name: stage1Anim; }
+.pipeline-card.stage-1 .pipeline-card-icon { color: #38bdf8; }
+@keyframes stage1Anim {
+    0%, 3% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
+    6%, 22% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(56,189,248,0.6); background: rgba(56,189,248,0.18); box-shadow: 0 0 16px rgba(56,189,248,0.3); }
+    26%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(56,189,248,0.25); background: rgba(22,30,46,0.75); }
+    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
+}
+
+/* Card 2: تواصل */
+.pipeline-card.stage-2 { animation-name: stage2Anim; }
+.pipeline-card.stage-2 .pipeline-card-icon { color: #818cf8; }
+@keyframes stage2Anim {
+    0%, 22% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
+    25%, 44% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(129,140,248,0.6); background: rgba(129,140,248,0.18); box-shadow: 0 0 16px rgba(129,140,248,0.3); }
+    48%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(129,140,248,0.25); background: rgba(22,30,46,0.75); }
+    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
+}
+
+/* Card 3: متابعة */
+.pipeline-card.stage-3 { animation-name: stage3Anim; }
+.pipeline-card.stage-3 .pipeline-card-icon { color: #fbbf24; }
+@keyframes stage3Anim {
+    0%, 44% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
+    47%, 66% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(251,191,36,0.6); background: rgba(251,191,36,0.18); box-shadow: 0 0 16px rgba(251,191,36,0.3); }
+    70%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(251,191,36,0.25); background: rgba(22,30,46,0.75); }
+    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
+}
+
+/* Card 4: متبرع ✓ (Celebration / Success Glow) */
+.pipeline-card.stage-4 { animation-name: stage4Anim; }
+.pipeline-card.stage-4 .pipeline-card-icon { color: #22c55e; }
+.stage-success-ring {
+    position: absolute; inset: -3px; border-radius: 14px; border: 1px solid rgba(34, 197, 94, 0.8);
+    opacity: 0; pointer-events: none; animation: successRingPulse 8s ease-out infinite;
+}
+@keyframes successRingPulse {
+    0%, 66% { opacity: 0; transform: scale(0.9); }
+    68% { opacity: 0.85; transform: scale(1); }
+    78% { opacity: 0; transform: scale(1.3); }
+    100% { opacity: 0; transform: scale(1.3); }
+}
+@keyframes stage4Anim {
+    0%, 65% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
+    68%, 88% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); border-color: rgba(34,197,94,0.7); background: rgba(34,197,94,0.2); box-shadow: 0 0 24px rgba(34,197,94,0.4); }
+    92%, 96% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(34,197,94,0.3); background: rgba(22,30,46,0.75); }
+    100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
+}
+
+/* Mobile Journey */
+.hero-mobile-pipeline {
+    display: none; align-items: center; gap: 8px; margin-top: 18px;
+    padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1); width: fit-content; max-width: 100%; flex-wrap: wrap;
+}
+.mobile-pipe-card {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px;
+    background: rgba(22, 30, 46, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 11px; font-weight: 700;
+}
+
+/* Filters Panel */
+.filters-panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 24px;
+}
+.filters-form {
+    display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 12px; align-items: end;
+}
+.filter-group label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.filter-group input, .filter-group select {
+    width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px;
+    background: var(--card); color: var(--dark); outline: none; transition: .15s; font-size: 13px;
+}
+.filter-group input:focus, .filter-group select:focus {
+    border-color: var(--red); box-shadow: 0 0 0 3px rgba(220, 38, 55, 0.1);
+}
+
+/* KPI Summary Cards Grid (Section 6 & 7) */
+.kpi-grid {
+    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px;
+}
+.kpi-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 16px 18px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between;
+    text-decoration: none; color: inherit; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; min-width: 0;
+}
+.kpi-card:hover { transform: translateY(-3px); border-color: var(--card-accent, #cbd5e1); box-shadow: 0 14px 28px rgba(0,0,0,0.06); }
+.kpi-info span { display: block; font-size: 12px; color: var(--muted); font-weight: 700; }
+.kpi-info b { display: block; font-size: 20px; font-weight: 900; margin-top: 4px; color: var(--dark); }
+.kpi-icon-box {
+    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+    margin-inline-start: 8px;
+}
+/* Dynamic Pipeline Stages Section (Section 5 & 8) */
+.stages-panel {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px 24px; box-shadow: var(--shadow); margin-bottom: 24px;
+}
+.panel-head {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
+    padding-bottom: 14px; border-bottom: 1px solid var(--line);
+}
+.panel-head h2 { margin: 0; font-size: 17px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+.panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+
+.stages-grid {
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+}
+.stage-summary-box {
+    position: relative; padding: 18px; border-radius: 14px; border: 1px solid var(--line);
+    border-top: 4px solid var(--stage-color, #3478f6);
+    background: linear-gradient(180deg, color-mix(in srgb, var(--stage-color, #3478f6) 6%, #ffffff), #ffffff 45%);
+    transition: .2s; text-decoration: none; color: inherit; display: block;
+}
+.stage-summary-box:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.06); }
+.stage-box-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.stage-box-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
+.stage-box-count { font-size: 24px; font-weight: 900; color: var(--stage-color, #3478f6); }
+.stage-box-percentage { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 12px; display: block; }
+.stage-statuses-chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.stage-status-chip {
+    display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
+    padding: 4px 9px; border-radius: 8px; background: #f8fafc; border: 1px solid var(--line);
+    font-size: 11px; font-weight: 700; color: #475569;
+}
+.stage-status-chip b { color: var(--stage-color, #3478f6); }
+
+/* Charts Layout (Section 11) */
+.charts-grid {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 24px;
+}
+.chart-card {
+    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 22px; box-shadow: var(--shadow);
+}
+
+/* Bottom Grid */
+.bottom-grid {
+    display: grid; grid-template-columns: 2fr 1fr; gap: 18px;
+}
+.table-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; min-width: 600px; }
+th, td { text-align: start; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { background: #f8fafc; color: var(--muted); font-size: 12px; font-weight: 800; }
+tr:hover td { background: #fafbfd; }
+
+.badge {
+    display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px;
+    font-size: 11px; font-weight: 800; background: #f1f5f9; color: #475569;
+}
+
+.quick-actions-list { display: grid; gap: 10px; }
+.quick-action-link {
+    display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px;
+    background: #f8fafc; border: 1px solid var(--line); text-decoration: none; font-weight: 800;
+    transition: .15s; font-size: 13px;
+}
+.quick-action-link:hover { background: #fff1f3; border-color: #fecdd3; color: var(--red); transform: translateX(-3px); }
+.quick-action-link i { font-size: 17px; }
+
+@media (max-width: 1250px) {
+    .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    .filters-form { grid-template-columns: repeat(3, 1fr); }
+    .charts-grid, .bottom-grid { grid-template-columns: 1fr; }
+}
 @media (max-width: 1100px) {
-    .crm-hero-flow-stage {
-        transform: translateY(-50%) scale(0.82);
-        inset-inline-end: 10px;
-    }
+    .stages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-
-@media (max-width: 880px) {
-    .crm-hero-flow-stage {
-        display: none !important;
-    }
-    .crm-hero-content {
-        max-width: 100%;
-    }
-    .crm-network-svg {
-        width: 100%;
-        opacity: 0.6;
-    }
-    .crm-intro-stage {
-        padding: 16px;
-    }
-    .crm-intro-modules {
-        gap: 6px;
-    }
-    .crm-intro-chip {
-        font-size: 11px;
-        padding: 5px 10px;
-    }
+@media (max-width: 900px) {
+    .hero-pipeline-wrap { display: none !important; }
+    .hero-mobile-pipeline { display: inline-flex; }
+    .stages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .filters-form { grid-template-columns: 1fr; }
 }
-
-/* Accessibility: Reduced Motion */
-@media (prefers-reduced-motion: reduce) {
-    .crm-welcome-intro {
-        transition: opacity 0.2s linear !important;
-    }
-    .crm-hero-eyebrow,
-    .crm-hero-title,
-    .crm-hero-actions,
-    .crm-btn-primary,
-    .crm-flow-card,
-    .crm-net-path,
-    .crm-flow-svg-line,
-    .crm-node-dot,
-    .crm-hero-glow-orb,
-    .crm-intro-logo-wrap,
-    .crm-intro-logo-wrap::before,
-    .crm-intro-logo,
-    .crm-intro-brand,
-    .crm-intro-title,
-    .crm-intro-subtitle,
-    .crm-intro-chip,
-    .crm-intro-progress-fill,
-    .crm-intro-orb,
-    .crm-intro-pulse {
-        animation: none !important;
-        opacity: 1 !important;
-        transform: none !important;
-        transition: none !important;
-    }
-    .crm-flow-card {
-        opacity: 0.8 !important;
-    }
-    .crm-hero-flow-stage {
-        transform: translateY(-50%) !important;
-    }
+@media (max-width: 600px) {
+    .main { padding: 16px; }
+    .stages-grid { grid-template-columns: 1fr; }
+    .kpi-grid { grid-template-columns: 1fr; }
 }
-
-
 </style>
 </head>
 <body>
-<!-- PART 1: WELCOME INTRO ANIMATION OVERLAY -->
-<div class="crm-welcome-intro" id="crmWelcomeIntro" role="dialog" aria-modal="true" aria-label="{{ __('مرحبًا بك في SokratCRM') }}">
-    <div class="crm-intro-backdrop"></div>
-    
-    <!-- Ambient glowing orbs & particle stream -->
-    <div class="crm-intro-ambient" aria-hidden="true">
-        <div class="crm-intro-orb orb-1"></div>
-        <div class="crm-intro-orb orb-2"></div>
-        <svg class="crm-intro-net-svg" viewBox="0 0 800 600" fill="none">
-            <path class="crm-intro-line line-a" d="M150,300 Q400,150 650,300" />
-            <path class="crm-intro-line line-b" d="M200,420 Q400,320 600,420" />
-            <path class="crm-intro-line line-c" d="M300,180 Q400,400 500,180" />
-            <circle class="crm-intro-pulse pulse-1" r="3.5" cx="280" cy="225" />
-            <circle class="crm-intro-pulse pulse-2" r="3.5" cx="450" cy="260" />
-            <circle class="crm-intro-pulse pulse-3" r="3.5" cx="370" cy="380" />
-        </svg>
-    </div>
-
-    <!-- Center Intro Stage -->
-    <div class="crm-intro-stage">
-        <!-- Logo & Branded Mark with concentric glowing aura -->
-        <div class="crm-intro-logo-wrap">
-            <img class="crm-intro-logo" src="{{ asset('images/sokrat-pro-tech.png') }}" alt="Sokrat CRM">
-        </div>
-
-        <!-- Branded Title -->
-        <div class="crm-intro-brand">
-            <span>Sokrat</span><strong>CRM</strong>
-        </div>
-
-        <!-- Welcoming Arabic Message -->
-        <div class="crm-intro-message-wrap">
-            <h1 class="crm-intro-title">
-                {{ __('مرحبًا بك في SokratCRM') }}
-            </h1>
-            <p class="crm-intro-subtitle">
-                {{ __('أهلًا بك، جاهز لإدارة فريقك وعملائك بكفاءة') }}
-            </p>
-        </div>
-
-        <!-- CRM Workflow Activation Modules (العملاء، المهام، المتابعات، التقارير) -->
-        <div class="crm-intro-modules" aria-hidden="true">
-            <div class="crm-intro-chip chip-1">
-                <i class="bi bi-people-fill"></i>
-                <span>{{ __('العملاء') }}</span>
-                <span class="chip-dot"></span>
-            </div>
-            <div class="crm-intro-chip chip-2">
-                <i class="bi bi-list-check"></i>
-                <span>{{ __('المهام') }}</span>
-                <span class="chip-dot"></span>
-            </div>
-            <div class="crm-intro-chip chip-3">
-                <i class="bi bi-telephone-outbound-fill"></i>
-                <span>{{ __('المتابعات') }}</span>
-                <span class="chip-dot"></span>
-            </div>
-            <div class="crm-intro-chip chip-4">
-                <i class="bi bi-bar-chart-line-fill"></i>
-                <span>{{ __('التقارير') }}</span>
-                <span class="chip-dot"></span>
-            </div>
-        </div>
-
-        <!-- System Ready Progress Line -->
-        <div class="crm-intro-progress-wrap" aria-hidden="true">
-            <div class="crm-intro-progress-bar">
-                <div class="crm-intro-progress-fill"></div>
-            </div>
-            <span class="crm-intro-status-text">
-                {{ __('جاري تجهيز مساحة العمل...') }}
-            </span>
-        </div>
-    </div>
-
-    <!-- Quick Skip Button -->
-    <button class="crm-intro-skip-btn" id="crmIntroSkipBtn" type="button" aria-label="{{ __('تخطي المقدمة') }}">
-        <span>{{ __('تخطي') }}</span>
-        <i class="bi bi-chevron-double-{{ app()->getLocale() == 'ar' ? 'left' : 'right' }}"></i>
-    </button>
-</div>
-
+@include('partials.page-loader')
 <div class="app">
-@include('partials.crm-sidebar')
-<button class="overlay" id="overlay" type="button" aria-label="{{ __('إغلاق القائمة') }}"></button>
- <main class="main">
-  <header class="top">
-   <button class="menu" id="menu" type="button">☰</button>
-   <div class="title"><h1>{{ __('crm.dashboard') }}</h1><p id="date">{{ __('نظرة عامة على أداء فريق المبيعات') }}</p></div>
-  @include('partials.profile-dropdown')
-  </header>
-  <section class="hero relative overflow-hidden crm-hero-banner" id="crmHeroBanner">
-   <!-- 1. Ambient Background Network Layer (Particles, Nodes, Flow Streams) -->
-   <div class="crm-hero-network-wrap" aria-hidden="true">
-    <div class="crm-hero-parallax-layer" id="crmHeroParallax">
-     <!-- Ambient Mesh Glow Orbs -->
-     <div class="crm-hero-glow-orb orb-red"></div>
-     <div class="crm-hero-glow-orb orb-blue"></div>
+    @include('partials.crm-sidebar')
 
-     <!-- SVG Connection Lines -->
-     <svg class="crm-network-svg" viewBox="0 0 560 200" fill="none" preserveAspectRatio="none">
-      <defs>
-       <linearGradient id="netGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-        <stop offset="0%" stop-color="#dc2637" stop-opacity="0.3"/>
-        <stop offset="100%" stop-color="#38bdf8" stop-opacity="0.12"/>
-       </linearGradient>
-       <linearGradient id="netGrad2" x1="100%" y1="0%" x2="0%" y2="100%">
-        <stop offset="0%" stop-color="#10b981" stop-opacity="0.35"/>
-        <stop offset="100%" stop-color="#dc2637" stop-opacity="0.15"/>
-       </linearGradient>
-      </defs>
+    <main class="main">
+        <!-- TOPBAR -->
+        <header class="topbar">
+            <div class="topbar-left">
+                <div>
+                    <h1>{{ __('crm.dashboard') }}</h1>
+                    <p id="currentLiveDate">{{ __('crm.dashboard_live_tracking_subtitle') }}</p>
+                </div>
+            </div>
+            <div class="topbar-actions">
+                <a href="{{ route('v2.leads') }}" class="btn-leads-pill" title="{{ __('crm.all_leads') }}">
+                    <i class="bi bi-people"></i>
+                    <span>{{ __('crm.all_leads') }}</span>
+                </a>
+                @include('partials.profile-dropdown')
+            </div>
+        </header>
 
-      <path class="crm-net-path" d="M 40,50 Q 130,20 220,60 T 380,35" />
-      <path class="crm-net-path" d="M 90,145 Q 180,115 270,155 T 460,105" />
-      <path class="crm-net-path path-accent" d="M 220,60 Q 250,110 270,155" />
-      <path class="crm-net-path" d="M 70,95 L 220,60 L 340,90 L 460,105" />
-      <path class="crm-net-path path-accent" d="M 120,35 Q 280,25 420,70" />
-     </svg>
+        <!-- 1. HERO BANNER: 4-CARD ANIMATED DONOR JOURNEY (Sections 9 & 10) -->
+        <section class="hero" id="crmHeroBanner">
+            <div class="hero-bg-ambient" aria-hidden="true">
+                <div class="hero-glow-orb hero-glow-red"></div>
+                <div class="hero-glow-orb hero-glow-green"></div>
+            </div>
 
-     <!-- Floating Background Nodes -->
-     <div class="crm-node-dot dot-blue" style="top: 45px; inset-inline-end: 470px; animation-delay: 0s;"></div>
-     <div class="crm-node-dot dot-red" style="top: 58px; inset-inline-end: 300px; animation-delay: 1.4s;"></div>
-     <div class="crm-node-dot dot-green" style="top: 152px; inset-inline-end: 250px; animation-delay: 2.8s;"></div>
-     <div class="crm-node-dot dot-red" style="top: 34px; inset-inline-end: 140px; animation-delay: 4.2s;"></div>
-     <div class="crm-node-dot dot-blue" style="top: 102px; inset-inline-end: 60px; animation-delay: 5.6s;"></div>
-     <div class="crm-node-dot" style="top: 140px; inset-inline-end: 420px; animation-delay: 0.9s;"></div>
-     <div class="crm-node-dot" style="top: 92px; inset-inline-end: 370px; animation-delay: 2.3s;"></div>
-     <div class="crm-node-dot" style="top: 86px; inset-inline-end: 185px; animation-delay: 3.7s;"></div>
-    </div>
-   </div>
+            <!-- 4-Card Floating Animation (Desktop/Tablet) -->
+            <div class="hero-pipeline-wrap" id="heroPipelineWrap" aria-label="{{ __('crm.donor_journey_pipeline') }}">
+                <svg class="pipeline-svg" viewBox="0 0 440 120" fill="none">
+                    <defs>
+                        <linearGradient id="donorPipelineGrad" x1="100%" y1="0%" x2="0%" y2="0%">
+                            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4"/>
+                            <stop offset="35%" stop-color="#818cf8" stop-opacity="0.4"/>
+                            <stop offset="70%" stop-color="#fbbf24" stop-opacity="0.4"/>
+                            <stop offset="100%" stop-color="#22c55e" stop-opacity="0.6"/>
+                        </linearGradient>
+                    </defs>
+                    <path d="M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88" stroke="rgba(255,255,255,0.08)" stroke-width="2" stroke-dasharray="4 4"/>
+                    <path class="pipeline-stream" d="M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88" stroke="url(#donorPipelineGrad)" stroke-width="2"/>
+                </svg>
 
-   <!-- 2. Decorative Floating 5-Stage CRM Flow Cards (عميل جديد → اتصال → مقابلة → عرض سعر → تعاقد ✓) -->
-   <div class="crm-hero-flow-stage" id="crmHeroFlow" aria-hidden="true">
-    <div class="crm-flow-cluster">
-     <!-- Connecting Lines Between Flow Cards -->
-     <svg class="crm-flow-connectors" viewBox="0 0 520 154" fill="none">
-      <!-- Step 1 to Step 2 -->
-      <path class="crm-flow-svg-line" d="M 115,28 C 135,28 150,30 175,30" />
-      <!-- Step 2 to Step 3 -->
-      <path class="crm-flow-svg-line" d="M 270,30 C 290,30 310,32 335,32" />
-      <!-- Step 3 to Step 4 -->
-      <path class="crm-flow-svg-line" d="M 385,55 C 360,95 200,85 165,120" />
-      <!-- Step 4 to Step 5 -->
-      <path class="crm-flow-svg-line" d="M 170,128 C 195,128 215,128 245,128" />
-     </svg>
+                <div class="pipeline-pulse-dot" aria-hidden="true"></div>
 
-     <!-- Step 1: Lead (عميل جديد) -->
-     <div class="crm-flow-card card-lead">
-      <div class="crm-flow-icon">
-       <i class="bi bi-person-fill-add"></i>
-      </div>
-      <div class="crm-flow-text">
-       <span class="crm-flow-title">{{ __('عميل جديد') }}</span>
-       <span class="crm-flow-sub">{{ __('وارد للتو') }}</span>
-      </div>
-      <div class="crm-flow-status-dot"></div>
-     </div>
+                <!-- 4 Animated Cards -->
+                <div class="pipeline-card stage-1" style="left: 390px; top: 28px;">
+                    <span class="pipeline-card-icon"><i class="bi bi-person-plus-fill"></i></span>
+                    <span>{{ __('crm.status_new') }}</span>
+                </div>
 
-     <!-- Step 2: Call (اتصال) -->
-     <div class="crm-flow-card card-call">
-      <div class="crm-flow-icon">
-       <i class="bi bi-telephone-fill"></i>
-      </div>
-      <div class="crm-flow-text">
-       <span class="crm-flow-title">{{ __('اتصال') }}</span>
-       <span class="crm-flow-sub">{{ __('مكالمة هاتفية') }}</span>
-      </div>
-      <div class="crm-flow-status-dot"></div>
-     </div>
+                <div class="pipeline-card stage-2" style="left: 290px; top: 88px;">
+                    <span class="pipeline-card-icon"><i class="bi bi-telephone-outbound-fill"></i></span>
+                    <span>{{ __('crm.contact') }}</span>
+                </div>
 
-     <!-- Step 3: Meeting (مقابلة) -->
-     <div class="crm-flow-card card-meeting">
-      <div class="crm-flow-icon">
-       <i class="bi bi-calendar-event-fill"></i>
-      </div>
-      <div class="crm-flow-text">
-       <span class="crm-flow-title">{{ __('مقابلة') }}</span>
-       <span class="crm-flow-sub">{{ __('مناقشة') }}</span>
-      </div>
-      <div class="crm-flow-status-dot"></div>
-     </div>
+                <div class="pipeline-card stage-3" style="left: 190px; top: 28px;">
+                    <span class="pipeline-card-icon"><i class="bi bi-arrow-repeat"></i></span>
+                    <span>{{ __('crm.followup') }}</span>
+                </div>
 
-     <!-- Step 4: Quotation (عرض سعر) -->
-     <div class="crm-flow-card card-quote">
-      <div class="crm-flow-icon">
-       <i class="bi bi-file-earmark-text-fill"></i>
-      </div>
-      <div class="crm-flow-text">
-       <span class="crm-flow-title">{{ __('عرض سعر') }}</span>
-       <span class="crm-flow-sub">{{ __('إرسال العرض') }}</span>
-      </div>
-      <div class="crm-flow-status-dot"></div>
-     </div>
+                <div class="pipeline-card stage-4" style="left: 50px; top: 88px;">
+                    <span class="pipeline-card-icon"><i class="bi bi-patch-check-fill"></i></span>
+                    <span>{{ __('crm.donor') }} ✓</span>
+                    <span class="stage-success-ring"></span>
+                </div>
+            </div>
 
-     <!-- Step 5: Deal Closed (تعاقد ✓) -->
-     <div class="crm-flow-card card-deal">
-      <div class="crm-flow-icon">
-       <i class="bi bi-patch-check-fill"></i>
-      </div>
-      <div class="crm-flow-text">
-       <span class="crm-flow-title">{{ __('إتمام الصفقة') }}</span>
-       <span class="crm-flow-sub">{{ __('تم التعاقد ✓') }}</span>
-      </div>
-      <div class="crm-flow-status-dot"></div>
-     </div>
-    </div>
-   </div>
+            <!-- Content -->
+            <div class="hero-main-content">
+                <small class="hero-subheading">{{ __('crm.welcome_dashboard_title') }}</small>
+                <h2 class="hero-heading">{{ __('crm.manage_donors_journey_heading') }}</h2>
+                <div class="hero-actions">
+                    @can('leads.create')
+                        <a class="btn primary hero-cta-btn" href="{{ route('v2.leads.create') }}">
+                            <i class="bi bi-plus-lg"></i> {{ __('crm.add_lead') }}
+                        </a>
+                    @endcan
+                    @can('tasks.view')
+                        <a class="btn soft" href="{{ route('v2.tasks.daily') }}" style="background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2)">
+                            <i class="bi bi-calendar-check"></i> {{ __('crm.daily_tasks_followups') }}
+                        </a>
+                    @endcan
+                </div>
 
-   <!-- 3. Existing Main Text & Action Content (Enhanced with Staggered Entrance Animations) -->
-   <div class="crm-hero-content">
-    <small class="crm-hero-eyebrow">{{ __('crm.workspace_welcome_small') }}</small>
-    <h2 class="crm-hero-title">{{ __('crm.workspace_welcome_title') }}</h2>
-    <div class="actions crm-hero-actions">
-     @can('leads.create')
-      <a class="btn crm-btn-primary" href="{{ route('v2.leads.create') }}">
-       <span>＋</span>
-       <span>{{ __('crm.add_lead') }}</span>
-      </a>
-     @endcan
-     @can('tasks.view')
-      <a class="btn ghost crm-btn-secondary" href="{{ route('v2.tasks.daily') }}">
-       <i class="bi bi-list-check crm-btn-ghost-ico"></i>
-       <span>{{ __('crm.daily_tasks') }}</span>
-      </a>
-     @endcan
-    </div>
-   </div>
-  </section>
-  <!-- CRM LIVE DASHBOARD START -->
- <form
-  class="filters"
-  id="filters"
-  method="GET"
-  action="{{ route('dashboard') }}"
- >
-  <div class="field">
-   <label>{{ __('الموظف') }}</label>
-   <select name="employee">
-    <option value="">
-     {{ __('جميع الموظفين') }}
-    </option>
+                <!-- Mobile 4-Step Journey -->
+                <div class="hero-mobile-pipeline">
+                    <div class="mobile-pipe-card"><i class="bi bi-person-plus-fill" style="color:#38bdf8"></i> {{ __('crm.status_new') }}</div>
+                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
+                    <div class="mobile-pipe-card"><i class="bi bi-telephone-outbound-fill" style="color:#818cf8"></i> {{ __('crm.contact') }}</div>
+                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
+                    <div class="mobile-pipe-card"><i class="bi bi-arrow-repeat" style="color:#fbbf24"></i> {{ __('crm.followup') }}</div>
+                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
+                    <div class="mobile-pipe-card" style="border-color:#22c55e; background:rgba(34,197,94,0.18)"><i class="bi bi-patch-check-fill" style="color:#22c55e"></i> {{ __('crm.donor') }} ✓</div>
+                </div>
+            </div>
+        </section>
 
-    @foreach ($employees as $employee)
-     <option
-      value="{{ $employee }}"
-      @selected(
-       $filters['employee']
-       === $employee
-      )
-     >
-      {{ $employee }}
-     </option>
-    @endforeach
-   </select>
-  </div>
+        <!-- 2. ADVANCED DONOR FILTERS (Section 12) -->
+        <section class="filters-panel">
+            <form method="GET" action="{{ route('dashboard') }}" class="filters-form">
+                <!-- Employee Filter -->
+                <div class="filter-group">
+                    <label>{{ __('crm.assigned_employee') }}</label>
+                    <select name="employee" onchange="this.form.submit()">
+                        <option value="">{{ __('crm.all_employees') }}</option>
+                        @foreach ($employees as $emp)
+                            <option value="{{ $emp }}" {{ $filters['employee'] === $emp ? 'selected' : '' }}>{{ $emp }}</option>
+                        @endforeach
+                    </select>
+                </div>
 
-  <div class="field">
-   <label>{{ __('الفترة') }}</label>
-   <select name="period">
-    <option
-     value="all"
-     @selected(
-      $filters['period']
-      === 'all'
-     )
-    >
-     {{ __('كل الفترات') }}
-    </option>
+                <!-- Status Filter (Dynamic from DB) -->
+                <div class="filter-group">
+                    <label>{{ __('crm.lead_status') }}</label>
+                    <select name="status" onchange="this.form.submit()">
+                        <option value="">{{ __('crm.all_statuses') }}</option>
+                        @foreach ($statuses as $st)
+                            <option value="{{ $st->code }}" {{ ($filters['status'] ?? '') === $st->code || (string) ($filters['status'] ?? '') === (string) $st->id ? 'selected' : '' }}>
+                                {{ $st->localizedName() }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <option
-     value="today"
-     @selected(
-      $filters['period']
-      === 'today'
-     )
-    >
-     {{ __('اليوم') }}
-    </option>
+                <!-- Donation Type Filter -->
+                <div class="filter-group">
+                    <label>{{ __('crm.donation_type') }}</label>
+                    <select name="donation_type" onchange="this.form.submit()">
+                        <option value="">{{ __('crm.all_donation_types') }}</option>
+                        @foreach ($donationTypes as $dType)
+                            <option value="{{ $dType->name_ar }}" {{ $filters['donation_type'] === $dType->name_ar ? 'selected' : '' }}>
+                                {{ (app()->getLocale() === 'en' && !empty($dType->name_en)) ? $dType->name_en : $dType->name_ar }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <option
-     value="week"
-     @selected(
-      $filters['period']
-      === 'week'
-     )
-    >
-     {{ __('هذا الأسبوع') }}
-    </option>
+                <!-- Donation Cycle Filter -->
+                <div class="filter-group">
+                    <label>{{ __('crm.donation_cycle') }}</label>
+                    <select name="donation_cycle" onchange="this.form.submit()">
+                        <option value="">{{ __('crm.all_donation_cycles') }}</option>
+                        @foreach ($donationCycles as $cKey => $cLabel)
+                            <option value="{{ $cKey }}" {{ $filters['donation_cycle'] === $cKey ? 'selected' : '' }}>
+                                {{ __('crm.donation_cycle_' . $cKey) }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
 
-    <option
-     value="month"
-     @selected(
-      $filters['period']
-      === 'month'
-     )
-    >
-     {{ __('هذا الشهر') }}
-    </option>
-   </select>
-  </div>
+                <!-- Period Filter -->
+                <div class="filter-group">
+                    <label>{{ __('crm.period') }}</label>
+                    <select name="period" onchange="this.form.submit()">
+                        <option value="all" {{ $filters['period'] === 'all' ? 'selected' : '' }}>{{ __('crm.all_periods') }}</option>
+                        <option value="today" {{ $filters['period'] === 'today' ? 'selected' : '' }}>{{ __('crm.today') }}</option>
+                        <option value="week" {{ $filters['period'] === 'week' ? 'selected' : '' }}>{{ __('crm.this_week') }}</option>
+                        <option value="month" {{ $filters['period'] === 'month' ? 'selected' : '' }}>{{ __('crm.this_month') }}</option>
+                        <option value="year" {{ $filters['period'] === 'year' ? 'selected' : '' }}>{{ __('crm.this_year') }}</option>
+                    </select>
+                </div>
 
-  <div class="field">
-   <label>{{ __('من تاريخ إنشاء العميل') }}</label>
-   <input
-    type="date"
-    name="from"
-    value="{{ $filters['from'] }}"
-   >
-  </div>
+                <!-- Submit / Reset Actions -->
+                <div style="display:flex; gap:6px;">
+                    <button type="submit" class="btn primary small" style="min-height:38px">
+                        {{ __('crm.filter') }}
+                    </button>
+                    @if (($filters['employee'] ?? '') !== '' || ($filters['status'] ?? '') !== '' || ($filters['stage'] ?? '') !== '' || ($filters['donation_type'] ?? '') !== '' || ($filters['donation_cycle'] ?? '') !== '' || ($filters['period'] ?? 'all') !== 'all')
+                        <a href="{{ route('dashboard') }}" class="btn soft small" style="min-height:38px" title="{{ __('crm.reset') }}">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                        </a>
+                    @endif
+                </div>
+            </form>
+        </section>
 
-  <div class="field">
-   <label>{{ __('إلى تاريخ إنشاء العميل') }}</label>
-   <input
-    type="date"
-    name="to"
-    value="{{ $filters['to'] }}"
-   >
-  </div>
+        <!-- 3. KPI METRICS GRID (Sections 6, 7 & 23) -->
+        <section class="kpi-grid">
+            <!-- Total Customers -->
+            <a href="{{ route('v2.leads') }}" class="kpi-card" style="--card-accent: #3478f6;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.total_leads') }}</span>
+                    <b>{{ number_format($totalCustomersCount) }}</b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(52,120,246,0.1); color:#3478f6;">
+                    <i class="bi bi-people-fill"></i>
+                </div>
+            </a>
 
-  <div class="filter-actions">
-   <button class="btn" type="submit">
-    {{ __('تطبيق') }}
-   </button>
+            <!-- New Stage Customers -->
+            <a href="{{ route('v2.leads', ['stage' => $stages->firstWhere('code', 'new')?->id ?? 'new']) }}" class="kpi-card" style="--card-accent: #0284c7;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.status_new') }}</span>
+                    <b>{{ number_format($newCustomersCount) }}</b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(56,189,248,0.12); color:#0284c7;">
+                    <i class="bi bi-person-plus-fill"></i>
+                </div>
+            </a>
 
-   <a
-    class="btn light"
-    href="{{ route('dashboard') }}"
-   >
-    {{ __('إعادة ضبط') }}
-   </a>
-  </div>
- </form>
+            <!-- Confirmed Donors -->
+            <a href="{{ route('v2.leads', ['stage' => $stages->firstWhere('code', 'donor')?->id ?? 'donor']) }}" class="kpi-card" style="--card-accent: #16a34a;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.donor') }}</span>
+                    <b>{{ number_format($donorCustomersCount) }}</b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(22,163,74,0.12); color:#16a34a;">
+                    <i class="bi bi-heart-fill"></i>
+                </div>
+            </a>
 
- <div class="heading"><div><h2>{{ __('ملخص الأداء') }}</h2><p>{{ __('البيانات المعروضة حية مباشرة من CRM v2') }}</p></div><a href="{{ route('v2.reports.leads') }}">{{ __('عرض التقارير') }} {{ app()->getLocale() === 'en' ? '→' : '←' }}</a></div>
- 
-<style>
-    /* KPI Grid Layout */
-    .kpi-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem; margin-bottom: 2rem; }
-    @media (min-width: 768px) { .kpi-grid { grid-template-columns: repeat(3, 1fr); } }
-    @media (min-width: 1024px) { .kpi-grid { grid-template-columns: repeat(5, 1fr); } }
+            <!-- Donor Conversion Rate (Section 7) -->
+            <div class="kpi-card" style="cursor:default; --card-accent: #16a34a;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.conversion_rate_to_donor') }}</span>
+                    <b style="color:#16a34a">{{ $donorConversionRate }}%</b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(22,163,74,0.1); color:#16a34a;">
+                    <i class="bi bi-graph-up-arrow"></i>
+                </div>
+            </div>
 
-    /* KPI Card Button Styling */
-    .kpi-card {
-        background-color: #ffffff; border: 1px solid #e5e7eb; border-radius: 1rem;
-        padding: 1rem; display: flex; align-items: center; justify-content: space-between;
-        text-decoration: none; box-shadow: 0 2px 4px rgba(0,0,0,0.02);
-        transition: all 0.2s ease-in-out;
-    }
-    .kpi-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-        border-color: #3478F6;
-    }
-    
-    .kpi-info { display: flex; flex-direction: column; }
-    .kpi-title { font-size: 0.75rem; color: #64748b; margin-bottom: 0.3rem; font-weight: 700; }
-    .kpi-value { font-size: 1.25rem; font-weight: 900; color: #1e293b; line-height: 1; }
-    .kpi-icon-box {
-        width: 38px; height: 38px; border-radius: 0.75rem; display: flex; align-items: center; justify-content: center; font-size: 1.1rem;
-    }
+            <!-- Total Donation Value -->
+            <div class="kpi-card" style="cursor:default; --card-accent: #d97706;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.total_donations_value') }}</span>
+                    <b style="font-size:17px">{{ number_format($totalDonationValue, 2) }} <small style="font-size:11px; font-weight:normal">{{ __('crm.currency_egp') }}</small></b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(245,158,11,0.1); color:#d97706;">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+            </div>
 
-    /* Dark Mode Overrides */
-    .dark-mode .kpi-card, html.dark .kpi-card { background-color: #0d0d0d; border-color: #1f1f1f; }
-    .dark-mode .kpi-title { color: #94a3b8; }
-    .dark-mode .kpi-value { color: #f8fafc; }
-    .dark-mode .kpi-card:hover { border-color: #00d2ff; box-shadow: 0 4px 15px rgba(0, 210, 255, 0.15); }
-    
-    /* Default Light Mode for Charts */
-     .custom-chart-card {
-         background-color: #ffffff;
-         border-radius: 0.75rem;
-         border: 1px solid #e5e7eb;
-         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-         padding: 1.5rem;
-         display: flex; flex-direction: column; width: 100%;
-         transition: all 0.3s ease;
-         /* Flexbox overflow fix for Chart.js */
-         overflow: hidden;
-         min-width: 0;
-     }
-    .custom-chart-header {
-        border-bottom: 1px solid #f1f5f9;
-        padding-bottom: 1rem;
-        margin-bottom: 1.5rem;
-    }
-    .custom-chart-title { 
-        font-size: 1.25rem; font-weight: 800; color: #1e293b; text-transform: uppercase; letter-spacing: 1px;
-    }
+            <!-- Today Follow-ups -->
+            <a href="{{ route('v2.tasks.daily', ['scope' => 'today']) }}" class="kpi-card" style="--card-accent: #d97706;">
+                <div class="kpi-info">
+                    <span>{{ __('crm.today_followups') }}</span>
+                    <b style="color:{{ $followupCounts['today'] > 0 ? '#d97706' : 'inherit' }}">{{ number_format($followupCounts['today']) }}</b>
+                </div>
+                <div class="kpi-icon-box" style="background:rgba(245,158,11,0.1); color:#d97706;">
+                    <i class="bi bi-telephone-inbound-fill"></i>
+                </div>
+            </a>
+        </section>
 
-    /* Dark Mode Overrides for Charts */
-    .dark-mode .custom-chart-card,
-    html.dark .custom-chart-card {
-        background-color: #0d0d0d !important;
-        border-color: #1f1f1f !important;
-        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3) !important;
-    }
-    .dark-mode .custom-chart-header,
-    html.dark .custom-chart-header {
-        border-bottom-color: #1f1f1f !important;
-    }
-    .dark-mode .custom-chart-title,
-    html.dark .custom-chart-title { 
-        color: #ffffff !important;
-    }
-    .custom-charts-wrapper {
-        display: flex; flex-direction: column; gap: 1.5rem; width: 100%; margin-bottom: 2rem;
-    }
-    @media (min-width: 1024px) {
-        .custom-charts-wrapper { flex-direction: row; }
-        .chart-line-card { flex: 1; }
-        .chart-polar-card { flex: 1; }
-    }
-</style>
+        <!-- 4. DYNAMIC PIPELINE STATUSES SUMMARY (4 Canonical Statuses) -->
+        <section class="stages-panel">
+            <div class="panel-head">
+                <div>
+                    <h2><i class="bi bi-diagram-3"></i> {{ __('crm.donor_journey_pipeline_title') }}</h2>
+                    <p>{{ __('crm.pipeline_stages_desc') }}</p>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:12px; padding:6px 12px;">
+                        {{ count($statusCards) }} {{ __('crm.active_statuses') }}
+                    </span>
+                    <a href="{{ route('v2.leads.kanban') }}" class="btn small soft" title="{{ __('crm.view_interactive_board') }}">
+                        <i class="bi bi-kanban"></i> {{ __('crm.kanban') }}
+                    </a>
+                </div>
+            </div>
 
- <div class="kpi-grid" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
-     <a href="{{ route('v2.leads') }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('إجمالي العملاء') }}</span><span class="kpi-value">{{ number_format($totalLeads ?? 0) }}</span></div>
-         <div class="kpi-icon-box" style="background: rgba(52,120,246,0.1); color: #3478F6;"><i class="bi bi-people-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'new']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('جديد') }}</span><span class="kpi-value">28</span></div>
-         <div class="kpi-icon-box" style="background: rgba(52,120,246,0.1); color: #3478F6;"><i class="bi bi-person-fill-add"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'no_answer']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('لم يرد') }}</span><span class="kpi-value">20</span></div>
-         <div class="kpi-icon-box" style="background: rgba(245,166,35,0.1); color: #f5a623;"><i class="bi bi-telephone-x-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'interested']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('مهتم') }}</span><span class="kpi-value">16</span></div>
-         <div class="kpi-icon-box" style="background: rgba(25,185,133,0.1); color: #19b985;"><i class="bi bi-hand-thumbs-up-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'meeting']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('مقابلة') }}</span><span class="kpi-value">16</span></div>
-         <div class="kpi-icon-box" style="background: rgba(139,92,246,0.1); color: #8b5cf6;"><i class="bi bi-calendar-event-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'quotation']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('عرض سعر') }}</span><span class="kpi-value">5</span></div>
-         <div class="kpi-icon-box" style="background: rgba(242,184,75,0.1); color: #f2b84b;"><i class="bi bi-file-earmark-text-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'discussion']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('مناقشة') }}</span><span class="kpi-value">6</span></div>
-         <div class="kpi-icon-box" style="background: rgba(99,102,241,0.1); color: #6366f1;"><i class="bi bi-chat-dots-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'execution']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('تنفيذ') }}</span><span class="kpi-value">5</span></div>
-         <div class="kpi-icon-box" style="background: rgba(20,184,166,0.1); color: #14b8a6;"><i class="bi bi-gear-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'not_interested']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('غير مهتم') }}</span><span class="kpi-value">5</span></div>
-         <div class="kpi-icon-box" style="background: rgba(239,77,90,0.1); color: #ef4d5a;"><i class="bi bi-hand-thumbs-down-fill"></i></div>
-     </a>
-     <a href="{{ route('v2.leads', ['status' => 'contract_closed']) }}" class="kpi-card">
-         <div class="kpi-info"><span class="kpi-title">{{ __('تقفيل عقد') }}</span><span class="kpi-value">5</span></div>
-         <div class="kpi-icon-box" style="background: rgba(25,185,133,0.1); color: #19b985;"><i class="bi bi-check-circle-fill"></i></div>
-     </a>
- </div>
- 
- <div class="custom-charts-wrapper" dir="{{ app()->getLocale() == 'ar' ? 'rtl' : 'ltr' }}">
-     <div class="custom-chart-card chart-line-card">
-         <div class="custom-chart-header">
-             <h3 class="custom-chart-title">{{ __('مؤشر حركة العملاء') }}</h3>
-            <p class="custom-chart-sub" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">{{ __('الأداء بمرور الوقت') }}</p>
-         </div>
-         <div style="position: relative; width: 100%; height: 320px;">
-             <canvas id="performanceChart"></canvas>
-         </div>
-     </div>
-     <div class="custom-chart-card chart-polar-card">
-        <div class="custom-chart-header">
-             <h3 class="custom-chart-title">{{ __('توزيع حالات العملاء') }}</h3>
-            <p class="custom-chart-sub" style="font-size: 0.75rem; color: #94a3b8; margin-top: 0.25rem;">{{ __('مزيج الحالات للفترة المحددة') }}</p>
-        </div>
-        <div style="position: relative; width: 100%; display: flex; align-items: center; justify-content: center; flex: 1; min-height: 320px;">
-            <canvas id="statusPolarChart"></canvas>
-        </div>
-    </div>
+            <div class="stages-grid">
+                @foreach ($statusCards as $stCard)
+                    <a href="{{ route('v2.leads', ['status' => $stCard['code']]) }}" class="stage-summary-box" style="--stage-color: {{ $stCard['color'] }};">
+                        <div class="stage-box-top">
+                            <div class="stage-box-title">
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:{{ $stCard['color'] }}18; color:{{ $stCard['color'] }}; font-size:13px;">
+                                    <i class="bi {{ $stCard['icon'] }}"></i>
+                                </span>
+                                <span>{{ $stCard['name'] }}</span>
+                            </div>
+                            <span class="stage-box-count">{{ number_format($stCard['count']) }}</span>
+                        </div>
+
+                        <span class="stage-box-percentage">
+                            {{ $stCard['percentage'] }}% {{ __('crm.of_total_leads') }}
+                        </span>
+                    </a>
+                @endforeach
+            </div>
+        </section>
+
+        <!-- 5. CHARTS ROW (Section 11) -->
+        <section class="charts-grid">
+            <!-- Chart 2: Activity Over Time -->
+            <article class="chart-card">
+                <div class="panel-head" style="margin-bottom:12px; padding-bottom:10px;">
+                    <div>
+                        <h2><i class="bi bi-activity"></i> {{ __('crm.activity_trend_title') }}</h2>
+                        <p>{{ __('crm.activity_trend_desc') }}</p>
+                    </div>
+                </div>
+                <div style="position:relative; width:100%; height:280px;">
+                    <canvas id="activityTrendChart" role="img" aria-label="{{ __('crm.activity_trend_title') }}"></canvas>
+                </div>
+            </article>
+
+            <!-- Chart 1: Customer Stage Distribution (Donut Chart) -->
+            <article class="chart-card">
+                <div class="panel-head" style="margin-bottom:12px; padding-bottom:10px;">
+                    <div>
+                        <h2><i class="bi bi-pie-chart"></i> {{ __('crm.stage_distribution_title') }}</h2>
+                        <p>{{ __('crm.stage_distribution_desc') }}</p>
+                    </div>
+                </div>
+                <div style="position:relative; width:100%; height:280px; display:flex; align-items:center; justify-content:center;">
+                    <canvas id="stageDonutChart" role="img" aria-label="{{ __('crm.stage_distribution_title') }}"></canvas>
+                </div>
+            </article>
+        </section>
+
+        <!-- 6. BOTTOM ROW: LATEST FOLLOW-UPS & QUICK SHORTCUTS -->
+        <section class="bottom-grid">
+            <article class="chart-card">
+                <div class="panel-head">
+                    <div>
+                        <h2><i class="bi bi-clock-history"></i> {{ __('crm.latest_followups_calls') }}</h2>
+                        <p>{{ __('crm.latest_activities_desc') }}</p>
+                    </div>
+                    <a href="{{ route('v2.tasks.daily') }}" class="btn small soft">
+                        {{ __('crm.view_all') }}
+                    </a>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ __('crm.client') }}</th>
+                                <th>{{ __('crm.followup_type') }}</th>
+                                <th>{{ __('crm.employee') }}</th>
+                                <th>{{ __('crm.datetime') }}</th>
+                                <th>{{ __('crm.stage') }}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @forelse ($latestFollowups as $followup)
+                                <tr>
+                                    <td>
+                                        @if ($followup->lead)
+                                            <a href="{{ route('v2.leads.show', $followup->lead) }}" style="font-weight:900; text-decoration:none; color:var(--dark)">
+                                                {{ $followup->lead->name }}
+                                            </a>
+                                        @else
+                                            <span style="color:var(--muted)">—</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        <span class="badge">
+                                            {{ $communicationLabels[$followup->communication_type] ?? $followup->communication_type }}
+                                        </span>
+                                    </td>
+                                    <td><strong>{{ $followup->employee_name ?: ($followup->user?->name ?? '—') }}</strong></td>
+                                    <td><small>{{ $followup->followed_up_at ? $followup->followed_up_at->format('Y-m-d H:i') : '—' }}</small></td>
+                                    <td>
+                                        @php
+                                            $stgName = $followup->toStatus?->stage?->name_ar ?? $followup->lead?->status?->stage?->name_ar ?? $followup->lead?->status?->name_ar ?? '—';
+                                            $stgColor = $followup->toStatus?->stage?->color ?? $followup->lead?->status?->stage?->color ?? '#3478f6';
+                                        @endphp
+                                        <span class="badge" style="background:{{ $stgColor }}15; color:{{ $stgColor }}; border:1px solid {{ $stgColor }}30">
+                                            {{ $stgName }}
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" style="text-align:center; padding:24px; color:var(--muted)">
+                                        {{ __('crm.no_followups_recorded') }}
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </article>
+
+            <!-- Quick Actions Panel -->
+            <article class="chart-card">
+                <div class="panel-head">
+                    <div>
+                        <h2><i class="bi bi-lightning-charge"></i> {{ __('crm.quick_actions_title') }}</h2>
+                        <p>{{ __('crm.quick_actions_desc') }}</p>
+                    </div>
+                </div>
+
+                <div class="quick-actions-list">
+                    @can('leads.create')
+                        <a href="{{ route('v2.leads.create') }}" class="quick-action-link">
+                            <i class="bi bi-person-plus-fill" style="color:#0284c7"></i>
+                            <span>{{ __('crm.add_new_donor_lead') }}</span>
+                        </a>
+                    @endcan
+                    @can('tasks.view')
+                        <a href="{{ route('v2.tasks.daily') }}" class="quick-action-link">
+                            <i class="bi bi-calendar-check-fill" style="color:#d97706"></i>
+                            <span>{{ __('crm.today_followups_tasks') }}</span>
+                        </a>
+                    @endcan
+                    <a href="{{ route('v2.leads.kanban') }}" class="quick-action-link">
+                        <i class="bi bi-kanban-fill" style="color:#7e22ce"></i>
+                        <span>{{ __('crm.leads_kanban_board') }}</span>
+                    </a>
+                    @can('leads.export')
+                        <a href="{{ route('v2.leads.export') }}" class="quick-action-link">
+                            <i class="bi bi-file-earmark-arrow-down-fill" style="color:#16a34a"></i>
+                            <span>{{ __('crm.export_donors_data') }}</span>
+                        </a>
+                    @endcan
+                    <a href="{{ route('v2.settings.stages.index') }}" class="quick-action-link">
+                        <i class="bi bi-sliders" style="color:#475569"></i>
+                        <span>{{ __('crm.donor_stages_settings') }}</span>
+                    </a>
+                </div>
+            </article>
+        </section>
+    </main>
 </div>
-
- 
-
- <section class="grid">
-  <article class="panel sales-pipeline-panel">
-   <header class="panel-head pipeline-head">
-    <div>
-     <h3>{{ __('مسار المبيعات') }}</h3>
-     <p>
-      {{ __('تقدم العملاء من أول تواصل حتى التنفيذ') }}
-     </p>
-    </div>
-
-    <div class="pipeline-summary">
-     <span class="badge">
-      {{ __('إجمالي العملاء:') }}
-      {{ number_format($totalLeads) }}
-     </span>
-
-     <span class="badge pipeline-success">
-      {{ __('إتمام العقود:') }}
-      {{ number_format(
-       $contractRate,
-       1
-      ) }}%
-     </span>
-    </div>
-   </header>
-
-   <div class="sales-pipeline">
-    @foreach ($stageCards as $stage)
-     <section
-      class="pipeline-stage {{ $stage['class'] }}"
-      style="
-       --stage-color:
-        {{ $stage['color'] }};
-      "
-     >
-      <div class="pipeline-stage-top">
-       <span class="pipeline-step">
-        {{ $stage['position'] }}
-       </span>
-
-       <div class="pipeline-stage-name">
-        <strong>
-         {{ __($stage['name']) }}
-        </strong>
-
-        <small>
-         {{ __($stage['description']) }}
-        </small>
-       </div>
-
-       <b class="pipeline-stage-total">
-        {{ number_format(
-         $stage['total']
-        ) }}
-       </b>
-      </div>
-
-      <div class="pipeline-statuses">
-       @foreach (
-        $stage['statuses']
-        as $stageStatus
-       )
-        <span>
-         {{ __($stageStatus['name']) }}
-
-         <b>
-          {{ number_format(
-           $stageStatus['count']
-          ) }}
-         </b>
-        </span>
-       @endforeach
-      </div>
-     </section>
-    @endforeach
-   </div>
-
-   <a
-    class="pipeline-kanban-btn"
-    href="{{ route('v2.leads.kanban') }}"
-   >
-    <span class="pipeline-kanban-icon">
-     ▦
-    </span>
-
-    <span class="pipeline-kanban-copy">
-     <strong>Kanban View</strong>
-
-     <small>
-      {{ __('عرض العملاء الحقيقيين مقسمين حسب حالات العمل التسع') }}
-     </small>
-    </span>
-
-    <span class="pipeline-kanban-arrow">
-     ←
-    </span>
-   </a>
-  </article>
-  <article class="panel">
-   <header class="panel-head">
-    <div>
-     <h3>{{ __('توزيع العملاء') }}</h3>
-     <p>{{ __('حسب حالة العميل الحالية') }}</p>
-    </div>
-
-    <span class="badge">
-     {{ number_format($totalLeads) }}
-     {{ __('عميل') }}
-    </span>
-   </header>
-
-   <div class="dist">
-    @foreach ($distribution as $item)
-     <div>
-      <div>
-       <span>
-        {{ __($item['name']) }}
-       </span>
-
-       <b>
-        {{ number_format(
-         $item['count']
-        ) }}
-        —
-        {{ number_format(
-         $item['percentage'],
-         1
-        ) }}%
-       </b>
-      </div>
-
-      <span class="progress">
-       <span
-        style="
-         width:
-          {{ $item['percentage'] }}%;
-         height:100%;
-         display:block;
-         border-radius:inherit;
-         background:
-          {{ $item['color'] }};
-        "
-       ></span>
-      </span>
-     </div>
-    @endforeach
-   </div>
-  </article>
- </section>
- <section class="bottom">
-  <article class="panel">
-   <header class="panel-head">
-    <div>
-     <h3>{{ __('أحدث المتابعات') }}</h3>
-     <p>
-      {{ __('آخر نشاط مسجل بواسطة الفريق') }}
-     </p>
-    </div>
-
-    <span class="badge">
-     {{ number_format(
-      $latestFollowups->count()
-     ) }}
-     {{ __('متابعة') }}
-    </span>
-   </header>
-
-   <div style="overflow:auto">
-    <table class="table">
-     <thead>
-      <tr>
-       <th>{{ __('العميل') }}</th>
-       <th>{{ __('نوع المتابعة') }}</th>
-       <th>{{ __('الموظف') }}</th>
-       <th>{{ __('التاريخ') }}</th>
-       <th>{{ __('الحالة') }}</th>
-      </tr>
-     </thead>
-
-     <tbody>
-      @forelse (
-       $latestFollowups
-       as $followup
-      )
-       <tr>
-        <td>
-         @if ($followup->lead)
-          <a
-           href="{{ route(
-            'v2.leads.show',
-            $followup->lead
-           ) }}"
-           style="
-            color:#253146;
-            font-weight:900;
-            text-decoration:none;
-           "
-          >
-           {{ $followup->lead->name }}
-          </a>
-         @else
-          {{ __('عميل غير متاح') }}
-         @endif
-        </td>
-
-        <td>
-         {{
-          $communicationLabels[
-           $followup
-            ->communication_type
-          ]
-          ?? $followup
-            ->communication_type
-          ?? '—'
-         }}
-        </td>
-
-        <td>
-         {{
-          $followup->employee_name
-          ?: '—'
-         }}
-        </td>
-
-        <td>
-         {{
-          $followup
-           ->followed_up_at
-           ?->format(
-            'd/m/Y H:i'
-           )
-          ?? '—'
-         }}
-        </td>
-
-        <td>
-         {{
-          $followup->toStatus?->name_ar
-           ? __($followup->toStatus->name_ar)
-           : ($followup->lead?->status?->name_ar
-              ? __($followup->lead->status->name_ar)
-              : '—')
-         }}
-        </td>
-       </tr>
-      @empty
-       <tr>
-        <td colspan="5">
-         <div class="empty">
-          <i>☷</i>
-
-          <strong>
-           {{ __('لا توجد متابعات حالياً') }}
-          </strong>
-
-          <p>
-           {{ __('ستظهر أحدث المتابعات هنا فور تسجيلها.') }}
-          </p>
-         </div>
-        </td>
-       </tr>
-      @endforelse
-     </tbody>
-    </table>
-   </div>
-  </article>
-   <article class="panel">
-    <header class="panel-head"><div><h3>{{ __('crm.quick_actions') }}</h3><p>{{ __('crm.daily_shortcuts') }}</p></div></header>
-    <div class="quick">
-     @can('leads.create')<a href="{{ route('v2.leads.create') }}"><i class="bi bi-person-plus"></i>{{ __('crm.add_lead_short') }}</a>@endcan
-     @can('tasks.view')<a href="{{ route('v2.tasks.daily') }}"><i class="bi bi-list-check"></i>{{ __('crm.daily_tasks') }}</a>@endcan
-     @can('leads.import')<a href="{{ route('v2.leads.import') }}"><i class="bi bi-box-arrow-in-down"></i>{{ __('crm.import_leads') }}</a>@endcan
-     @can('leads.export')<a href="{{ route('v2.leads.export') }}"><i class="bi bi-box-arrow-up"></i>{{ __('crm.export_leads') }}</a>@endcan
-    </div>
-   </article>
- </section>
-</main>
-</div>
-
-<!-- CRM DASHBOARD FOLLOWUP MEETING UI REMOVED -->
-<div class="toast" id="toast"><span class="dot" style="background:#169a64"></span>{{ __('يتم عرض البيانات الحية من CRM v2.') }}</div>
-<script>
-(()=>{const b=document.body,m=document.getElementById('menu'),o=document.getElementById('overlay'),t=document.getElementById('toast');document.querySelectorAll('.toggle').forEach(x=>x.onclick=()=>{let e=document.getElementById(x.dataset.menu),v=x.getAttribute('aria-expanded')!=='true';x.setAttribute('aria-expanded',v);e.classList.toggle('open',v)});m.onclick=()=>b.classList.toggle('side-open');o.onclick=()=>b.classList.remove('side-open');document.onkeydown=e=>{if(e.key==='Escape')b.classList.remove('side-open')};try{document.getElementById('date').textContent=new Intl.DateTimeFormat('{{ app()->getLocale() === 'en' ? 'en-US' : 'ar-EG' }}',{weekday:'long',day:'numeric',month:'long',year:'numeric'}).format(new Date())+' — {{ __('نظرة عامة على أداء فريق المبيعات') }}'}catch(e){}})();
-</script>
-
-<script>
-(() => {
-    let activeModal = null;
-    let previousFocus = null;
-
-    const closeModal = () => {
-        if (!activeModal) {
-            return;
-        }
-
-        activeModal.hidden = true;
-        document.body.classList.remove('crm-modal-open');
-
-        if (previousFocus) {
-            previousFocus.focus();
-        }
-
-        activeModal = null;
-        previousFocus = null;
-    };
-
-    document.querySelectorAll('[data-modal-open]').forEach((button) => {
-        button.addEventListener('click', () => {
-            const modal = document.getElementById(
-                button.dataset.modalOpen
-            );
-
-            if (!modal) {
-                return;
-            }
-
-            previousFocus = button;
-            activeModal = modal;
-            modal.hidden = false;
-            document.body.classList.add('crm-modal-open');
-
-            const closeButton = modal.querySelector(
-                '.crm-modal-close'
-            );
-
-            if (closeButton) {
-                closeButton.focus();
-            }
-        });
-    });
-
-    document.querySelectorAll('[data-modal-close]').forEach((button) => {
-        button.addEventListener('click', closeModal);
-    });
-
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && activeModal) {
-            closeModal();
-        }
-    });
-})();
-</script>
-
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    Chart.defaults.color = '#888';
-    Chart.defaults.font.family = 'Cairo, sans-serif';
+    Chart.defaults.color = '#64748b';
+    Chart.defaults.font.family = 'Tajawal, Tahoma, Arial, sans-serif';
 
-    const perfCtx = document.getElementById('performanceChart');
-    if(perfCtx) {
-        new Chart(perfCtx.getContext('2d'), {
-            data: {
-                labels: ['{{ __('14 أغسطس') }}', '{{ __('15 أغسطس') }}', '{{ __('16 أغسطس') }}', '{{ __('17 أغسطس') }}'],
-                datasets: [
-                    { type: 'line', label: '{{ __('الإجمالي') }}', data: [5, 8, 12, 16], borderColor: '#ff4d4d', backgroundColor: '#ff4d4d', borderWidth: 2, pointRadius: 5, pointHoverRadius: 7, tension: 0 },
-                    { type: 'bar', label: '{{ __('عملاء جدد') }}', data: [3, 5, 8, 10], backgroundColor: '#00d2ff', barThickness: 6, borderRadius: 10 },
-                    { type: 'bar', label: '{{ __('تم التنفيذ') }}', data: [2, 3, 4, 6], backgroundColor: '#ff4d4d', barThickness: 6, borderRadius: 10 }
-                ]
-            },
-            options: { 
-                responsive: true, maintainAspectRatio: false,
-                plugins: { legend: { position: 'bottom', rtl: true, labels: { color: '#64748b', usePointStyle: true, boxWidth: 8 } } },
-                scales: {
-                    y: { beginAtZero: true, max: 20, grid: { color: 'rgba(128, 128, 128, 0.2)', borderDash: [5, 5], drawBorder: false }, ticks: { color: '#64748b' } },
-                    x: { grid: { display: false }, ticks: { color: '#64748b' } }
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const chartAnimation = (duration, stagger) => {
+        if (prefersReducedMotion) {
+            return false;
+        }
+
+        return {
+            duration,
+            easing: 'easeOutQuart',
+            delay(context) {
+                if (context.type !== 'data' || context.mode === 'resize') {
+                    return 0;
                 }
-            }
-        });
-    }
 
-    const polarCtx = document.getElementById('statusPolarChart');
-    if(polarCtx) {
-        new Chart(polarCtx.getContext('2d'), {
-            type: 'polarArea',
+                const dataDelay = context.dataIndex * stagger;
+                const datasetDelay = context.datasetIndex * 70;
+                return Math.min(dataDelay + datasetDelay, 210);
+            }
+        };
+    };
+
+    const animateChartWhenVisible = (canvas, config) => {
+        const mountChart = () => {
+            if (canvas.dataset.chartMounted === 'true') {
+                return;
+            }
+
+            canvas.dataset.chartMounted = 'true';
+            new Chart(canvas.getContext('2d'), config);
+        };
+
+        if (prefersReducedMotion || !('IntersectionObserver' in window)) {
+            mountChart();
+            return;
+        }
+
+        const observer = new IntersectionObserver((entries) => {
+            if (!entries.some(entry => entry.isIntersecting)) {
+                return;
+            }
+
+            observer.disconnect();
+            mountChart();
+        }, {
+            threshold: 0.2,
+            rootMargin: '0px 0px -8% 0px'
+        });
+
+        observer.observe(canvas);
+    };
+
+    // 1. Chart 1 — Stage Donut Chart (Section 11)
+    const donutCtx = document.getElementById('stageDonutChart');
+    if (donutCtx) {
+        const stageLabels = {!! json_encode($stageDistribution['labels']) !!};
+        const stageData = {!! json_encode($stageDistribution['data']) !!};
+        const stageColors = {!! json_encode($stageDistribution['colors']) !!};
+
+        animateChartWhenVisible(donutCtx, {
+            type: 'doughnut',
             data: {
-                labels: ['{{ __('تم التنفيذ') }}', '{{ __('مهتم') }}', '{{ __('لم يتم الرد') }}', '{{ __('غير مهتم') }}'],
+                labels: stageLabels,
                 datasets: [{
-                    data: [15, 30, 25, 10],
-                    backgroundColor: ['#1abc9c', '#00d2ff', '#f5a623', '#ff4d4d'],
-                    borderWidth: 0
+                    data: stageData,
+                    backgroundColor: stageColors,
+                    borderWidth: 2,
+                    borderColor: '#ffffff',
                 }]
             },
-            options: { 
-                responsive: true, maintainAspectRatio: false, layout: { padding: 10 },
-                plugins: { 
-                    legend: { position: 'bottom', rtl: true, labels: { color: '#64748b', usePointStyle: true, boxWidth: 8 } },
-                    tooltip: { callbacks: { label: function(context) { return context.label + ': ' + context.raw; } } }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '68%',
+                animation: prefersReducedMotion ? false : {
+                    ...chartAnimation(720, 24),
+                    animateRotate: true,
+                    animateScale: true
                 },
-                scales: { 
-                    r: { grid: { display: false }, angleLines: { display: false }, ticks: { display: false } } 
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        rtl: {{ app()->getLocale() === 'ar' ? 'true' : 'false' }},
+                        labels: {
+                            color: '#64748b',
+                            usePointStyle: true,
+                            pointStyle: 'circle',
+                            padding: 14,
+                            font: { size: 12, weight: '700' }
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const val = context.raw || 0;
+                                const pct = total > 0 ? ((val / total) * 100).toFixed(1) : 0;
+                                return ` ${context.label}: ${val} (${pct}%)`;
+                            }
+                        }
+                    }
                 }
             }
         });
     }
+
+    // 2. Chart 2 — Monthly Trend Activity Chart (Section 11)
+    const trendCtx = document.getElementById('activityTrendChart');
+    if (trendCtx) {
+        const monthsData = {!! json_encode($monthsTrend) !!};
+        const labels = monthsData.map(m => m.label);
+        const newCounts = monthsData.map(m => m.new_count);
+        const donorCounts = monthsData.map(m => m.donor_count);
+        const donationVals = monthsData.map(m => m.donation_value);
+
+        animateChartWhenVisible(trendCtx, {
+            data: {
+                labels: labels,
+                datasets: [
+                    {
+                        type: 'line',
+                        label: @json(__('crm.donations_value_egp')),
+                        data: donationVals,
+                        yAxisID: 'y1',
+                        borderColor: '#f59e0b',
+                        backgroundColor: '#f59e0b',
+                        borderWidth: 2.5,
+                        pointRadius: 4,
+                        tension: 0.25,
+                    },
+                    {
+                        type: 'bar',
+                        label: @json(__('crm.new_leads_chart')),
+                        data: newCounts,
+                        yAxisID: 'y',
+                        backgroundColor: '#38bdf8',
+                        borderRadius: 6,
+                        barThickness: 14,
+                    },
+                    {
+                        type: 'bar',
+                        label: @json(__('crm.donors_chart')),
+                        data: donorCounts,
+                        yAxisID: 'y',
+                        backgroundColor: '#22c55e',
+                        borderRadius: 6,
+                        barThickness: 14,
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                animation: chartAnimation(680, 28),
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        rtl: {{ app()->getLocale() === 'ar' ? 'true' : 'false' }},
+                        labels: {
+                            color: '#64748b',
+                            usePointStyle: true,
+                            padding: 14,
+                            font: { size: 12, weight: '700' }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        type: 'linear',
+                        display: true,
+                        position: '{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}',
+                        beginAtZero: true,
+                        grid: { color: 'rgba(226, 232, 240, 0.6)' },
+                        ticks: { color: '#64748b', precision: 0 }
+                    },
+                    y1: {
+                        type: 'linear',
+                        display: true,
+                        position: '{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}',
+                        beginAtZero: true,
+                        grid: { drawOnChartArea: false },
+                        ticks: { color: '#d97706' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b' }
+                    }
+                }
+            }
+        });
+    }
+
+    // Set Live Date
+    try {
+        const dateEl = document.getElementById('currentLiveDate');
+        if (dateEl) {
+            const currentLocale = @json(app()->getLocale() === 'ar' ? 'ar-EG' : 'en-US');
+            const liveSubtitle = @json(__('crm.dashboard_live_tracking_subtitle'));
+            const formatted = new Intl.DateTimeFormat(currentLocale, {
+                weekday: 'long',
+                day: 'numeric',
+                month: 'long',
+                year: 'numeric'
+            }).format(new Date());
+            dateEl.textContent = `${formatted} — ${liveSubtitle}`;
+        }
+    } catch (e) {}
 });
 </script>
-
-<script>
-/* ===================================================
-   PART 1: CRM WELCOME INTRO CONTROLLER
-   =================================================== */
-(() => {
-    const intro = document.getElementById('crmWelcomeIntro');
-    const skipBtn = document.getElementById('crmIntroSkipBtn');
-    if (!intro) return;
-
-    const storageKey = 'sokrat_crm_welcome_seen';
-    const hasSeenIntro = sessionStorage.getItem(storageKey);
-    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    const dismissIntro = (fast = false) => {
-        if (intro.classList.contains('is-dismissing')) return;
-        intro.classList.add('is-dismissing');
-        try {
-            sessionStorage.setItem(storageKey, '1');
-        } catch (e) {}
-
-        setTimeout(() => {
-            intro.style.display = 'none';
-        }, fast ? 200 : 500);
-    };
-
-    // If reduced motion or already seen in this session, dismiss quickly
-    if (prefersReducedMotion) {
-        dismissIntro(true);
-        return;
-    }
-
-    if (hasSeenIntro) {
-        // Quick subtle intro on repeat visits in same session
-        setTimeout(() => dismissIntro(false), 800);
-    } else {
-        // Full welcoming entrance on initial open (~3.1s)
-        setTimeout(() => dismissIntro(false), 3100);
-    }
-
-    // Skip button click
-    skipBtn?.addEventListener('click', (e) => {
-        e.stopPropagation();
-        dismissIntro(false);
-    });
-
-    // Click anywhere on backdrop to skip
-    intro.addEventListener('click', () => {
-        dismissIntro(false);
-    });
-
-    // Escape key to skip
-    document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && !intro.classList.contains('is-dismissing')) {
-            dismissIntro(false);
-        }
-    });
-})();
-</script>
-
-<script>
-/* ===================================================
-   PART 2: CRM HERO BANNER SUBTLE PARALLAX
-   =================================================== */
-(() => {
-    const banner = document.getElementById('crmHeroBanner');
-    const parallaxLayer = document.getElementById('crmHeroParallax');
-    const flowStage = document.getElementById('crmHeroFlow');
-    
-    if (!banner || (!parallaxLayer && !flowStage)) return;
-    
-    if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        return;
-    }
-    
-    let targetX = 0, targetY = 0;
-    let currentX = 0, currentY = 0;
-    let isHovering = false;
-    let rafId = null;
-    
-    const updateParallax = () => {
-        currentX += (targetX - currentX) * 0.12;
-        currentY += (targetY - currentY) * 0.12;
-        
-        const px = currentX.toFixed(2) + 'px';
-        const py = currentY.toFixed(2) + 'px';
-        
-        if (parallaxLayer) {
-            parallaxLayer.style.setProperty('--p-x', px);
-            parallaxLayer.style.setProperty('--p-y', py);
-        }
-        if (flowStage) {
-            flowStage.style.setProperty('--p-x', px);
-            flowStage.style.setProperty('--p-y', py);
-        }
-        
-        if (isHovering || Math.abs(targetX - currentX) > 0.05 || Math.abs(targetY - currentY) > 0.05) {
-            rafId = requestAnimationFrame(updateParallax);
-        } else {
-            rafId = null;
-        }
-    };
-    
-    banner.addEventListener('mousemove', (e) => {
-        const rect = banner.getBoundingClientRect();
-        const normX = (e.clientX - rect.left) / rect.width - 0.5;
-        const normY = (e.clientY - rect.top) / rect.height - 0.5;
-        
-        targetX = normX * 6;
-        targetY = normY * 6;
-        
-        isHovering = true;
-        if (!rafId) {
-            rafId = requestAnimationFrame(updateParallax);
-        }
-    });
-    
-    banner.addEventListener('mouseleave', () => {
-        targetX = 0;
-        targetY = 0;
-        isHovering = false;
-        if (!rafId) {
-            rafId = requestAnimationFrame(updateParallax);
-        }
-    });
-})();
-</script>
 </body>
-
 </html>

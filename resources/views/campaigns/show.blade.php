@@ -8,7 +8,7 @@
  @if ($canManage)
   @can('leads.create')
    <a class="btn primary" href="{{ route('v2.leads.create', ['campaign_id' => $campaign->id]) }}">
-    ＋ إضافة عميل
+    ＋ {{ __('crm.add_lead') }}
    </a>
   @endcan
   <a class="btn soft" href="{{ route('v2.campaigns.edit', $campaign) }}">
@@ -16,7 +16,7 @@
   </a>
   @can('leads.import')
    <a class="btn primary" href="{{ route('v2.leads.import', ['campaign' => $campaign->id]) }}">
-    ↑ رفع عملاء
+    ↑ {{ __('crm.import_leads') }}
    </a>
   @endcan
  @endif
@@ -133,28 +133,27 @@
 @section('content')
 @php
  $assigneeLabel = $showUnassigned
-  ? 'العملاء غير المسندة'
+  ? __('crm.unassigned_leads')
   : $selectedAssignee->name;
 @endphp
 <section class="transfer-card">
  <div class="transfer-hero campaign-hero">
   <div class="campaign-hero-copy">
    @if ($campaign->image_path)
-    <img class="campaign-hero-image" src="{{ asset('storage/'.$campaign->image_path) }}" alt="صورة {{ $campaign->name }}">
+    <img class="campaign-hero-image" src="{{ asset('storage/'.$campaign->image_path) }}" alt="{{ $campaign->name }}">
    @endif
    <div>
     <small>{{ __('crm.manage_campaign_leads') }}</small>
     <h2>{{ $campaign->name }}</h2>
     <p>
      {{ $canManage
-       ? 'يمكنك اختيار أحد مستخدمي الحملة لعرض العملاء المسندة إليه.'
-       : 'تظهر هنا العملاء المسندة إلى حسابك فقط.' }}
-    </p>
+       ? __('crm.campaign_all_users_view_hint')
+       : __('crm.campaign_own_leads_hint') }}
    </div>
   </div>
   <div class="campaign-hero-count">
    <strong>{{ number_format($leads->total()) }}</strong>
-   <span>{{ $showUnassigned ? 'عميل غير مسند' : 'عميل مسند إلى '.$selectedAssignee->name }}</span>
+   <span>{{ $showUnassigned ? __('crm.unassigned_lead_count_label') : __('crm.assigned_lead_to_count_label', ['name' => $selectedAssignee->name]) }}</span>
   </div>
  </div>
 
@@ -169,7 +168,7 @@
   </div>
   <div class="campaign-stat">
    <span>{{ __('crm.campaign_cost') }}</span>
-   <strong>{{ number_format((float) $campaign->cost, 2) }} جنيه</strong>
+   <strong>{{ number_format((float) $campaign->cost, 2) }} {{ __('crm.currency_egp') }}</strong>
   </div>
   <div class="campaign-stat">
    <span>{{ __('crm.created_by') }}</span>
@@ -194,12 +193,12 @@
     <select class="campaign-live-filter" id="assigned_user_id" name="assigned_user_id">
      @foreach ($filterUsers as $filterUser)
       <option value="{{ $filterUser->id }}" @selected(! $showUnassigned && $selectedAssignee->is($filterUser))>
-       {{ $filterUser->name }}{{ $filterUser->is(auth()->user()) ? ' (حسابي)' : '' }}
+       {{ $filterUser->name }}{{ $filterUser->is(auth()->user()) ? ' ' . __('crm.my_account') : '' }}
        ({{ number_format($assignmentCounts->get((string) $filterUser->id, 0)) }})
       </option>
      @endforeach
      <option value="unassigned" @selected($showUnassigned)>
-      غير مسند لأي مستخدم ({{ number_format($assignmentCounts->get('unassigned', 0)) }})
+      {{ __('crm.unassigned_to_any_user', ['count' => number_format($assignmentCounts->get('unassigned', 0))]) }}
      </option>
     </select>
    </div>
@@ -213,7 +212,7 @@
 <section class="transfer-card campaign-status-section">
  <header class="campaign-status-head">
   <div>
-   <h3>حالات العملاء</h3>
+   <h3>{{ __('crm.lead_statuses') }}</h3>
    <p>{{ __('crm.campaign_status_filter_notice') }}</p>
   </div>
   <a
@@ -244,10 +243,10 @@
    >
     <span class="campaign-status-name">
      <i></i>
-     <strong>{{ $status->name_ar }}</strong>
+     <strong>{{ (app()->getLocale() === 'en' && !empty($status->name_en)) ? $status->name_en : $status->name_ar }}</strong>
     </span>
     <b>{{ number_format($status->campaign_leads_count) }}</b>
-    <small>{{ $status->stage?->name_ar ?? 'بدون مرحلة' }}</small>
+    <small>{{ (app()->getLocale() === 'en' && !empty($status->stage?->name_en)) ? $status->stage?->name_en : ($status->stage?->name_ar ?? __('crm.without_stage')) }}</small>
    </a>
   @endforeach
  </div>
@@ -259,11 +258,11 @@
    <h3>{{ $assigneeLabel }}</h3>
    <p>
     {{ $selectedStatus
-      ? 'الحالة: '.$selectedStatus->name_ar
-      : 'كل حالات العملاء' }}
+      ? __('crm.status_label_prefix', ['name' => (app()->getLocale() === 'en' && !empty($selectedStatus->name_en) ? $selectedStatus->name_en : $selectedStatus->name_ar)])
+      : __('crm.all_lead_statuses') }}
    </p>
   </div>
-  <span class="campaign-result-count">{{ number_format($leads->total()) }} نتيجة</span>
+  <span class="campaign-result-count">{{ __('crm.results_count', ['count' => number_format($leads->total())]) }}</span>
  </header>
 
  @if (session('success'))
@@ -273,7 +272,7 @@
  @if ($leads->isEmpty())
   <div class="campaign-empty">
    <span class="campaign-empty-icon" aria-hidden="true">♙</span>
-   <h3>لا توجد نتائج مطابقة</h3>
+   <h3>{{ __('crm.no_matching_results') }}</h3>
    <p>{{ __('crm.try_other_filter') }}</p>
   </div>
  @else
@@ -304,12 +303,12 @@
        <th><input class="campaign-checkbox" id="selectAllCampaignLeads" type="checkbox" aria-label="{{ __('crm.select_all') }}"></th>
       @endif
       <th>{{ __('crm.client') }}</th>
-      <th>بيانات التواصل</th>
-      <th>الشركة والمصدر</th>
-      <th>الحالة الحالية</th>
-      <th>الموظف المسؤول</th>
+      <th>{{ __('crm.contact_information') }}</th>
+      <th>{{ __('crm.company_and_source') }}</th>
+      <th>{{ __('crm.current_stage') }}</th>
+      <th>{{ __('crm.assigned_employee') }}</th>
       <th>{{ __('crm.next_followup') }}</th>
-      <th>تاريخ الإضافة</th>
+      <th>{{ __('crm.registration_date') }}</th>
       <th>{{ __('crm.actions') }}</th>
      </tr>
     </thead>
@@ -323,7 +322,7 @@
       <tr>
        @if ($canManage && $assignableUsers->isNotEmpty())
         <td>
-         <input class="campaign-checkbox campaign-lead-check" type="checkbox" name="lead_ids[]" value="{{ $lead->id }}" form="campaignAssignmentForm" aria-label="تحديد {{ $lead->name }}">
+         <input class="campaign-checkbox campaign-lead-check" type="checkbox" name="lead_ids[]" value="{{ $lead->id }}" form="campaignAssignmentForm" aria-label="{{ __('crm.select_lead_aria', ['name' => $lead->name]) }}">
         </td>
        @endif
        <td>
@@ -335,7 +334,7 @@
           <span class="campaign-customer-avatar">{{ mb_substr((string) $lead->name, 0, 1) }}</span>
           <span>
            <strong>{{ $lead->name }}</strong>
-           <small>{{ $lead->email ?: 'لا يوجد بريد إلكتروني' }}</small>
+           <small>{{ $lead->email ?: __('crm.no_email_short') }}</small>
           </span>
         @can('leads.view')
          </a>
@@ -348,7 +347,7 @@
          @if ($lead->phone)
           <a href="tel:{{ $lead->phone }}" dir="ltr">{{ $lead->phone }}</a>
          @else
-          <span class="campaign-muted">لا يوجد هاتف</span>
+          <span class="campaign-muted">{{ __('crm.no_phone_short') }}</span>
          @endif
          @if ($lead->email)
           <a href="mailto:{{ $lead->email }}">{{ $lead->email }}</a>
@@ -356,22 +355,22 @@
         </div>
        </td>
        <td>
-        <strong>{{ $lead->company_name ?: 'بدون شركة' }}</strong>
-        <span class="campaign-stage">المصدر: {{ $lead->source ?: 'غير محدد' }}</span>
+        <strong>{{ $lead->company_name ?: __('crm.no_company') }}</strong>
+        <span class="campaign-stage">{{ __('crm.source_prefix', ['source' => $lead->source ?: __('crm.unspecified')]) }}</span>
        </td>
        <td>
         <span class="campaign-status" style="--status-color:{{ $statusColor }}">
          <i class="campaign-status-dot"></i>
-         {{ $lead->status?->name_ar ?? 'بدون حالة' }}
+         {{ (app()->getLocale() === 'en' && !empty($lead->status?->name_en)) ? $lead->status?->name_en : ($lead->status?->name_ar ?? __('crm.without_status')) }}
         </span>
-       <span class="campaign-stage">{{ $lead->status?->stage?->name_ar ?? 'بدون مرحلة' }}</span>
+       <span class="campaign-stage">{{ (app()->getLocale() === 'en' && !empty($lead->status?->stage?->name_en)) ? $lead->status?->stage?->name_en : ($lead->status?->stage?->name_ar ?? __('crm.without_stage')) }}</span>
        </td>
-       <td>{{ $lead->assignedUser?->name ?? $lead->assigned_employee ?: 'غير مسند' }}</td>
+       <td>{{ $lead->assignedUser?->name ?? $lead->assigned_employee ?: __('crm.unassigned') }}</td>
        <td>
         @if ($lead->next_follow_up_at)
          <span class="campaign-follow-up">{{ $lead->next_follow_up_at->format('d/m/Y - h:i A') }}</span>
         @else
-         <span class="campaign-muted">بدون موعد</span>
+         <span class="campaign-muted">{{ __('crm.no_scheduled_date') }}</span>
         @endif
        </td>
        <td>{{ $lead->created_at?->format('d/m/Y') ?? '—' }}</td>
@@ -400,21 +399,21 @@
         <div class="lead-actions">
          @can('leads.followups.view')
           @if ($callPhone)
-           <a class="lead-action call-action js-call-followup" href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}" target="_blank" rel="noopener noreferrer" data-call-href="callto:{{ $callPhone }}" title="فتح MicroSIP وصفحة تسجيل المتابعة">☎ اتصال</a>
+           <a class="lead-action call-action js-call-followup" href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}" target="_blank" rel="noopener noreferrer" data-call-href="callto:{{ $callPhone }}" title="{{ __('crm.open_microsip_and_followup') }}">☎ {{ __('crm.call') }}</a>
           @else
-           <span class="lead-action call-action is-disabled" aria-disabled="true" title="رقم الهاتف غير صالح للاتصال">☎ اتصال</span>
+           <span class="lead-action call-action is-disabled" aria-disabled="true" title="{{ __('crm.phone_invalid_for_call') }}">☎ {{ __('crm.call') }}</span>
           @endif
-          <a class="lead-action followup-action" href="{{ route('v2.leads.followups.index', $lead) }}" title="تسجيل متابعة جديدة للعميل">◷ تسجيل متابعة</a>
+          <a class="lead-action followup-action" href="{{ route('v2.leads.followups.index', $lead) }}" title="{{ __('crm.log_new_lead_followup_title') }}">◷ {{ __('crm.log_followup') }}</a>
          @endcan
 
          @if ($whatsappPhone)
-          <a class="lead-action whatsapp-action" href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener noreferrer" title="فتح محادثة العميل على واتساب">◉ واتساب</a>
+          <a class="lead-action whatsapp-action" href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener noreferrer" title="{{ __('crm.open_whatsapp') }}">◉ {{ __('crm.phone_type_whatsapp') }}</a>
          @else
-          <span class="lead-action whatsapp-action is-disabled" aria-disabled="true" title="رقم الهاتف غير مناسب لواتساب">◉ واتساب</span>
+          <span class="lead-action whatsapp-action is-disabled" aria-disabled="true" title="{{ __('crm.invalid_whatsapp_number') }}">◉ {{ __('crm.phone_type_whatsapp') }}</span>
          @endif
 
          @if ($hasQuotation && auth()->user()->can('quotations.view'))
-          <a class="lead-action quotation-action" href="{{ route('v2.leads.quotation.preview', $lead) }}" target="_blank" rel="noopener noreferrer">👁 معاينة عرض السعر</a>
+          <a class="lead-action quotation-action" href="{{ route('v2.leads.quotation.preview', $lead) }}" target="_blank" rel="noopener noreferrer">👁 {{ __('crm.preview_quotation') }}</a>
          @endif
 
          @canany(['leads.update', 'leads.delete'])
@@ -422,13 +421,13 @@
            <summary title="{{ __('crm.more_actions') }}">⋮</summary>
            <div class="lead-menu">
             @can('leads.update')
-             <a href="{{ route('v2.leads.edit', $lead) }}">✎ تعديل</a>
+             <a href="{{ route('v2.leads.edit', $lead) }}">✎ {{ __('crm.edit') }}</a>
             @endcan
             @can('leads.delete')
              <form class="js-delete-lead-form" method="POST" action="{{ route('v2.leads.destroy', $lead) }}" data-lead-name="{{ $lead->name }}">
               @csrf
               @method('DELETE')
-              <button class="delete-action" type="submit">♲ حذف</button>
+              <button class="delete-action" type="submit">♲ {{ __('crm.delete') }}</button>
              </form>
             @endcan
            </div>
@@ -495,7 +494,7 @@
 
   document.querySelectorAll('.js-delete-lead-form').forEach((form) => {
    form.addEventListener('submit', (event) => {
-    if (!window.confirm('هل أنت متأكد من حذف ' + (form.dataset.leadName || 'هذا العميل') + '؟\n\nالحذف نهائي ولا يمكن التراجع عنه.')) {
+    if (!window.confirm(@json(__('crm.confirm_delete_lead_warning')).replace(':name', form.dataset.leadName || @json(__('crm.client')))) {
      event.preventDefault();
     }
    });

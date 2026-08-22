@@ -9,7 +9,7 @@
     <div class="panel-head">
         <div>
             <h2>{{ __('crm.group_data') }}</h2>
-            <p>{{ $group->is_system ? 'رمز مجموعة النظام محمي ولا يمكن تغييره.' : 'تغيير الرمز لا يغير صلاحيات المجموعة.' }}</p>
+            <p>{{ $group->is_system ? __('crm.system_group_protected_hint') : __('crm.change_slug_hint') }}</p>
         </div>
         @if ($group->is_system)<span class="badge system">{{ __('crm.system_group') }}</span>@endif
     </div>

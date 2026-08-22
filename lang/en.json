@@ -257,5 +257,17 @@
   "إرسال العرض": "Send Quotation",
   "تعاقد": "Contract",
   "إتمام الصفقة": "Deal Closed",
-  "تم التعاقد ✓": "Contract Signed ✓"
+  "تم التعاقد ✓": "Contract Signed ✓",
+  "الفرع": "Branch",
+  "الفروع": "Branches",
+  "الفرع الرئيسي": "Main Branch",
+  "تخصيص الفرع": "Assign Branch",
+  "جميع الفروع": "All Branches",
+  "إدارة الفروع": "Manage Branches",
+  "إضافة فرع جديد": "Add New Branch",
+  "تعديل الفرع": "Edit Branch",
+  "تبديل الفرع": "Switch Branch",
+  "الفرع المعين": "Assigned Branch",
+  "اختر الفرع": "Select Branch",
+  "متبرع": "Donor"
 }

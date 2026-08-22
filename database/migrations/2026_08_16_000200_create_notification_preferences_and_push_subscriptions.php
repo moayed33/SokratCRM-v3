@@ -11,7 +11,7 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table): void {
-            $table->string('locale', 5)->default((string) config('app.locale', 'ar'))->after('voip_extension');
+            $table->string('locale', 5)->default('ar')->after('voip_extension');
             $table->string('timezone', 64)->default((string) config('app.timezone', 'UTC'))->after('locale');
             $table->string('mobile_phone', 20)->nullable()->after('timezone');
             $table->timestamp('whatsapp_opt_in_at')->nullable()->after('mobile_phone');

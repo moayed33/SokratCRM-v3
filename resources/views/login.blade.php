@@ -2,7 +2,7 @@
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
-    <title>SokratCRM - تسجيل الدخول</title>
+    <title>{{ __('crm.app_name') }} - {{ __('crm.login') }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     @once
@@ -91,20 +91,19 @@
         @csrf
         <div class="brand">
             <h1>SokratCRM</h1>
-            <p>لوحة التحكم</p>
+            <p>{{ __('crm.crm_subtitle') }}</p>
         </div>
 
         @if ($errors->any())
-            <div class="error">بيانات الدخول غير صحيحة</div>
+            <div class="error">{{ __('crm.invalid_credentials') }}</div>
         @endif
 
         <label for="username">{{ __('crm.username_label') }}</label>
         <input id="username" name="username" value="{{ old('username') }}" autocomplete="username" required autofocus>
 
-        <label for="password">كلمة المرور</label>
+        <label for="password">{{ __('crm.password') }}</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required>
 
-        <button type="submit">تسجيل الدخول</button>
-    </form>
+        <button type="submit">{{ __('crm.login') }}</button>
 </body>
 </html>

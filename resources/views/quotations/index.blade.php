@@ -137,7 +137,7 @@
             2
            )
           }}
-          جنيه
+          {{ __('crm.currency_egp') }}
          </td>
 
          <td>
@@ -186,9 +186,9 @@
     <div class="crm-qpager">
 
      <span>
-      صفحة
+      {{ __('crm.page') }}
       {{ $quotations->currentPage() }}
-      من
+      {{ __('crm.of') }}
       {{ $quotations->lastPage() }}
      </span>
 

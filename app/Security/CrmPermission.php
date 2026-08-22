@@ -52,6 +52,10 @@ enum CrmPermission: string
     case CALENDAR_VIEW = 'calendar.view';
     case CALENDAR_MANAGE = 'calendar.manage';
 
+    case BRANCHES_VIEW = 'branches.view';
+    case BRANCHES_CREATE = 'branches.create';
+    case BRANCHES_UPDATE = 'branches.update';
+    case BRANCHES_DELETE = 'branches.delete';
     public function module(): string
     {
         return explode('.', $this->value, 2)[0];
@@ -97,6 +101,10 @@ enum CrmPermission: string
             self::VOIP_SETTINGS => 'إدارة ربط السنترال (VoIP)',
             self::CALENDAR_VIEW => 'عرض التقويم والأحداث',
             self::CALENDAR_MANAGE => 'إدارة التقويم والأحداث',
+            self::BRANCHES_VIEW => 'عرض الفروع',
+            self::BRANCHES_CREATE => 'إضافة الفروع',
+            self::BRANCHES_UPDATE => 'تعديل الفروع',
+            self::BRANCHES_DELETE => 'حذف الفروع',
         };
     }
 
@@ -129,6 +137,7 @@ enum CrmPermission: string
             'groups' => 'المجموعات والصلاحيات',
             'voip' => 'اتصالات السنترال (VoIP)',
             'calendar' => 'التقويم والأحداث',
+            'branches' => 'الفروع',
         ];
     }
 }

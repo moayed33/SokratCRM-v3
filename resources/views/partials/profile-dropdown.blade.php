@@ -78,6 +78,209 @@
         box-shadow: 0 2px 6px rgba(220, 38, 55, .4), 0 0 0 2px #18181b;
     }
 
+    /* Sleek Branch Pill Switcher */
+    .crm-branch-pill-wrapper {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        z-index: 10000;
+        vertical-align: middle;
+    }
+
+    .crm-branch-pill-trigger {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 16px;
+        border: 1px solid var(--line, #e7e9ef);
+        border-radius: 999px;
+        background: var(--card, #fff);
+        color: var(--dark, #182033);
+        cursor: pointer;
+        font-weight: 800;
+        font-size: 13px;
+        transition: all .2s cubic-bezier(.4, 0, .2, 1);
+        font-family: inherit;
+        box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+        text-decoration: none;
+    }
+
+    .crm-branch-pill-trigger:hover,
+    .crm-branch-pill-trigger:focus-visible {
+        background: #fff5f6;
+        border-color: rgba(220, 38, 55, 0.4);
+        color: var(--red, #dc2637);
+        transform: translateY(-1px);
+        box-shadow: 0 4px 14px rgba(220, 38, 55, 0.12);
+    }
+
+    .crm-branch-pill-icon {
+        display: inline-grid;
+        place-items: center;
+        width: 26px;
+        height: 26px;
+        border-radius: 999px;
+        background: rgba(220, 38, 55, 0.08);
+        color: var(--red, #dc2637);
+        font-size: 13px;
+        flex-shrink: 0;
+    }
+
+    .crm-branch-pill-name {
+        max-width: 150px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        font-size: 13px;
+        line-height: 1;
+    }
+
+    .crm-branch-pill-chevron {
+        font-size: 11px;
+        opacity: 0.6;
+        transition: transform .2s ease;
+    }
+
+    .crm-branch-pill-wrapper.is-open .crm-branch-pill-chevron {
+        transform: rotate(180deg);
+    }
+
+    .crm-branch-pill-dropdown {
+        position: absolute !important;
+        inset-block-start: calc(100% + 8px) !important;
+        inset-inline-end: 0 !important;
+        inset-inline-start: auto !important;
+        width: min(260px, calc(100vw - 24px)) !important;
+        background: #fff !important;
+        border: 1px solid var(--line, #e7e9ef) !important;
+        border-radius: 16px !important;
+        box-shadow: 0 12px 36px rgba(15, 23, 42, 0.12) !important;
+        padding: 6px !important;
+        z-index: 10005 !important;
+        overflow: hidden;
+    }
+
+    .crm-branch-pill-dropdown[hidden] {
+        display: none !important;
+    }
+
+    .crm-branch-pill-dropdown-header {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 8px 12px;
+        border-bottom: 1px solid #f1f5f9;
+        font-size: 11px;
+        font-weight: 800;
+        color: var(--muted, #64748b);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .crm-branch-pill-dropdown-body {
+        max-height: 280px;
+        overflow-y: auto;
+        padding: 4px 0;
+    }
+
+    .crm-branch-pill-option {
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 9px 12px;
+        border: 0;
+        border-radius: 10px;
+        background: transparent;
+        color: var(--dark, #182033);
+        font-weight: 700;
+        cursor: pointer;
+        text-align: start;
+        font-size: 13px;
+        font-family: inherit;
+        transition: all .15s ease;
+        text-decoration: none;
+    }
+
+    .crm-branch-pill-option:hover {
+        background: #f8fafc;
+        color: var(--red, #dc2637);
+    }
+
+    .crm-branch-pill-option.is-active {
+        background: rgba(220, 38, 55, 0.08) !important;
+        color: var(--red, #dc2637) !important;
+        font-weight: 900;
+    }
+
+    .crm-branch-pill-opt-text {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .crm-branch-pill-check {
+        font-size: 16px;
+        color: var(--red, #dc2637);
+        font-weight: 900;
+    }
+
+    .crm-branch-pill-static {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        height: 42px;
+        padding: 0 16px;
+        border-radius: 999px;
+        background: rgba(220, 38, 55, 0.06);
+        border: 1px solid rgba(220, 38, 55, 0.18);
+        color: var(--red, #dc2637);
+        font-size: 13px;
+        font-weight: 800;
+    }
+
+    /* Dark Mode */
+    html.dark-mode .crm-branch-pill-trigger {
+        background: var(--bg-card, rgba(24, 24, 27, .75)) !important;
+        border-color: var(--line, rgba(255, 255, 255, .1)) !important;
+        color: var(--text-primary, #f4f4f5) !important;
+        box-shadow: var(--shadow-glass) !important;
+    }
+
+    html.dark-mode .crm-branch-pill-trigger:hover,
+    html.dark-mode .crm-branch-pill-trigger:focus-visible {
+        background: rgba(239, 68, 68, .18) !important;
+        border-color: rgba(239, 68, 68, .45) !important;
+        color: #f87171 !important;
+    }
+
+    html.dark-mode .crm-branch-pill-dropdown {
+        background: rgba(9, 9, 11, 0.98) !important;
+        background-color: #09090b !important;
+        border-color: var(--border-color, rgba(255, 255, 255, 0.12)) !important;
+        box-shadow: var(--shadow-dropdown) !important;
+    }
+
+    html.dark-mode .crm-branch-pill-dropdown-header {
+        border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+        color: #a1a1aa !important;
+    }
+
+    html.dark-mode .crm-branch-pill-option {
+        color: #f4f4f5 !important;
+    }
+
+    html.dark-mode .crm-branch-pill-option:hover {
+        background: rgba(255, 255, 255, .06) !important;
+        color: #f87171 !important;
+    }
+
+    html.dark-mode .crm-branch-pill-static {
+        background: rgba(239, 68, 68, 0.14) !important;
+        border-color: rgba(239, 68, 68, 0.3) !important;
+        color: #f87171 !important;
+    }
     /* Keep the profile menu anchored to its trigger and above page content. */
     .crm-profile,
     .crm-profile:has([data-crm-profile-dropdown]) {
@@ -135,6 +338,80 @@
 </style>
 @endonce
 <div class="crm-topbar-user" data-crm-user-tools>
+    @if (auth()->check())
+        @if (auth()->user()->isSuperAdmin() && empty($hideBranchSwitcher) && !request()->routeIs('v2.campaigns.create', 'v2.campaigns.edit'))
+            @php
+                $currentBranchId = \App\Support\BranchContext::getCurrentBranchId();
+                $allActiveBranches = \App\Models\Branch::where('is_active', true)->orderBy('name_ar')->get();
+                $activeBranchLabel = \App\Support\BranchContext::getActiveBranchLabel();
+            @endphp
+            <div class="crm-branch-pill-wrapper" data-crm-branch-switcher>
+                <button
+                    class="crm-branch-pill-trigger"
+                    type="button"
+                    data-crm-branch-trigger
+                    aria-expanded="false"
+                    title="{{ __('crm.branch') }}: {{ $activeBranchLabel }}"
+                >
+                    <span class="crm-branch-pill-icon"><i class="bi bi-buildings"></i></span>
+                    <span class="crm-branch-pill-name">{{ $activeBranchLabel }}</span>
+                    <i class="bi bi-chevron-down crm-branch-pill-chevron"></i>
+                </button>
+
+                <div
+                    class="crm-branch-pill-dropdown"
+                    data-crm-branch-dropdown
+                    hidden
+                >
+                    <div class="crm-branch-pill-dropdown-header">
+                        <i class="bi bi-arrow-left-right"></i>
+                        <span>{{ __('crm.switch_branch') }}</span>
+                    </div>
+                    <div class="crm-branch-pill-dropdown-body">
+                        <form method="POST" action="{{ route('v2.branch.switch') }}">
+                            @csrf
+                            <button
+                                type="submit"
+                                name="branch_id"
+                                value="all"
+                                class="crm-branch-pill-option {{ $currentBranchId === null ? 'is-active' : '' }}"
+                            >
+                                <div class="crm-branch-pill-opt-text">
+                                    <i class="bi bi-globe"></i>
+                                    <span>{{ __('crm.all_branches') }}</span>
+                                </div>
+                                @if ($currentBranchId === null)
+                                    <i class="bi bi-check2 crm-branch-pill-check"></i>
+                                @endif
+                            </button>
+
+                            @foreach ($allActiveBranches as $b)
+                                <button
+                                    type="submit"
+                                    name="branch_id"
+                                    value="{{ $b->id }}"
+                                    class="crm-branch-pill-option {{ $currentBranchId === $b->id ? 'is-active' : '' }}"
+                                >
+                                    <div class="crm-branch-pill-opt-text">
+                                        <i class="bi bi-geo-alt"></i>
+                                        <span>{{ $b->name_ar }}</span>
+                                    </div>
+                                    @if ($currentBranchId === $b->id)
+                                        <i class="bi bi-check2 crm-branch-pill-check"></i>
+                                    @endif
+                                </button>
+                            @endforeach
+                        </form>
+                    </div>
+                </div>
+            </div>
+        @elseif (auth()->user()->branch && empty($hideBranchSwitcher) && !request()->routeIs('v2.campaigns.create', 'v2.campaigns.edit'))
+            <div class="crm-branch-pill-static" title="{{ __('crm.assigned_branch') }}: {{ auth()->user()->branch->name_ar }}">
+                <span class="crm-branch-pill-icon"><i class="bi bi-buildings"></i></span>
+                <span class="crm-branch-pill-name">{{ auth()->user()->branch->name_ar }}</span>
+            </div>
+        @endif
+    @endif
     <button
         class="crm-notification-trigger crm-topbar-notification-btn"
         id="crmNotificationTrigger"
@@ -282,6 +559,14 @@
                 if (dropdown) dropdown.hidden = true;
                 profile.classList.remove('is-open');
             });
+
+            document.querySelectorAll('[data-crm-branch-switcher]').forEach((switcher) => {
+                const trigger = switcher.querySelector('[data-crm-branch-trigger]');
+                const dropdown = switcher.querySelector('[data-crm-branch-dropdown]');
+                trigger?.setAttribute('aria-expanded', 'false');
+                if (dropdown) dropdown.hidden = true;
+                switcher.classList.remove('is-open');
+            });
         };
 
         const bindProfiles = () => {
@@ -306,9 +591,26 @@
                 });
             });
 
+            document.querySelectorAll('[data-crm-branch-switcher]').forEach((switcher) => {
+                const trigger = switcher.querySelector('[data-crm-branch-trigger]');
+                const dropdown = switcher.querySelector('[data-crm-branch-dropdown]');
+                if (!trigger || !dropdown || switcher.dataset.bound === '1') return;
+
+                switcher.dataset.bound = '1';
+                trigger.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    const open = trigger.getAttribute('aria-expanded') === 'true';
+                    closeMenus();
+                    trigger.setAttribute('aria-expanded', open ? 'false' : 'true');
+                    dropdown.hidden = open;
+                    switcher.classList.toggle('is-open', !open);
+                });
+
+                dropdown.addEventListener('click', (event) => event.stopPropagation());
+            });
+
             applyTheme(readTheme());
         };
-
         applyTheme(readTheme());
         systemTheme.addEventListener('change', () => {
             if (readTheme() === 'system') applyTheme('system');

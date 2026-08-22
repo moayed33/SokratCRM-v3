@@ -2,7 +2,7 @@
 
 @section('title', __('crm.groups'))
 @section('heading', __('crm.groups'))
-@section('subheading', 'اجمع المستخدمين تحت أدوار واضحة ثم امنح الصلاحيات للمجموعة')
+@section('subheading', __('crm.groups_index_subheading'))
 
 @section('content')
 <section class="panel">
@@ -45,7 +45,7 @@
                                 @endcan
                                 @can('groups.delete')
                                     @if (!$group->is_system)
-                                        <form method="POST" action="{{ route('v2.settings.groups.destroy', $group) }}" onsubmit="return confirm('حذف هذه المجموعة؟')">
+                                        <form method="POST" action="{{ route('v2.settings.groups.destroy', $group) }}" onsubmit="return confirm(@json(__('crm.confirm_delete_group')))">
                                             @csrf
                                             @method('DELETE')
                                             <button class="btn small danger">{{ __('crm.delete') }}</button>

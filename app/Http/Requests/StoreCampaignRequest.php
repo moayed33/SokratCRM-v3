@@ -20,6 +20,7 @@ class StoreCampaignRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'name' => ['required', 'string', 'max:150'],
             'image' => [
                 'nullable',
@@ -42,6 +43,7 @@ class StoreCampaignRequest extends FormRequest
     public function attributes(): array
     {
         return [
+            'branch_id' => 'الفرع',
             'name' => 'اسم الحملة',
             'image' => 'صورة الحملة',
             'cost' => 'تكلفة الحملة',

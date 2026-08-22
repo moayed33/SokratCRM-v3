@@ -20,6 +20,7 @@ class StoreUserRequest extends FormRequest
     public function rules(): array
     {
         return [
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
             'name' => ['required', 'string', 'max:150'],
             'username' => [
                 'required',

@@ -6,6 +6,7 @@ use App\Models\CalendarEvent;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
+use App\Models\PipelineStage;
 use App\Models\Quotation;
 use App\Models\User;
 use App\Observers\CalendarEventNotificationObserver;
@@ -60,9 +61,12 @@ class AppServiceProvider extends ServiceProvider
                         ? Lead::query()->accessibleTo($user)->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<=', now()->endOfDay())->count()
                         : 0;
 
+                $sidebarPipelineStages = PipelineStage::getActiveStagesForSidebar();
+
                 $view->with([
                     'totalLeads' => $totalLeads,
                     'totalTasks' => $totalTasks,
+                    'sidebarPipelineStages' => $sidebarPipelineStages,
                 ]);
             },
         );

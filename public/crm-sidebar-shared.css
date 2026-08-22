@@ -123,8 +123,15 @@ width:100%;
 .crm-link:hover,
 .crm-toggle:hover{
 color:var(--red);
- background:#fff5f6;
+ background:#fff5f6
+}
+[dir=rtl] .crm-link:hover,
+[dir=rtl] .crm-toggle:hover{
  transform:translateX(-2px)
+}
+[dir=ltr] .crm-link:hover,
+[dir=ltr] .crm-toggle:hover{
+ transform:translateX(2px)
 }
 
 .crm-link.active,
@@ -205,9 +212,10 @@ min-height:0;
 .crm-sub nav{
 display:grid;
  gap:2px;
- margin:3px 28px 7px 0;
- padding-right:14px;
- border-right:1px solid var(--line)
+ margin:3px 0 7px;
+ margin-inline-start:28px;
+ padding-inline-start:14px;
+ border-inline-start:1px solid var(--line)
 }
 
 .crm-sub a{
@@ -347,7 +355,12 @@ font-size:11px
   flex:0 0 288px!important;
   width:288px!important;
   min-width:288px!important;
-  max-width:288px!important
+  max-width:288px!important;
+  transition:width 200ms cubic-bezier(.4,0,.2,1),
+             min-width 200ms cubic-bezier(.4,0,.2,1),
+             max-width 200ms cubic-bezier(.4,0,.2,1),
+             flex-basis 200ms cubic-bezier(.4,0,.2,1),
+             padding 200ms cubic-bezier(.4,0,.2,1)!important;
  }
 
  .main,
@@ -358,7 +371,9 @@ font-size:11px
   order:1!important;
   flex:1 1 auto!important;
   width:calc(100% - 288px)!important;
-  min-width:0!important
+  min-width:0!important;
+  transition:width 200ms cubic-bezier(.4,0,.2,1),
+             padding 200ms cubic-bezier(.4,0,.2,1)!important;
  }
 
  html.crm-sidebar-collapsed .crm-side,
@@ -411,7 +426,6 @@ font-size:11px
  html.crm-sidebar-collapsed .crm-sidebar-collapse-btn span{
   display:none!important
  }
-
  html.crm-sidebar-collapsed .crm-side-nav{
   gap:8px
  }

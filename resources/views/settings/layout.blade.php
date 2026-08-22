@@ -67,6 +67,10 @@
 
         <nav class="settings-tabs">
             <a class="{{ request()->routeIs('v2.settings') ? 'active' : '' }}" href="{{ route('v2.settings') }}">{{ __('crm.overview') }}</a>
+            <a class="{{ request()->routeIs('v2.settings.stages.*') ? 'active' : '' }}" href="{{ route('v2.settings.stages.index') }}">{{ __('crm.custom_pipeline_stages') }}</a>
+            @can('branches.view')
+                <a class="{{ request()->routeIs('v2.settings.branches.*') ? 'active' : '' }}" href="{{ route('v2.settings.branches.index') }}">{{ __('crm.branches') }}</a>
+            @endcan
             @can('users.view')
                 <a class="{{ request()->routeIs('v2.settings.users.*') ? 'active' : '' }}" href="{{ route('v2.settings.users.index') }}">{{ __('crm.users') }}</a>
             @endcan

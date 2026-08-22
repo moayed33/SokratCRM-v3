@@ -161,14 +161,10 @@ main{
  background:#f9fafb;
  scroll-snap-align:start
 }
+.kanban-column.new{--column-color:#3478f6}
 .kanban-column.no-answer{--column-color:#e59b16}
-.kanban-column.interested{--column-color:#169a64}
 .kanban-column.not-interested{--column-color:#dc2637}
-.kanban-column.meeting{--column-color:#7b61df}
-.kanban-column.quotation{--column-color:#e59b16}
-.kanban-column.discussion{--column-color:#5865f2}
-.kanban-column.contract{--column-color:#169a64}
-.kanban-column.execution{--column-color:#7b61df}
+.kanban-column.donor{--column-color:#16a34a}
 .column-head{
  display:flex;
  align-items:center;
@@ -1102,7 +1098,6 @@ body.kanban-modal-open{
        [
         'new',
         'not_interested',
-        'execution',
        ],
        true
       );
@@ -1122,13 +1117,8 @@ body.kanban-modal-open{
       $columnIconClass = match($column['code']) {
           'new' => 'bi bi-person-plus-fill',
           'no-answer', 'no_answer' => 'bi bi-telephone-x-fill',
-          'interested' => 'bi bi-heart-fill',
           'not_interested', 'not-interested' => 'bi bi-x-circle-fill',
-          'meeting' => 'bi bi-calendar-event-fill',
-          'quotation' => 'bi bi-file-earmark-text-fill',
-          'discussion' => 'bi bi-chat-dots-fill',
-          'contract', 'contract-closing', 'contract_closing' => 'bi bi-file-earmark-check-fill',
-          'execution' => 'bi bi-gear-fill',
+          'donor' => 'bi bi-heart-fill',
           default => 'bi bi-app-indicator',
       };
      @endphp
@@ -1478,7 +1468,7 @@ body.kanban-modal-open{
               )
              }}"
              draggable="false"
-             title="اتصال وتسجيل متابعة"
+             title="{{ __('crm.call_and_log_followup') }}"
             >
              <i class="bi bi-telephone-outbound-fill"></i> {{ __('crm.call') }}
             </a>
@@ -1555,7 +1545,7 @@ body.kanban-modal-open{
     </h3>
 
     <p id="crmKanbanUtilityDescription">
-     عرض داخل Kanban
+     {{ __('crm.view_in_kanban') }}
     </p>
    </div>
 
@@ -1617,7 +1607,7 @@ body.kanban-modal-open{
    class="kanban-followup-frame"
    id="crmKanbanActionFrame"
    src="about:blank"
-   title="بيانات العميل"
+   title="{{ __('crm.client_data') }}"
   ></iframe>
  </div>
 </div>
@@ -1660,7 +1650,7 @@ body.kanban-modal-open{
    class="kanban-followup-frame"
    id="crmKanbanFollowupFrame"
    src="about:blank"
-   title="تسجيل متابعة العميل"
+   title="{{ __('crm.log_lead_followup') }}"
   ></iframe>
  </div>
 </div>
@@ -1903,7 +1893,7 @@ document.addEventListener(
    )
   ) {
    showToast(
-    'العميل موجود بالفعل في هذه الحالة.'
+    @json(__('crm.lead_already_in_status'))
    );
 
    dragData = null;
@@ -1927,19 +1917,16 @@ document.addEventListener(
 
   if (modalTitle) {
    modalTitle.textContent =
-    'نقل '
-    + dragData.leadName
-    + ' إلى '
-    + targetStatusName;
+    @json(__('crm.move_lead_to'))
+     .replace(':lead', dragData.leadName)
+     .replace(':status', targetStatusName);
   }
 
   if (modalDescription) {
    modalDescription.textContent =
-    'من '
-    + dragData.currentStatusName
-    + ' إلى '
-    + targetStatusName
-    + ' — لن يتغير العميل إلا بعد حفظ المتابعة.';
+    @json(__('crm.from_status_to_status_notice'))
+     .replace(':from', dragData.currentStatusName)
+     .replace(':to', targetStatusName);
   }
 
   frame.src =
@@ -1996,7 +1983,7 @@ document.addEventListener(
   const leadName =
    card.dataset
     .kanbanLeadName
-   || 'العميل';
+   || @json(__('crm.client'));
 
   const currentStatusName =
    card.dataset
@@ -2033,19 +2020,20 @@ document.addEventListener(
 
   if (modalTitle) {
    modalTitle.textContent =
-    'تسجيل متابعة اتصال - '
-    + leadName;
+    @json(__('crm.log_call_followup_for'))
+     .replace(':name', leadName);
   }
 
   if (modalDescription) {
    modalDescription.textContent =
     currentStatusName
      ? (
-      'الحالة الحالية: '
+      @json(__('crm.current_status_prefix'))
       + currentStatusName
-      + ' — يمكنك تغيير الحالة بعد المكالمة ثم الحفظ.'
+      + ' — '
+      + @json(__('crm.change_status_after_call_hint'))
      )
-     : 'سجل نتيجة المكالمة ثم احفظ المتابعة.';
+     : @json(__('crm.log_call_result_hint'));
   }
 
   frame.src =
@@ -2117,8 +2105,7 @@ document.addEventListener(
 
      if (helper) {
       helper.textContent =
-       'يمكنك تغيير الحالة بعد المكالمة '
-       + 'ثم حفظ المتابعة.';
+       @json(__('crm.change_status_after_call_hint'));
      }
     }
 
@@ -2197,7 +2184,7 @@ document.addEventListener(
        leadName:
         card.dataset
          .kanbanLeadName
-         || 'العميل',
+         || @json(__('crm.client')),
 
        currentStatusId:
         card.dataset
@@ -2335,12 +2322,12 @@ document.addEventListener(
 
    if (modalTitle) {
     modalTitle.textContent =
-     'تم حفظ المتابعة بنجاح';
+     @json(__('crm.followup_saved_successfully'));
    }
 
    if (modalDescription) {
     modalDescription.textContent =
-     'يتم تحديث Kanban الآن...';
+     @json(__('crm.updating_kanban_now'));
    }
 
    window.setTimeout(
@@ -2412,7 +2399,7 @@ document.addEventListener(
 
   const leadName =
    card.dataset.kanbanLeadName
-   || 'العميل';
+   || @json(__('crm.client'));
 
   const currentStatus =
    card.dataset.currentStatusName
@@ -2444,19 +2431,20 @@ document.addEventListener(
 
   if (title) {
    title.textContent =
-    'تسجيل متابعة اتصال - '
-    + leadName;
+    @json(__('crm.log_call_followup_for'))
+     .replace(':name', leadName);
   }
 
   if (description) {
    description.textContent =
     currentStatus
      ? (
-      'الحالة الحالية: '
+      @json(__('crm.current_status_prefix'))
       + currentStatus
-      + ' — سجل نتيجة المكالمة ثم احفظ المتابعة.'
+      + ' — '
+      + @json(__('crm.log_call_result_hint'))
      )
-     : 'سجل نتيجة المكالمة ثم احفظ المتابعة.';
+     : @json(__('crm.log_call_result_hint'));
   }
 
   activeCallPopup = true;
@@ -2529,9 +2517,7 @@ document.addEventListener(
 
      if (helper) {
       helper.textContent =
-       'يمكنك تغيير حالة العميل '
-       + 'بعد انتهاء المكالمة ثم الحفظ.';
-     }
+       @json(__('crm.change_status_after_call_end_hint'));
     }
 
     const communicationSelect =
@@ -2794,9 +2780,7 @@ document.addEventListener(
 
      if (helper) {
       helper.textContent =
-       'يمكنك اختيار حالة العميل '
-       + 'ثم حفظ المتابعة.';
-     }
+       @json(__('crm.select_status_then_save_hint'));
     }
    } catch (error) {
     console.error(
@@ -2836,7 +2820,7 @@ document.addEventListener(
       const leadName =
        card?.dataset
         .kanbanLeadName
-       || 'العميل';
+       || @json(__('crm.client'));
 
       const statusName =
        card?.dataset
@@ -2859,15 +2843,16 @@ document.addEventListener(
 
       openPopup(
        url.toString(),
-       'تسجيل متابعة - '
-        + leadName,
+       @json(__('crm.log_followup_for_name'))
+        .replace(':name', leadName),
        statusName
         ? (
-         'الحالة الحالية: '
+         @json(__('crm.current_status_prefix'))
          + statusName
-         + ' — سجل المتابعة ثم احفظ.'
+         + ' — '
+         + @json(__('crm.log_followup_hint'))
         )
-        : 'سجل المتابعة ثم احفظ.',
+        : @json(__('crm.log_followup_hint')),
        'followup'
       );
      }
@@ -2918,7 +2903,7 @@ document.addEventListener(
       const leadName =
        card?.dataset
         .kanbanLeadName
-       || 'العميل';
+       || @json(__('crm.client'));
 
       const statusName =
        card?.dataset
@@ -2930,14 +2915,14 @@ document.addEventListener(
         href,
         window.location.href
        ).toString(),
-       'بيانات العميل - '
-        + leadName,
+       @json(__('crm.view_lead_details_for'))
+        .replace(':name', leadName),
        statusName
         ? (
-         'الحالة الحالية: '
+         @json(__('crm.current_status_prefix'))
          + statusName
         )
-        : 'عرض بيانات العميل.',
+        : @json(__('crm.view_lead_details_hint')),
        'customer'
       );
      }
@@ -3173,7 +3158,7 @@ document.addEventListener(
       const statusName =
        button.dataset
         .statusName
-       || 'المرحلة';
+       || @json(__('crm.stage_label'));
 
       const count =
        button.dataset
@@ -3182,10 +3167,10 @@ document.addEventListener(
 
       openPopup(
        url,
-       'عملاء بدون موعد - '
-        + statusName,
-       'عدد العملاء بدون موعد: '
-        + count,
+       @json(__('crm.undated_leads_for_stage'))
+        .replace(':stage', statusName),
+       @json(__('crm.undated_leads_count'))
+        .replace(':count', count),
        'no_date'
       );
      }
@@ -3219,8 +3204,8 @@ document.addEventListener(
         href,
         window.location.href
        ).toString(),
-       'إضافة عميل جديد',
-       'أضف بيانات العميل من داخل Kanban.',
+       @json(__('crm.add_lead')),
+       @json(__('crm.add_new_lead_kanban_desc')),
        'create'
       );
      }
@@ -3485,7 +3470,7 @@ document.addEventListener(
     );
 
    button.textContent =
-    'المزيد'
+    @json(__('crm.more_items'))
     + ' ('
     + nextBatch
     + ')';

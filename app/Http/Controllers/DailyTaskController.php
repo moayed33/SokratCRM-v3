@@ -63,7 +63,8 @@ class DailyTaskController extends Controller
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
                         ->orWhere('company_name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%")
+                        ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', "%{$search}%"));
                 });
             }
 
@@ -114,7 +115,8 @@ class DailyTaskController extends Controller
                 $q->where('name', 'like', "%{$search}%")
                     ->orWhere('phone', 'like', "%{$search}%")
                     ->orWhere('company_name', 'like', "%{$search}%")
-                    ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%")
+                    ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', "%{$search}%"));
             });
         }
 
@@ -376,9 +378,20 @@ class DailyTaskController extends Controller
 
         $fromStatusId = $lead->lead_status_id;
         $toStatusId = !empty($validated['lead_status_id']) ? (int) $validated['lead_status_id'] : $fromStatusId;
-        $nextFollowUpAt = !empty($validated['next_follow_up_at']) ? Carbon::parse($validated['next_follow_up_at']) : null;
+        $toStatus = LeadStatus::query()->find($toStatusId);
 
-        DB::transaction(static function () use ($lead, $user, $validated, $fromStatusId, $toStatusId, $nextFollowUpAt): void {
+        if ($toStatus && $toStatus->code === 'no_answer' && empty($validated['next_follow_up_at'])) {
+            $request->validate(['next_follow_up_at' => ['required', 'date']], [
+                'next_follow_up_at.required' => 'موعد المتابعة القادمة إجباري عند اختيار لم يتم الرد.',
+            ]);
+        }
+
+        $nextFollowUpAt = !empty($validated['next_follow_up_at']) ? Carbon::parse($validated['next_follow_up_at']) : null;
+        if ($toStatus && $toStatus->code === 'not_interested') {
+            $nextFollowUpAt = null;
+        }
+
+        DB::transaction(static function () use ($lead, $user, $validated, $fromStatusId, $toStatusId, $nextFollowUpAt, $toStatus): void {
             LeadFollowup::create([
                 'lead_id' => $lead->id,
                 'from_status_id' => $fromStatusId,

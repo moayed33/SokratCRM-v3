@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
     public function run(): void
     {
         $this->call([
+            BranchSeeder::class,
             CrmV2PipelineSeeder::class,
             CrmAccessControlSeeder::class,
             CalendarEventSeeder::class,

@@ -12,6 +12,9 @@
 <style>
 :root {
   --red: #dc2637;
+  --red-hover: #b81d2c;
+  --primary: #4f46e5;
+  --primary-hover: #4338ca;
   --dark: #182033;
   --text: #4b5568;
   --muted: #8b94a5;
@@ -47,7 +50,7 @@ html.dark-mode body {
 button, input, select, textarea { font: inherit; }
 a { color: inherit; text-decoration: none; }
 
-/* Layout Structure matching CRM Dashboard */
+/* Layout Structure */
 .app {
   display: flex;
   flex-direction: row;
@@ -109,7 +112,7 @@ a { color: inherit; text-decoration: none; }
   transition: all .2s ease;
 }
 .btn-primary:hover {
-  background: #b81d2c;
+  background: var(--red-hover);
   transform: translateY(-1px);
 }
 .btn-secondary {
@@ -164,21 +167,46 @@ html.dark-mode .btn-danger:hover {
   color: #fca5a5;
   border-color: rgba(239, 68, 68, 0.6);
 }
+.btn-indigo {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border-radius: 12px;
+  background: #4f46e5;
+  color: #fff;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.25);
+  transition: all .2s ease;
+}
+.btn-indigo:hover {
+  background: #4338ca;
+  transform: translateY(-1px);
+}
 
 /* Reminder Banner */
 .reminder-alert-banner {
   margin-bottom: 16px;
-  padding: 12px 16px;
+  padding: 12px 18px;
   border: 1px solid #fcd34d;
-  border-radius: 12px;
+  border-radius: 14px;
   background: #fffbeb;
   color: #92400e;
   font-weight: 700;
   display: flex;
   align-items: center;
+  box-shadow: 0 4px 12px rgba(245, 158, 11, 0.1);
+  animation: pulseLight 2s infinite ease-in-out;
+}
+@keyframes pulseLight {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.85; }
 }
 .reminder-alert-icon {
-  margin-inline-end: 8px;
+  margin-inline-end: 10px;
+  font-size: 18px;
   color: #d97706;
 }
 html.dark-mode .reminder-alert-banner {
@@ -210,6 +238,7 @@ html.dark-mode .card {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 20px;
   padding-bottom: 16px;
@@ -217,6 +246,17 @@ html.dark-mode .card {
 }
 html.dark-mode .filters-bar {
   border-bottom-color: rgba(255, 255, 255, 0.08);
+}
+.filters-left {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 14px;
+}
+.filters-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 .filter-group { display: flex; align-items: center; gap: 8px; }
 .filter-label {
@@ -265,15 +305,46 @@ html.dark-mode .filter-select option {
   color: #f4f4f5 !important;
 }
 
-/* Calendar Container & FullCalendar Overrides */
+/* Loading indicator (Non-blocking) */
+.calendar-loading-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(79, 70, 229, 0.1);
+  color: #4f46e5;
+  font-size: 12px;
+  font-weight: 700;
+  border: 1px solid rgba(79, 70, 229, 0.2);
+  transition: opacity 0.2s ease;
+}
+html.dark-mode .calendar-loading-badge {
+  background: rgba(99, 102, 241, 0.15);
+  color: #818cf8;
+  border-color: rgba(99, 102, 241, 0.3);
+}
+.calendar-loading-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Calendar Container & FullCalendar */
 #calendar-container {
-  min-height: 80vh;
+  min-height: 75vh;
   width: 100%;
   position: relative;
   display: block;
 }
 #calendar {
-  min-height: 80vh;
+  min-height: 75vh;
   width: 100%;
   display: block;
 }
@@ -337,11 +408,38 @@ html.dark-mode .fc .fc-button:hover {
 .fc-event {
   cursor: pointer;
   border-radius: 6px;
-  padding: 2px 6px;
+  padding: 3px 6px;
   font-size: 12px;
   font-weight: 600;
   border: none;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+.fc-event:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+}
+
+/* Event Pill Elements */
+.fc-event-custom {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.fc-event-branch-badge {
+  display: inline-block;
+  font-size: 9px;
+  font-weight: 800;
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.25);
+  margin-inline-end: 3px;
+}
+.fc-event-tag {
+  font-weight: 700;
 }
 
 /* Modal styling */
@@ -365,7 +463,7 @@ html.dark-mode .modal-backdrop {
   border-radius: 20px;
   border: 1px solid var(--line);
   box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
-  width: min(550px, 100%);
+  width: min(580px, 100%);
   max-height: calc(100vh - 40px);
   overflow-y: auto;
   padding: 24px;
@@ -399,10 +497,12 @@ html.dark-mode .modal-head h3 {
 .modal-close {
   background: none;
   border: none;
-  font-size: 20px;
+  font-size: 22px;
   color: var(--muted);
   cursor: pointer;
   transition: color .2s;
+  padding: 0;
+  line-height: 1;
 }
 .modal-close:hover { color: var(--red); }
 html.dark-mode .modal-close { color: #a1a1aa; }
@@ -482,11 +582,143 @@ html.dark-mode .modal-actions {
   gap: 8px;
 }
 
+/* Lead Preview Modal Specific Cards */
+.lead-info-card {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+html.dark-mode .lead-info-card {
+  background: rgba(255, 255, 255, 0.04);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+.lead-info-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.lead-donor-name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--dark);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+html.dark-mode .lead-donor-name {
+  color: #f4f4f5;
+}
+.lead-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.crm-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.crm-badge-branch {
+  background: #e0e7ff;
+  color: #4338ca;
+}
+html.dark-mode .crm-badge-branch {
+  background: rgba(99, 102, 241, 0.2);
+  color: #a5b4fc;
+}
+.crm-badge-status {
+  background: #f1f5f9;
+  color: #334155;
+}
+html.dark-mode .crm-badge-status {
+  background: rgba(255, 255, 255, 0.1);
+  color: #e4e4e7;
+}
+
+.lead-data-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+.lead-data-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.lead-data-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.lead-data-value {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--dark);
+}
+html.dark-mode .lead-data-value {
+  color: #f4f4f5;
+}
+.lead-phone-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #059669;
+  font-weight: 800;
+  direction: ltr;
+}
+.lead-phone-link:hover {
+  text-decoration: underline;
+}
+.lead-notes-box {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 12px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--dark);
+}
+html.dark-mode .lead-notes-box {
+  background: rgba(24, 24, 27, 0.6);
+  border-color: rgba(255, 255, 255, 0.08);
+  color: #f4f4f5;
+}
+
+/* Floating custom tooltip */
+.cal-tooltip {
+  position: absolute;
+  z-index: 1000;
+  padding: 8px 12px;
+  background: #1e293b;
+  color: #fff;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 1.4;
+  pointer-events: none;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+  display: none;
+  max-width: 250px;
+}
+html.dark-mode .cal-tooltip {
+  background: #09090b;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
 @media(max-width: 992px) {
   .app { flex-direction: column; }
   .side { display: none; }
   .main-content { width: 100%; padding: 16px; }
-  .form-grid { grid-template-columns: 1fr; }
+  .form-grid, .lead-data-grid { grid-template-columns: 1fr; }
   .form-group.full { grid-column: span 1; }
 }
 </style>
@@ -517,38 +749,67 @@ html.dark-mode .modal-actions {
 
     <div class="card">
       <div class="filters-bar">
-        <div class="filter-group">
-          <span class="filter-label">{{ __('crm.type_label') }}</span>
-          <select class="filter-select" id="filterType">
-            <option value="">{{ __('crm.all') }}</option>
-            <option value="meeting">{{ __('crm.meeting') }}</option>
-            <option value="call">{{ __('crm.call') }}</option>
-            <option value="task">{{ __('crm.task') }}</option>
-            <option value="reminder">{{ __('crm.reminder') }}</option>
-          </select>
+        <div class="filters-left">
+          {{-- Branch Filter (For Admins / Multi-Branch) --}}
+          @if(!empty($branches) && $branches->count() > 0 && (auth()->user()->isSuperAdmin() || auth()->user()->hasPermission(\App\Security\CrmPermission::BRANCHES_VIEW)))
+          <div class="filter-group">
+            <span class="filter-label"><i class="bi bi-building"></i> {{ __('crm.branch') }}</span>
+            <select class="filter-select" id="filterBranch">
+              <option value="all" {{ ($currentBranchId === null || $currentBranchId === 'all') ? 'selected' : '' }}>{{ __('crm.all_branches') }}</option>
+              @foreach($branches as $b)
+              <option value="{{ $b->id }}" {{ (string)$currentBranchId === (string)$b->id ? 'selected' : '' }}>
+                {{ $b->name_ar }} {{ $b->name_en ? '('.$b->name_en.')' : '' }}
+              </option>
+              @endforeach
+            </select>
+          </div>
+          @endif
+
+          {{-- Type Filter --}}
+          <div class="filter-group">
+            <span class="filter-label">{{ __('crm.type_label') }}</span>
+            <select class="filter-select" id="filterType">
+              <option value="">{{ __('crm.all') }}</option>
+              <option value="lead_followup">📌 {{ __('crm.leads_donors_followup_dates') }}</option>
+              <option value="meeting">{{ __('crm.meeting') }}</option>
+              <option value="call">{{ __('crm.call') }}</option>
+              <option value="task">{{ __('crm.task') }}</option>
+              <option value="reminder">{{ __('crm.reminder') }}</option>
+            </select>
+          </div>
+
+          {{-- Status Filter --}}
+          <div class="filter-group">
+            <span class="filter-label">{{ __('crm.status_label') }}</span>
+            <select class="filter-select" id="filterStatus">
+              <option value="">{{ __('crm.all') }}</option>
+              <option value="scheduled">{{ __('crm.scheduled') }}</option>
+              <option value="overdue">{{ __('crm.overdue_single') }}</option>
+              <option value="completed">{{ __('crm.completed') }}</option>
+              <option value="canceled">{{ __('crm.canceled') }}</option>
+            </select>
+          </div>
+
+          {{-- Responsible User Filter --}}
+          @if($assignableUsers->count() > 1)
+          <div class="filter-group">
+            <span class="filter-label">{{ __('crm.responsible_label') }}</span>
+            <select class="filter-select" id="filterUser">
+              <option value="">{{ __('crm.all_users') }}</option>
+              @foreach($assignableUsers as $u)
+              <option value="{{ $u->id }}">{{ $u->name }}</option>
+              @endforeach
+            </select>
+          </div>
+          @endif
         </div>
 
-        <div class="filter-group">
-          <span class="filter-label">{{ __('crm.status_label') }}</span>
-          <select class="filter-select" id="filterStatus">
-            <option value="">{{ __('crm.all') }}</option>
-            <option value="scheduled">{{ __('crm.scheduled') }}</option>
-            <option value="completed">{{ __('crm.completed') }}</option>
-            <option value="canceled">{{ __('crm.canceled') }}</option>
-          </select>
+        <div class="filters-right">
+          <div id="calendarLoadingSpinner" class="calendar-loading-badge" style="display:none;">
+            <div class="calendar-loading-spinner"></div>
+            <span>{{ __('crm.updating_ellipsis') }}</span>
+          </div>
         </div>
-
-        @if($assignableUsers->count() > 1)
-        <div class="filter-group">
-          <span class="filter-label">{{ __('crm.responsible_label') }}</span>
-          <select class="filter-select" id="filterUser">
-            <option value="">{{ __('crm.all_users') }}</option>
-            @foreach($assignableUsers as $u)
-            <option value="{{ $u->id }}">{{ $u->name }}</option>
-            @endforeach
-          </select>
-        </div>
-        @endif
       </div>
 
       <div id="calendar-container">
@@ -561,7 +822,101 @@ html.dark-mode .modal-actions {
   @include('partials.crm-sidebar')
 </div>
 
-<!-- Modal Form -->
+<!-- Floating Tooltip -->
+<div id="calendarTooltip" class="cal-tooltip"></div>
+
+<!-- 1. Lead / Donor Follow-up Details Modal -->
+<div class="modal-backdrop" id="leadFollowupModal">
+  <div class="modal-dialog">
+    <div class="modal-head">
+      <h3 id="leadModalHeaderTitle"><i class="bi bi-person-badge"></i> {{ __('crm.lead_followup_details_title') }}</h3>
+      <button class="modal-close" id="closeLeadModalBtn" type="button">&times;</button>
+    </div>
+
+    <div class="lead-info-card">
+      <div class="lead-info-header">
+        <div class="lead-donor-name">
+          <span id="previewDonorName">—</span>
+        </div>
+        <div class="lead-badges-row">
+          <span class="crm-badge crm-badge-branch" id="previewBranchBadge"><i class="bi bi-building"></i> —</span>
+          <span class="crm-badge crm-badge-status" id="previewStageBadge">—</span>
+        </div>
+      </div>
+
+      <div class="lead-data-grid">
+        <div class="lead-data-item">
+          <span class="lead-data-label"><i class="bi bi-telephone-fill"></i> {{ __('crm.phone_number') }}</span>
+          <div style="display:flex;align-items:center;gap:8px;">
+            <a href="#" id="previewPhoneLink" class="lead-phone-link" target="_blank">
+              <span id="previewPhoneText">—</span>
+            </a>
+            <button type="button" id="copyPhoneBtn" class="btn-secondary" style="padding:2px 8px;font-size:11px;" title="{{ __('crm.copy_number') }}">
+              <i class="bi bi-copy"></i>
+            </button>
+          </div>
+        </div>
+
+        <div class="lead-data-item">
+          <span class="lead-data-label"><i class="bi bi-person-fill"></i> {{ __('crm.assigned_employee') }}</span>
+          <span class="lead-data-value" id="previewAssignedUser">—</span>
+        </div>
+
+        <div class="lead-data-item">
+          <span class="lead-data-label"><i class="bi bi-bullseye"></i> {{ __('crm.donation_goal_target') }}</span>
+          <span class="lead-data-value" id="previewDonationTarget">—</span>
+        </div>
+
+        <div class="lead-data-item">
+          <span class="lead-data-label"><i class="bi bi-cash-stack"></i> {{ __('crm.donation_amount_type') }}</span>
+          <span class="lead-data-value" id="previewDonationValue">—</span>
+        </div>
+
+        <div class="lead-data-item full" style="grid-column: span 2;">
+          <span class="lead-data-label"><i class="bi bi-clock-fill"></i> {{ __('crm.scheduled_followup_time') }}</span>
+          <span class="lead-data-value" id="previewFollowupTime" style="color:var(--red);font-size:14px;">—</span>
+        </div>
+      </div>
+
+      <div class="lead-data-item">
+        <span class="lead-data-label"><i class="bi bi-chat-left-text-fill"></i> {{ __('crm.notes_and_contact_details') }}</span>
+        <div class="lead-notes-box" id="previewNotesText">—</div>
+      </div>
+    </div>
+
+    {{-- Quick Reschedule Inline Form --}}
+    @can('calendar.manage')
+    <div id="quickRescheduleBox" style="background:#f1f5f9;border-radius:12px;padding:12px;margin-bottom:16px;display:none;">
+      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#334155;">
+        <i class="bi bi-calendar-event"></i> {{ __('crm.set_new_followup_date') }}
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <input type="datetime-local" id="quickRescheduleInput" class="form-control" style="flex:1;min-width:200px;">
+        <button type="button" id="saveQuickRescheduleBtn" class="btn-primary" style="padding:8px 16px;">{{ __('crm.save_date') }}</button>
+        <button type="button" id="cancelQuickRescheduleBtn" class="btn-secondary" style="padding:8px 12px;">{{ __('crm.cancel') }}</button>
+      </div>
+    </div>
+    @endcan
+
+    <div class="modal-actions">
+      <div>
+        @can('calendar.manage')
+        <button class="btn-secondary" id="toggleQuickRescheduleBtn" type="button">
+          <i class="bi bi-calendar-check"></i> {{ __('crm.reschedule') }}
+        </button>
+        @endcan
+      </div>
+      <div class="modal-actions-end">
+        <button class="btn-secondary" id="closeLeadModalActionBtn" type="button">{{ __('crm.cancel') }}</button>
+        <a href="#" id="previewLeadFullProfileBtn" class="btn-primary" target="_self">
+          <i class="bi bi-box-arrow-up-right"></i> {{ __('crm.view_full_lead_profile') }}
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 2. Manual Event Create / Edit Modal Form -->
 <div class="modal-backdrop" id="eventModal">
   <div class="modal-dialog">
     <div class="modal-head">
@@ -589,7 +944,7 @@ html.dark-mode .modal-actions {
         </div>
 
         <div class="form-group">
-          <label class="form-label" for="eventStatus">الحالة</label>
+          <label class="form-label" for="eventStatus">{{ __('crm.status') }}</label>
           <select class="form-control" id="eventStatus" name="status" required>
             <option value="scheduled">{{ __('crm.scheduled') }}</option>
             <option value="completed">{{ __('crm.completed') }}</option>
@@ -606,6 +961,19 @@ html.dark-mode .modal-actions {
           <label class="form-label" for="eventEndTime">{{ __('crm.end_time') }} <span style="color:var(--red)">*</span></label>
           <input class="form-control" id="eventEndTime" name="end_time" type="datetime-local" required>
         </div>
+
+        {{-- Branch Selection if Admin --}}
+        @if(!empty($branches) && $branches->count() > 0 && auth()->user()->isSuperAdmin())
+        <div class="form-group full">
+          <label class="form-label" for="eventBranchId">{{ __('crm.branch') }}</label>
+          <select class="form-control" id="eventBranchId" name="branch_id">
+            <option value="">{{ __('crm.default_branch_client') }}</option>
+            @foreach($branches as $b)
+            <option value="{{ $b->id }}">{{ $b->name_ar }} {{ $b->name_en ? '('.$b->name_en.')' : '' }}</option>
+            @endforeach
+          </select>
+        </div>
+        @endif
 
         <div class="form-group full">
           <label class="form-label" for="eventLeadId">{{ __('crm.linked_client_optional') }}</label>
@@ -686,12 +1054,25 @@ document.addEventListener('DOMContentLoaded', function() {
     return;
   }
 
-  const modal = document.getElementById('eventModal');
+  // Modals
+  const eventModal = document.getElementById('eventModal');
   const eventForm = document.getElementById('eventForm');
   const modalTitleText = document.getElementById('modalTitleText');
   const deleteBtn = document.getElementById('deleteEventBtn');
 
+  const leadFollowupModal = document.getElementById('leadFollowupModal');
+  const quickRescheduleBox = document.getElementById('quickRescheduleBox');
+  const quickRescheduleInput = document.getElementById('quickRescheduleInput');
+  let activeLeadIdForReschedule = null;
+
+  // Tooltip
+  const tooltipEl = document.getElementById('calendarTooltip');
+
+  // Loading indicator
+  const loadingSpinner = document.getElementById('calendarLoadingSpinner');
+
   // Filters
+  const filterBranch = document.getElementById('filterBranch');
   const filterType = document.getElementById('filterType');
   const filterStatus = document.getElementById('filterStatus');
   const filterUser = document.getElementById('filterUser');
@@ -709,9 +1090,9 @@ document.addEventListener('DOMContentLoaded', function() {
         droppable: true,
         selectable: true,
         headerToolbar: {
-          right: 'prev,next today',
+          start: 'prev,next today',
           center: 'title',
-          left: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
+          end: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek'
         },
         buttonText: {
           today: '{{ __('crm.today') }}',
@@ -720,8 +1101,14 @@ document.addEventListener('DOMContentLoaded', function() {
           day: '{{ __('crm.day_view') }}',
           list: '{{ __('crm.list_view') }}'
         },
+        loading: function(isLoading) {
+          if (loadingSpinner) {
+            loadingSpinner.style.display = isLoading ? 'inline-flex' : 'none';
+          }
+        },
         events: function(fetchInfo, successCallback, failureCallback) {
           let url = '{{ route("v2.calendar.events") }}?start=' + encodeURIComponent(fetchInfo.startStr) + '&end=' + encodeURIComponent(fetchInfo.endStr);
+          if (filterBranch && filterBranch.value) url += '&branch_id=' + encodeURIComponent(filterBranch.value);
           if (filterType && filterType.value) url += '&type=' + encodeURIComponent(filterType.value);
           if (filterStatus && filterStatus.value) url += '&status=' + encodeURIComponent(filterStatus.value);
           if (filterUser && filterUser.value) url += '&user_id=' + encodeURIComponent(filterUser.value);
@@ -748,57 +1135,189 @@ document.addEventListener('DOMContentLoaded', function() {
             else successCallback([]);
           });
         },
+        eventContent: function(arg) {
+          const props = arg.event.extendedProps || {};
+          const title = arg.event.title || '';
+          const branchName = props.branch_name ? `<span class="fc-event-branch-badge">${escapeHtml(props.branch_name)}</span>` : '';
+          
+          let html = `<div class="fc-event-custom">${branchName}<span class="fc-event-tag">${escapeHtml(title)}</span></div>`;
+          return { html: html };
+        },
+        eventMouseEnter: function(info) {
+          showEventTooltip(info);
+        },
+        eventMouseLeave: function() {
+          hideEventTooltip();
+        },
         select: function(info) {
           openModalForCreate(info.startStr, info.endStr);
         },
         eventClick: function(info) {
-          openModalForEdit(info.event);
+          hideEventTooltip();
+          handleEventClick(info.event);
         },
         eventDrop: function(info) {
-          rescheduleEvent(info.event, info.revert);
+          rescheduleAnyEvent(info.event, info.revert);
         },
         eventResize: function(info) {
-          rescheduleEvent(info.event, info.revert);
+          rescheduleAnyEvent(info.event, info.revert);
         }
       });
 
       calendar.render();
-      console.log('Calendar initialized');
     } catch (err) {
       console.error('Calendar initialization error:', err);
     }
   }
 
-  function rescheduleEvent(fcEvent, revertFunc) {
-    const payload = {
-      start_time: fcEvent.start.toISOString(),
-      end_time: (fcEvent.end ? fcEvent.end : new Date(fcEvent.start.getTime() + 3600000)).toISOString()
-    };
+  function escapeHtml(str) {
+    if (!str) return '';
+    return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
 
-    fetch('/calendar/events/' + fcEvent.id + '/reschedule', {
-      method: 'PATCH',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-CSRF-TOKEN': csrfToken,
-        'X-Requested-With': 'XMLHttpRequest',
-        'Accept': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    })
-    .then(response => response.json())
-    .then(data => {
-      if (data.success) {
-        showToast(@json(__('crm.event_rescheduled')));
-      } else {
-        showToast(data.message || @json(__('crm.reschedule_failed')), true);
+  function showEventTooltip(info) {
+    if (!tooltipEl) return;
+    const props = info.event.extendedProps || {};
+    
+    let content = `<strong>${escapeHtml(info.event.title)}</strong><br>`;
+    if (props.lead_name) content += `<i class="bi bi-person"></i> @json(__('crm.donor')): ${escapeHtml(props.lead_name)}<br>`;
+    if (props.branch_name) content += `<i class="bi bi-building"></i> @json(__('crm.branch')): ${escapeHtml(props.branch_name)}<br>`;
+    if (props.donation_target) content += `<i class="bi bi-bullseye"></i> @json(__('crm.goal')): ${escapeHtml(props.donation_target)}<br>`;
+    if (props.donation_value) content += `<i class="bi bi-cash"></i> @json(__('crm.amount')): ${escapeHtml(props.donation_value)} @json(__('crm.currency_egp'))<br>`;
+    if (props.status_name || props.status) content += `<i class="bi bi-flag"></i> @json(__('crm.status')): ${escapeHtml(props.status_name || props.status)}<br>`;
+    if (props.user_name) content += `<i class="bi bi-person-check"></i> @json(__('crm.assigned_employee')): ${escapeHtml(props.user_name)}<br>`;
+    
+    tooltipEl.innerHTML = content;
+    tooltipEl.style.display = 'block';
+
+    const rect = info.el.getBoundingClientRect();
+    tooltipEl.style.top = (rect.bottom + window.scrollY + 5) + 'px';
+    tooltipEl.style.left = (rect.left + window.scrollX) + 'px';
+  }
+
+  function hideEventTooltip() {
+    if (tooltipEl) tooltipEl.style.display = 'none';
+  }
+
+  function handleEventClick(fcEvent) {
+    const props = fcEvent.extendedProps || {};
+
+    if (props.is_lead_followup || String(fcEvent.id).startsWith('lead_followup_') || String(fcEvent.id).startsWith('lead_contact_')) {
+      openLeadFollowupPreview(fcEvent);
+    } else {
+      openModalForEdit(fcEvent);
+    }
+  }
+
+  function openLeadFollowupPreview(fcEvent) {
+    const props = fcEvent.extendedProps || {};
+    activeLeadIdForReschedule = props.lead_id || props.raw_id;
+
+    document.getElementById('previewDonorName').textContent = props.lead_name || @json(__('crm.donor'));
+    document.getElementById('previewBranchBadge').textContent = props.branch_name ? '📍 ' + props.branch_name : '📍 ' + @json(__('crm.main_branch'));
+    document.getElementById('previewStageBadge').textContent = props.stage_name || props.status_name || @json(__('crm.scheduled'));
+    
+    const phone = props.lead_phone || '—';
+    document.getElementById('previewPhoneText').textContent = phone;
+    document.getElementById('previewPhoneLink').href = phone !== '—' ? 'tel:' + phone.replace(/\s+/g, '') : '#';
+    
+    document.getElementById('previewAssignedUser').textContent = props.user_name || '—';
+    document.getElementById('previewDonationTarget').textContent = props.donation_target || '—';
+    
+    let donationInfo = '—';
+    if (props.donation_value) {
+      donationInfo = props.donation_value + ' ' + @json(__('crm.currency_egp'));
+      if (props.donation_type) donationInfo += ' (' + props.donation_type + ')';
+      if (props.donation_cycle) donationInfo += ' / ' + props.donation_cycle;
+    } else if (props.donation_type) {
+      donationInfo = props.donation_type;
+    }
+    document.getElementById('previewDonationValue').textContent = donationInfo;
+
+    const localeCode = @json(app()->getLocale() === 'ar' ? 'ar-EG' : 'en-US');
+    const dt = fcEvent.start ? fcEvent.start.toLocaleString(localeCode, { dateStyle: 'full', timeStyle: 'short' }) : '—';
+    document.getElementById('previewFollowupTime').textContent = dt;
+    document.getElementById('previewNotesText').textContent = props.description || props.notes || props.response_details || @json(__('crm.no_notes_recorded'));
+
+    document.getElementById('previewLeadFullProfileBtn').href = props.lead_url || ('/leads/' + activeLeadIdForReschedule);
+
+    if (quickRescheduleBox) quickRescheduleBox.style.display = 'none';
+
+    leadFollowupModal.classList.add('open');
+  }
+
+  function closeLeadFollowupModal() {
+    leadFollowupModal.classList.remove('open');
+  }
+
+  // Reschedule handler supporting both Manual events and Lead Followups
+  function rescheduleAnyEvent(fcEvent, revertFunc) {
+    const props = fcEvent.extendedProps || {};
+    const isLead = props.is_lead_followup || String(fcEvent.id).startsWith('lead_followup_') || String(fcEvent.id).startsWith('lead_contact_');
+
+    if (isLead) {
+      const leadId = props.lead_id || props.raw_id || String(fcEvent.id).replace('lead_followup_', '').replace('lead_contact_', '');
+      const payload = {
+        start_time: fcEvent.start.toISOString(),
+        reason: @json(__('crm.reschedule_by_calendar_drag'))
+      };
+
+      fetch('/calendar/leads/' + leadId + '/reschedule', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          showToast(@json(__('crm.donor_followup_updated_success')));
+        } else {
+          showToast(data.message || @json(__('crm.reschedule_failed')), true);
+          if (revertFunc) revertFunc();
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        showToast(@json(__('crm.server_connection_error')), true);
         if (revertFunc) revertFunc();
-      }
-    })
-    .catch(error => {
-      console.error(error);
-      showToast(@json(__('crm.server_connection_error')), true);
-      if (revertFunc) revertFunc();
-    });
+      });
+
+    } else {
+      const payload = {
+        start_time: fcEvent.start.toISOString(),
+        end_time: (fcEvent.end ? fcEvent.end : new Date(fcEvent.start.getTime() + 3600000)).toISOString()
+      };
+
+      fetch('/calendar/events/' + fcEvent.id + '/reschedule', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': csrfToken,
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        },
+        body: JSON.stringify(payload)
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast(@json(__('crm.event_rescheduled')));
+        } else {
+          showToast(data.message || @json(__('crm.reschedule_failed')), true);
+          if (revertFunc) revertFunc();
+        }
+      })
+      .catch(error => {
+        console.error(error);
+        showToast(@json(__('crm.server_connection_error')), true);
+        if (revertFunc) revertFunc();
+      });
+    }
   }
 
   function checkUpcomingReminders() {
@@ -814,8 +1333,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const banner = document.getElementById('reminderAlertBanner');
         const text = document.getElementById('reminderAlertText');
         if (banner && text) {
-          text.textContent = @json(__('crm.reminder_prefix')) + data.count + @json(__('crm.reminder_suffix'));
-          banner.style.display = 'block';
+          text.textContent = @json(__('crm.reminder_30min_warning')).replace(':count', data.count);
+          banner.style.display = 'flex';
         }
       }
     })
@@ -827,7 +1346,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (!container) {
       container = document.createElement('div');
       container.id = 'calendarToastContainer';
-      container.style.cssText = 'position:fixed;bottom:20px;left:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;';
+      container.style.cssText = 'position:fixed;bottom:20px;inset-inline-start:20px;z-index:9999;display:flex;flex-direction:column;gap:10px;';
       document.body.appendChild(container);
     }
 
@@ -856,7 +1375,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('eventStartTime').value = startIso;
     document.getElementById('eventEndTime').value = endIso;
 
-    modal.classList.add('open');
+    eventModal.classList.add('open');
   }
 
   function openModalForEdit(fcEvent) {
@@ -871,6 +1390,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('eventStatus').value = props.status || 'scheduled';
     document.getElementById('eventDescription').value = props.description || '';
     document.getElementById('eventReminderMinutes').value = props.reminder_minutes_before !== undefined ? props.reminder_minutes_before : 15;
+
+    const branchSelect = document.getElementById('eventBranchId');
+    if (branchSelect && props.branch_id) {
+      branchSelect.value = props.branch_id;
+    }
 
     const syncWrapper = document.getElementById('syncStatusWrapper');
     const syncText = document.getElementById('syncStatusText');
@@ -902,11 +1426,11 @@ document.addEventListener('DOMContentLoaded', function() {
       userIdSelect.value = props.user_id;
     }
 
-    modal.classList.add('open');
+    eventModal.classList.add('open');
   }
 
   function closeModal() {
-    modal.classList.remove('open');
+    eventModal.classList.remove('open');
   }
 
   function formatDateForInput(dateObj) {
@@ -932,6 +1456,11 @@ document.addEventListener('DOMContentLoaded', function() {
       reminder_minutes_before: parseInt(document.getElementById('eventReminderMinutes').value, 10) || 15
     };
 
+    const branchSelect = document.getElementById('eventBranchId');
+    if (branchSelect && branchSelect.value) {
+      payload.branch_id = branchSelect.value;
+    }
+
     const userIdSelect = document.getElementById('eventUserId');
     if (userIdSelect) {
       payload.user_id = userIdSelect.value;
@@ -955,6 +1484,7 @@ document.addEventListener('DOMContentLoaded', function() {
       if (data.success) {
         closeModal();
         if (calendar) calendar.refetchEvents();
+        showToast(data.message || @json(__('crm.event_saved_success')));
       } else {
         alert(data.message || @json(__('crm.save_data_error')));
       }
@@ -962,6 +1492,64 @@ document.addEventListener('DOMContentLoaded', function() {
     .catch(error => {
       console.error(error);
       alert(@json(__('crm.server_error')));
+    });
+  });
+
+  // Copy Phone Handler
+  document.getElementById('copyPhoneBtn')?.addEventListener('click', function() {
+    const text = document.getElementById('previewPhoneText').textContent;
+    if (text && text !== '—') {
+      navigator.clipboard.writeText(text).then(() => {
+        showToast(@json(__('crm.phone_copied_toast')));
+      });
+    }
+  });
+
+  // Quick Reschedule Handlers inside Lead Preview Modal
+  document.getElementById('toggleQuickRescheduleBtn')?.addEventListener('click', function() {
+    if (!quickRescheduleBox) return;
+    if (quickRescheduleBox.style.display === 'none') {
+      quickRescheduleBox.style.display = 'block';
+      let nowPlusOneHour = new Date(Date.now() + 3600000);
+      quickRescheduleInput.value = nowPlusOneHour.toISOString().slice(0, 16);
+    } else {
+      quickRescheduleBox.style.display = 'none';
+    }
+  });
+
+  document.getElementById('cancelQuickRescheduleBtn')?.addEventListener('click', function() {
+    if (quickRescheduleBox) quickRescheduleBox.style.display = 'none';
+  });
+
+  document.getElementById('saveQuickRescheduleBtn')?.addEventListener('click', function() {
+    if (!activeLeadIdForReschedule || !quickRescheduleInput.value) return;
+
+    fetch('/calendar/leads/' + activeLeadIdForReschedule + '/reschedule', {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': csrfToken,
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      },
+      body: JSON.stringify({
+        start_time: quickRescheduleInput.value,
+        reason: @json(__('crm.reschedule_via_calendar_modal'))
+      })
+    })
+    .then(res => res.json())
+    .then(data => {
+      if (data.success) {
+        showToast(@json(__('crm.rescheduled_successfully')));
+        closeLeadFollowupModal();
+        if (calendar) calendar.refetchEvents();
+      } else {
+        showToast(data.message || @json(__('crm.reschedule_failed')), true);
+      }
+    })
+    .catch(err => {
+      console.error(err);
+      showToast(@json(__('crm.server_connection_error')), true);
     });
   });
 
@@ -1024,12 +1612,13 @@ document.addEventListener('DOMContentLoaded', function() {
       })
       .catch(error => {
         console.error(error);
-        showToast('حدث خطأ أثناء عملية الحذف.', true);
+        showToast(@json(__('crm.delete_error_toast')), true);
       });
     });
   }
 
   // Filter change listeners
+  if (filterBranch) filterBranch.addEventListener('change', () => calendar && calendar.refetchEvents());
   if (filterType) filterType.addEventListener('change', () => calendar && calendar.refetchEvents());
   if (filterStatus) filterStatus.addEventListener('change', () => calendar && calendar.refetchEvents());
   if (filterUser) filterUser.addEventListener('change', () => calendar && calendar.refetchEvents());
@@ -1040,6 +1629,9 @@ document.addEventListener('DOMContentLoaded', function() {
   });
   document.getElementById('closeModalBtn')?.addEventListener('click', closeModal);
   document.getElementById('cancelModalBtn')?.addEventListener('click', closeModal);
+
+  document.getElementById('closeLeadModalBtn')?.addEventListener('click', closeLeadFollowupModal);
+  document.getElementById('closeLeadModalActionBtn')?.addEventListener('click', closeLeadFollowupModal);
 
   // Check reminders
   checkUpcomingReminders();

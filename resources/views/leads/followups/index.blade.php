@@ -8,7 +8,7 @@
  >
 
  <title>
-  تسجيل متابعة {{ $lead->name }} | CRM v2
+  {{ __('crm.app_name') }} — {{ __('crm.followup_for_lead', ['name' => $lead->name]) }}
  </title>
  <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 
@@ -1294,7 +1294,7 @@ body.kanban-followup-popup
 
       <div class="client-copy">
        <small>
-        العميل رقم #{{ $lead->id }}
+        {{ __('crm.lead_id_badge', ['id' => $lead->id]) }}
        </small>
 
        <h2>{{ $lead->name }}</h2>
@@ -1440,7 +1440,7 @@ body.kanban-followup-popup
       <header class="panel-head">
        <h3>{{ __('crm.new_followup_data') }}</h3>
        <p>
-        الموظف المسجل:
+        {{ __('crm.registered_employee_label') }}
         {{ $currentEmployee }}
        </p>
       </header>
@@ -1552,11 +1552,9 @@ body.kanban-followup-popup
              'kanban_popup'
             )
            )
-            الحالة الجديدة محددة تلقائيًا
-            من العمود الذي تم نقل العميل إليه.
+            {{ __('crm.status_auto_selected_hint') }}
            @else
-            اختيار الحالة يحدد المرحلة الجديدة
-            للعميل.
+            {{ __('crm.status_sets_stage_hint') }}
            @endif
           </small>
           </div>
@@ -1599,7 +1597,7 @@ body.kanban-followup-popup
               </option>
              @endforeach
             </select>
-            <small>تظهر فقط مستخدمو الحملة المسموح لك بالإسناد إليهم.</small>
+            <small>{{ __('crm.campaign_users_assignment_hint') }}</small>
            </div>
           @endif
 
@@ -1612,9 +1610,9 @@ body.kanban-followup-popup
           <header class="followup-editor-head">
            <div>
             <h3>{{ __('crm.company_lead_data') }}</h3>
-            <p>
-             عدّل البيانات الحالية ثم اضغط حفظ المتابعة.
-            </p>
+           <p>
+            {{ __('crm.edit_and_save_followup_hint') }}
+           </p>
            </div>
           </header>
 
@@ -1756,9 +1754,9 @@ body.kanban-followup-popup
           <header class="followup-editor-head">
            <div>
             <h3>{{ __('crm.not_interested_reason') }}</h3>
-            <p>
-             سجّل سبب عدم اهتمام العميل.
-            </p>
+           <p>
+            {{ __('crm.not_interested_reason_hint') }}
+           </p>
            </div>
           </header>
 
@@ -1789,10 +1787,9 @@ body.kanban-followup-popup
           <header class="followup-editor-head">
            <div>
             <h3>{{ __('crm.quotation_data') }}</h3>
-            <p>
-             تظهر في عرض سعر، مناقشة،
-             تقفيل عقد وتنفيذ.
-            </p>
+           <p>
+            {{ __('crm.quotation_data_desc') }}
+           </p>
            </div>
           </header>
 
@@ -1840,12 +1837,12 @@ body.kanban-followup-popup
 
            <div class="field">
             <label for="quotationFile">
-             ملف عرض السعر
+            {{ __('crm.quotation_file_title') }}
 
-             @if ($hasQuotationFile)
-              <span class="optional">
-               (يوجد ملف حالي)
-              </span>
+            @if ($hasQuotationFile)
+             <span class="optional">
+              {{ __('crm.existing_file_badge') }}
+             </span>
              @else
               <span class="required">*</span>
              @endif
@@ -1876,7 +1873,7 @@ body.kanban-followup-popup
               target="_blank"
               rel="noopener noreferrer"
              >
-              👁 معاينة الملف الحالي
+              👁 {{ __('crm.preview_current_file') }}
              </a>
             @endif
            </div>
@@ -1952,7 +1949,7 @@ body.kanban-followup-popup
 
          <div class="field">
           <label for="communication_type">
-           نوع التواصل
+           {{ __('crm.followup_type') }}
           </label>
 
           <select
@@ -1979,15 +1976,14 @@ body.kanban-followup-popup
          </div>
 
          <div class="field">
-          <label>اسم الموظف</label>
+          <label>{{ __('crm.employee_name_label') }}</label>
 
           <div class="employee-display">
            {{ $currentEmployee }}
           </div>
 
           <small>
-           يتم تسجيل الاسم تلقائيًا من
-           جلسة الموظف الحالية.
+           {{ __('crm.employee_name_auto_hint') }}
           </small>
          </div>
 
@@ -2009,8 +2005,7 @@ body.kanban-followup-popup
           >
 
           <small>
-           اتركه فارغًا في حالة عدم وجود
-           متابعة قادمة.
+           {{ __('crm.leave_empty_if_no_followup') }}
           </small>
          </div>
 
@@ -2123,7 +2118,7 @@ body.kanban-followup-popup
            @if (!empty($followup->field_changes))
             <div class="timeline-field-changes">
              <strong>
-              التعديلات التي قام بها الموظف
+              {{ __('crm.modifications_by_employee') }}
              </strong>
 
              <ul class="timeline-change-list">
@@ -2142,7 +2137,7 @@ body.kanban-followup-popup
                  </span>
 
                  <span aria-hidden="true">
-                  ←
+                  {{ app()->getLocale() === 'ar' ? '←' : '→' }}
                  </span>
 
                  <span class="timeline-change-new">
@@ -2156,7 +2151,7 @@ body.kanban-followup-popup
            @endif
 
           <div class="timeline-next">
-           المتابعة القادمة:
+           {{ __('crm.next_followup_at_label') }}
            {{
             $followup->next_follow_up_at
              ?->format('d/m/Y - h:i A')
@@ -2166,8 +2161,7 @@ body.kanban-followup-popup
          </article>
         @empty
          <div class="empty-state">
-          لا توجد متابعات مسجلة لهذا العميل
-          حتى الآن.
+          {{ __('crm.no_followups_for_lead_yet') }}
          </div>
         @endforelse
        </div>
@@ -2378,21 +2372,13 @@ body.kanban-followup-popup
   const followupQuotationDefaultHelp =
    @json($quotationFileHelpText);
 
-  const followupQuotationStatuses = [
-   'quotation',
-   'discussion',
-   'contract_closed',
-   'execution'
-  ];
+  const followupQuotationStatuses = [];
 
   const followupBusinessStatuses = [
-   'interested',
+   'new',
    'no_answer',
-   'meeting',
-   'quotation',
-   'discussion',
-   'contract_closed',
-   'execution'
+   'not_interested',
+   'donor'
   ];
 
   const followupSelectedStatusCode =
@@ -2535,7 +2521,7 @@ body.kanban-followup-popup
      if (followupQuotationFileHelp) {
       followupQuotationFileHelp
        .textContent = file
-        ? 'تم اختيار الملف: '
+        ? @json(__('crm.file_selected_prefix'))
           + file.name
         : followupQuotationDefaultHelp;
      }
@@ -2647,8 +2633,7 @@ window.parent.postMessage(
     .outcomeOptional = '1';
 
    optional.textContent =
-    ' (اختياري)';
-
+    @json(__('crm.optional_suffix'));
    outcomeLabel.appendChild(
     optional
    );
@@ -2740,14 +2725,8 @@ window.parent.postMessage(
 
   note.textContent =
    isNotInterested
-    ? (
-     'موعد المتابعة القادمة اختياري '
-     + 'في حالة غير مهتم.'
-    )
-    : (
-     'موعد المتابعة القادمة إجباري '
-     + 'قبل حفظ المتابعة.'
-    );
+    ? @json(__('crm.next_followup_optional_not_interested'))
+    : @json(__('crm.next_followup_mandatory_notice'));
  };
 
  statusSelect?.addEventListener(
@@ -2789,8 +2768,7 @@ window.parent.postMessage(
  const excluded =
   new Set([
    'new',
-   'not_interested',
-   'execution'
+   'not_interested'
   ]);
 
  const getStatusCode = () => {

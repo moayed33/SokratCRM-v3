@@ -1,11 +1,20 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
+use App\Models\Campaign;
+use App\Models\DonationPurpose;
+use App\Models\DonationType;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
+use App\Models\LeadPhone;
+use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
-use App\Models\Campaign;
+use App\Models\LeadStatusHistory;
+use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Security\LeadAssignment;
@@ -22,15 +31,28 @@ use Symfony\Component\HttpFoundation\BinaryFileResponse;
 
 class LeadController extends Controller
 {
+    private const DONATION_CYCLES = [
+        'one_time' => 'مرة واحدة',
+        'monthly' => 'شهري',
+        'quarterly' => 'ربع سنوي',
+        'semi_annual' => 'نصف سنوي',
+        'annual' => 'سنوي',
+    ];
+
     public function index(Request $request): View|RedirectResponse
     {
-
         $this->assertCrmV2Database();
         $user = $request->user();
 
+        $stages = PipelineStage::query()
+            ->with('statuses:id,pipeline_stage_id,name_ar,code,color,position')
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
         $statuses = LeadStatus::query()
             ->with([
-                'stage:id,name_ar',
+                'stage:id,name_ar,color',
             ])
             ->withCount([
                 'leads as leads_count' => static fn ($query) => $query
@@ -39,86 +61,44 @@ class LeadController extends Controller
             ->orderBy('position')
             ->get();
 
+        $stageCounts = $statuses->groupBy('pipeline_stage_id')->map(static fn ($group) => $group->sum('leads_count'));
+        foreach ($stages as $stage) {
+            $stage->setAttribute('scoped_leads_count', (int) ($stageCounts[$stage->id] ?? 0));
+        }
+        $donationTypes = DonationType::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
+        $donationPurposes = DonationPurpose::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
         $filters = [
-            'q' => mb_substr(
-                trim((string) $request->query('q', '')),
-                0,
-                150
-            ),
-            'status' => mb_substr(
-                trim((string) $request->query('status', '')),
-                0,
-                50
-            ),
-            'employee' => mb_substr(
-                trim((string) $request->query('employee', '')),
-                0,
-                150
-            ),
-            'source' => mb_substr(
-                trim((string) $request->query('source', '')),
-                0,
-                100
-            ),
-            'follow_up' => mb_substr(
-                trim((string) $request->query('follow_up', '')),
-                0,
-                20
-            ),
-            'sort' => mb_substr(
-                trim((string) $request->query('sort', 'latest')),
-                0,
-                20
-            ),
+            'q' => mb_substr(trim((string) $request->query('q', '')), 0, 150),
+            'stage' => mb_substr(trim((string) $request->query('stage', '')), 0, 50),
+            'status' => mb_substr(trim((string) $request->query('status', '')), 0, 50),
+            'donation_type' => mb_substr(trim((string) $request->query('donation_type', '')), 0, 100),
+            'donation_cycle' => mb_substr(trim((string) $request->query('donation_cycle', '')), 0, 50),
+            'employee' => mb_substr(trim((string) $request->query('employee', '')), 0, 150),
+            'source' => mb_substr(trim((string) $request->query('source', '')), 0, 100),
+            'follow_up' => mb_substr(trim((string) $request->query('follow_up', '')), 0, 20),
+            'sort' => mb_substr(trim((string) $request->query('sort', 'latest')), 0, 20),
         ];
 
-        $statusCodes = $statuses
-            ->pluck('code')
-            ->all();
-
-        if (
-            $filters['status'] !== ''
-            && ! in_array(
-                $filters['status'],
-                $statusCodes,
-                true
-            )
-        ) {
+        $statusCodes = $statuses->pluck('code')->all();
+        if ($filters['status'] !== '' && ! in_array($filters['status'], $statusCodes, true) && ! is_numeric($filters['status'])) {
             $filters['status'] = '';
         }
 
-        $allowedFollowUpFilters = [
-            '',
-            'today',
-            'upcoming',
-            'overdue',
-            'none',
-        ];
-
-        if (
-            ! in_array(
-                $filters['follow_up'],
-                $allowedFollowUpFilters,
-                true
-            )
-        ) {
+        $allowedFollowUpFilters = ['', 'today', 'upcoming', 'overdue', 'none'];
+        if (! in_array($filters['follow_up'], $allowedFollowUpFilters, true)) {
             $filters['follow_up'] = '';
         }
 
-        $allowedSorts = [
-            'latest',
-            'oldest',
-            'name',
-            'followup',
-        ];
-
-        if (
-            ! in_array(
-                $filters['sort'],
-                $allowedSorts,
-                true
-            )
-        ) {
+        $allowedSorts = ['latest', 'oldest', 'name', 'followup', 'donation_value'];
+        if (! in_array($filters['sort'], $allowedSorts, true)) {
             $filters['sort'] = 'latest';
         }
 
@@ -153,110 +133,135 @@ class LeadController extends Controller
             ->orderBy('source')
             ->pluck('source');
 
-        if (
-            $filters['source'] !== ''
-            && ! in_array(
-                $filters['source'],
-                $sources->all(),
-                true
-            )
-        ) {
+        if ($filters['source'] !== '' && ! in_array($filters['source'], $sources->all(), true)) {
             $filters['source'] = '';
         }
 
         $query = Lead::query()
             ->accessibleTo($user)
+            ->select([
+                'leads.id',
+                'leads.branch_id',
+                'leads.lead_status_id',
+                'leads.name',
+                'leads.first_name',
+                'leads.last_name',
+                'leads.company_name',
+                'leads.phone',
+                'leads.email',
+                'leads.source',
+                'leads.donation_type',
+                'leads.donation_type_id',
+                'leads.donation_cycle',
+                'leads.donation_value',
+                'leads.donation_purpose',
+                'leads.donation_purpose_id',
+                'leads.assigned_employee',
+                'leads.assigned_user_id',
+                'leads.responding_user_id',
+                'leads.created_by',
+                'leads.created_by_user_id',
+                'leads.contact_date',
+                'leads.next_follow_up_at',
+                'leads.created_at',
+            ])
             ->with([
-                'status.stage:id,name_ar',
+                'status.stage:id,name_ar,color,position,code',
+                'branch:id,name_ar,name_en,code',
                 'assignedUser:id,name',
+                'respondingUser:id,name',
+                'phones:id,lead_id,phone,label,is_primary',
+                'relatedPeople:id,lead_id,name,phone,relationship_type',
+                'donationTypeRel:id,name_ar',
+                'donationPurposeRel:id,name_ar',
             ]);
-
         if ($filters['q'] !== '') {
             $search = '%'.$filters['q'].'%';
-
-            $query->where(
-                function ($searchQuery) use ($search): void {
-                    $searchQuery
-                        ->where('name', 'like', $search)
-                        ->orWhere('company_name', 'like', $search)
-                        ->orWhere('phone', 'like', $search)
-                        ->orWhere('email', 'like', $search)
-                        ->orWhere('source', 'like', $search);
-                }
-            );
+            $query->where(function ($searchQuery) use ($search): void {
+                $searchQuery
+                    ->where('name', 'like', $search)
+                    ->orWhere('company_name', 'like', $search)
+                    ->orWhere('phone', 'like', $search)
+                    ->orWhere('email', 'like', $search)
+                    ->orWhere('donation_type', 'like', $search)
+                    ->orWhere('donation_purpose', 'like', $search)
+                    ->orWhere('response_details', 'like', $search)
+                    ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', $search))
+                    ->orWhereHas('relatedPeople', static fn ($rq) => $rq->where('name', 'like', $search)->orWhere('phone', 'like', $search));
+            });
         }
 
+        // Filter: Stage
+        if ($filters['stage'] !== '') {
+            $stageVal = $filters['stage'];
+            $query->whereHas('status', function ($statusQuery) use ($stageVal): void {
+                if (is_numeric($stageVal)) {
+                    $statusQuery->where('pipeline_stage_id', (int) $stageVal);
+                } else {
+                    $statusQuery->whereHas('stage', static fn ($sq) => $sq->where('code', $stageVal));
+                }
+            });
+        }
+
+        // Filter: Status
         if ($filters['status'] !== '') {
-            $query->whereHas(
-                'status',
-                function ($statusQuery) use ($filters): void {
-                    $statusQuery->where(
-                        'code',
-                        $filters['status']
-                    );
+            $statusVal = $filters['status'];
+            $query->whereHas('status', function ($statusQuery) use ($statusVal): void {
+                if (is_numeric($statusVal)) {
+                    $statusQuery->where('id', (int) $statusVal);
+                } else {
+                    $statusQuery->where('code', $statusVal);
                 }
-            );
+            });
         }
 
+        // Filter: Donation Type
+        if ($filters['donation_type'] !== '') {
+            $query->where(function ($q) use ($filters): void {
+                $q->where('donation_type', $filters['donation_type'])
+                    ->orWhere('donation_type_id', $filters['donation_type']);
+            });
+        }
+
+        // Filter: Donation Cycle
+        if ($filters['donation_cycle'] !== '') {
+            $query->where('donation_cycle', $filters['donation_cycle']);
+        }
+
+        // Filter: Employee
         if ($filters['employee'] !== '') {
-            $query->where(
-                function ($employeeQuery) use ($filters): void {
-                    $employeeQuery
-                        ->whereHas(
-                            'assignedUser',
-                            function ($userQuery) use ($filters): void {
-                                $userQuery->where(
-                                    'name',
-                                    $filters['employee']
-                                );
-                            }
-                        )
-                        ->orWhere(
-                            function ($legacyQuery) use ($filters): void {
-                                $legacyQuery
-                                    ->whereNull('assigned_user_id')
-                                    ->where(
-                                        'assigned_employee',
-                                        $filters['employee']
-                                    );
-                            }
-                        );
-                }
-            );
+            $query->where(function ($employeeQuery) use ($filters): void {
+                $employeeQuery
+                    ->whereHas('assignedUser', static fn ($userQuery) => $userQuery->where('name', $filters['employee']))
+                    ->orWhereHas('respondingUser', static fn ($userQuery) => $userQuery->where('name', $filters['employee']))
+                    ->orWhere(static function ($legacyQuery) use ($filters): void {
+                        $legacyQuery
+                            ->whereNull('assigned_user_id')
+                            ->where('assigned_employee', $filters['employee']);
+                    });
+            });
         }
 
+        // Filter: Source
         if ($filters['source'] !== '') {
-            $query->where(
-                'source',
-                $filters['source']
-            );
+            $query->where('source', $filters['source']);
         }
 
+        // Filter: Follow-up
         switch ($filters['follow_up']) {
             case 'today':
-                $query->whereBetween(
-                    'next_follow_up_at',
-                    [
-                        now()->startOfDay(),
-                        now()->endOfDay(),
-                    ]
-                );
+                $query->whereBetween('next_follow_up_at', [
+                    now()->startOfDay(),
+                    now()->endOfDay(),
+                ]);
                 break;
 
             case 'upcoming':
-                $query->where(
-                    'next_follow_up_at',
-                    '>',
-                    now()->endOfDay()
-                );
+                $query->where('next_follow_up_at', '>', now()->endOfDay());
                 break;
 
             case 'overdue':
-                $query->where(
-                    'next_follow_up_at',
-                    '<',
-                    now()->startOfDay()
-                );
+                $query->where('next_follow_up_at', '<', now()->startOfDay());
                 break;
 
             case 'none':
@@ -264,106 +269,102 @@ class LeadController extends Controller
                 break;
         }
 
+        // Sort
         switch ($filters['sort']) {
             case 'oldest':
-                $query
-                    ->orderBy('created_at')
-                    ->orderBy('id');
+                $query->orderBy('created_at')->orderBy('id');
                 break;
 
             case 'name':
-                $query
-                    ->orderBy('name')
-                    ->orderByDesc('id');
+                $query->orderBy('name')->orderByDesc('id');
                 break;
 
             case 'followup':
-                $query
-                    ->orderByRaw(
-                        'next_follow_up_at IS NULL'
-                    )
+                $query->orderByRaw('next_follow_up_at IS NULL')
                     ->orderBy('next_follow_up_at')
                     ->orderByDesc('id');
                 break;
 
+            case 'donation_value':
+                $query->orderByDesc('donation_value')->orderByDesc('id');
+                break;
+
             default:
-                $query
-                    ->orderByDesc('created_at')
-                    ->orderByDesc('id');
+                $query->orderByDesc('created_at')->orderByDesc('id');
                 break;
         }
 
-        $leads = $query
-            ->paginate(20)
-            ->withQueryString();
-
-        $totalLeads = (int) $statuses
-            ->sum('leads_count');
+        $leads = $query->paginate(20)->withQueryString();
+        $totalLeads = Lead::query()->accessibleTo($user)->count();
 
         $activeQuery = array_filter(
             $filters,
-            static fn (string $value): bool => $value !== ''
-                && $value !== 'latest'
+            static fn ($value) => $value !== '' && $value !== 'latest'
         );
 
-        $queryWithoutStatus = $activeQuery;
+        $queryWithoutStatus = $request->query();
+        unset($queryWithoutStatus['status'], $queryWithoutStatus['stage'], $queryWithoutStatus['page']);
 
-        unset($queryWithoutStatus['status']);
-
-        return view(
-            'leads.index',
-            compact(
-                'leads',
-                'statuses',
-                'employees',
-                'sources',
-                'filters',
-                'activeQuery',
-                'queryWithoutStatus',
-                'totalLeads'
-            )
-        );
+        return view('leads.index', [
+            'leads' => $leads,
+            'stages' => $stages,
+            'statuses' => $statuses,
+            'donationTypes' => $donationTypes,
+            'donationPurposes' => $donationPurposes,
+            'donationCycles' => self::DONATION_CYCLES,
+            'employees' => $employees,
+            'sources' => $sources,
+            'filters' => $filters,
+            'activeQuery' => $activeQuery,
+            'queryWithoutStatus' => $queryWithoutStatus,
+            'totalLeads' => $totalLeads,
+        ]);
     }
 
     public function create(Request $request): View|RedirectResponse
     {
-
         $this->assertCrmV2Database();
 
         $actor = $request->user();
         $assignedEmployee = trim((string) $actor->name);
 
-        abort_if(
-            $assignedEmployee === '',
-            403,
-            'Employee identity is required.'
-        );
+        abort_if($assignedEmployee === '', 403, 'Employee identity is required.');
 
-        $canAssignLead = $actor->hasPermission(
-            CrmPermission::LEADS_ASSIGN
-        );
+        $canAssignLead = $actor->hasPermission(CrmPermission::LEADS_ASSIGN);
         $assignableUsers = LeadAssignment::assignableUsers($actor);
         $campaigns = Campaign::query()
             ->with('users:id')
             ->when(
                 ! $actor->isSuperAdmin(),
-                static fn ($query) => $actor->hasPermission(
-                    CrmPermission::CAMPAIGNS_CREATE,
-                )
+                static fn ($query) => $actor->hasPermission(CrmPermission::CAMPAIGNS_CREATE)
                     ? $query->where('created_by_user_id', $actor->id)
                     : $query->whereRaw('1 = 0'),
             )
             ->orderByDesc('starts_at')
             ->get(['id', 'name', 'starts_at']);
+
         $campaign = $this->campaignForManualLead($request);
 
-        $statuses = LeadStatus::query()
+        $stages = PipelineStage::query()
+            ->with('statuses')
+            ->where('is_active', true)
             ->orderBy('position')
-            ->get([
-                'id',
-                'code',
-                'name_ar',
-            ]);
+            ->get();
+
+        $statuses = LeadStatus::query()
+            ->with('stage')
+            ->orderBy('position')
+            ->get();
+
+        $donationTypes = DonationType::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
+        $donationPurposes = DonationPurpose::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
 
         $sources = Lead::query()
             ->accessibleTo($actor)
@@ -373,276 +374,121 @@ class LeadController extends Controller
             ->orderBy('source')
             ->pluck('source');
 
-        $totalLeads = Lead::query()
-            ->accessibleTo($actor)
-            ->count();
+        $totalLeads = Lead::query()->accessibleTo($actor)->count();
+        $defaultStageId = $stages->firstWhere('code', 'new')?->id ?? $stages->first()?->id;
 
-        return view(
-            'leads.create',
-            compact(
-                'statuses',
-                'sources',
-                'assignedEmployee',
-                'canAssignLead',
-                'assignableUsers',
-                'totalLeads',
-                'campaign',
-                'campaigns'
-            )
-        );
+        return view('leads.create', [
+            'branches' => Branch::query()->where('is_active', true)->orderBy('name_ar')->get(),
+            'stages' => $stages,
+            'statuses' => $statuses,
+            'defaultStageId' => $defaultStageId,
+            'donationTypes' => $donationTypes,
+            'donationPurposes' => $donationPurposes,
+            'donationCycles' => self::DONATION_CYCLES,
+            'sources' => $sources,
+            'assignedEmployee' => $assignedEmployee,
+            'canAssignLead' => $canAssignLead,
+            'assignableUsers' => $assignableUsers,
+            'totalLeads' => $totalLeads,
+            'campaign' => $campaign,
+            'campaigns' => $campaigns,
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
     {
-
         $this->assertCrmV2Database();
 
         $actor = $request->user();
         $campaign = $this->campaignForManualLead($request);
         $creatorName = trim((string) $actor->name);
 
-        abort_if(
-            $creatorName === '',
-            403,
-            'Employee identity is required.'
-        );
+        abort_if($creatorName === '', 403, 'Employee identity is required.');
 
-        $statusInput = $request->validate(
-            [
-                'lead_status_id' => [
-                    'required',
-                    'integer',
-                    'exists:lead_statuses,id',
-                ],
-            ],
-            [
-                'lead_status_id.required' => 'حالة العميل مطلوبة.',
-                'lead_status_id.exists' => 'حالة العميل المختارة غير صحيحة.',
-            ]
-        );
-
-        $status = LeadStatus::query()->findOrFail(
-            (int) $statusInput['lead_status_id']
-        );
-
-        $quotationStageCodes = [
-            'quotation',
-            'discussion',
-            'contract_closed',
-            'execution',
-        ];
-
-        $isQuotationStage = in_array(
-            $status->code,
-            $quotationStageCodes,
-            true
-        );
-
-        /*
-         * CRM CREATE REQUIRED NEXT DATE V3 START
-         *
-         * Required for every new customer status
-         * except no_answer and not_interested.
-         */
-        $requiresNextFollowUp = ! in_array(
-            (string) $status->code,
-            [
-                'new',
-                'no_answer',
-                'not_interested',
-                'execution',
-            ],
-            true
-        );
-
-        /* CRM CREATE REQUIRED NEXT DATE V3 END */
-
-        /* CRM NEW EXECUTION NO FOLLOWUP V7 */
-
+        // Validation rules
         $rules = [
-            'first_name' => [
-                'required',
-                'string',
-                'max:75',
-            ],
-            'last_name' => [
-                'nullable',
-                'string',
-                'max:75',
-            ],
-            'phone' => [
-                'required',
-                'string',
-                'max:50',
-            ],
-            'source' => [
-                'required',
-                'string',
-                'max:100',
-            ],
-            'assigned_user_id' => [
-                'nullable',
-                'integer',
-                'exists:users,id',
-            ],
-            'lead_status_id' => [
-                'required',
-                'integer',
-                'exists:lead_statuses,id',
-            ],
-            'next_follow_up_at' => [
-                $requiresNextFollowUp
-                    ? 'required'
-                    : 'nullable',
-                'date_format:Y-m-d\TH:i',
-            ],
-
-            'company_name' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-            'activity' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-            'governorate' => [
-                'nullable',
-                'string',
-                'max:100',
-            ],
-            'address' => [
-                'nullable',
-                'string',
-                'max:255',
-            ],
-            'users_count' => [
-                'nullable',
-                'integer',
-                'min:0',
-                'max:1000000',
-            ],
-            'branches_count' => [
-                'nullable',
-                'integer',
-                'min:0',
-                'max:1000000',
-            ],
-            'job_title' => [
-                'nullable',
-                'string',
-                'max:150',
-            ],
-            'disinterest_reason' => [
-                'nullable',
-                'string',
-                'max:5000',
-            ],
-            'solution_type' => [
-                'nullable',
-                'in:call_center,erp',
-            ],
-            'lines_count' => [
-                'nullable',
-                'integer',
-                'min:1',
-                'max:1000000',
-            ],
-            'extensions' => [
-                'nullable',
-                'string',
-                'max:5000',
-            ],
-            'departments' => [
-                'nullable',
-                'string',
-                'max:5000',
-            ],
-            'quotation_file' => [
-                'nullable',
-                'file',
-                'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg',
-                'max:2048',
-            ],
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'name' => ['nullable', 'string', 'max:150'],
+            'first_name' => ['nullable', 'string', 'max:75'],
+            'last_name' => ['nullable', 'string', 'max:75'],
+            'phone' => ['required', 'string', 'max:50'],
+            'additional_phones' => ['nullable', 'array'],
+            'additional_phones.*.phone' => ['nullable', 'string', 'max:50'],
+            'additional_phones.*.label' => ['nullable', 'string', 'max:50'],
+            'donation_type' => ['nullable', 'string', 'max:100'],
+            'donation_type_id' => ['nullable', 'integer', 'exists:donation_types,id'],
+            'donation_cycle' => ['nullable', 'string', 'max:50'],
+            'donation_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
+            'donation_purpose' => ['nullable', 'string', 'max:150'],
+            'donation_purpose_id' => ['nullable', 'integer', 'exists:donation_purposes,id'],
+            'responding_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'lead_status_id' => ['nullable', 'integer', 'exists:lead_statuses,id'],
+            'pipeline_stage_id' => ['nullable', 'integer', 'exists:pipeline_stages,id'],
+            'contact_date' => ['nullable', 'date'],
+            'next_follow_up_at' => ['nullable', 'string'],
+            'response_details' => ['nullable', 'string', 'max:10000'],
+            'related_people' => ['nullable', 'array'],
+            'related_people.*.name' => ['nullable', 'string', 'max:150'],
+            'related_people.*.phone' => ['nullable', 'string', 'max:50'],
+            'related_people.*.relationship_type' => ['nullable', 'string', 'max:100'],
+            'related_people.*.notes' => ['nullable', 'string', 'max:1000'],
+            'source' => ['nullable', 'string', 'max:100'],
+            'company_name' => ['nullable', 'string', 'max:150'],
+            'activity' => ['nullable', 'string', 'max:150'],
+            'governorate' => ['nullable', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
         ];
 
-        if ($status->code === 'not_interested') {
-            $rules['disinterest_reason'] = [
-                'required',
-                'string',
-                'max:5000',
-            ];
+        $validated = $request->validate($rules, [
+            'phone.required' => 'رقم الهاتف الأساسي مطلوب.',
+            'donation_value.numeric' => 'قيمة التبرع يجب أن تكون قيمة رقمية صحيحة.',
+            'donation_value.min' => 'قيمة التبرع لا يمكن أن تكون سالبة.',
+        ]);
+
+        // Customer Name resolution
+        $nameInput = trim((string) ($validated['name'] ?? ''));
+        $firstNameInput = trim((string) ($validated['first_name'] ?? ''));
+        $lastNameInput = trim((string) ($validated['last_name'] ?? ''));
+
+        if ($nameInput === '' && $firstNameInput === '') {
+            return redirect()->back()->withInput()->withErrors([
+                'name' => 'اسم العميل / المتبرع مطلوب.',
+            ]);
         }
 
-        if ($isQuotationStage) {
-            $rules['solution_type'] = [
-                'required',
-                'in:call_center,erp',
-            ];
-
-            $rules['quotation_file'] = [
-                'required',
-                'file',
-                'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg',
-                'max:2048',
-            ];
-
-            if (
-                $request->input('solution_type')
-                === 'call_center'
-            ) {
-                $rules['lines_count'] = [
-                    'required',
-                    'integer',
-                    'min:1',
-                    'max:1000000',
-                ];
-
-                $rules['extensions'] = [
-                    'required',
-                    'string',
-                    'max:5000',
-                ];
-            }
-
-            if (
-                $request->input('solution_type')
-                === 'erp'
-            ) {
-                $rules['departments'] = [
-                    'required',
-                    'string',
-                    'max:5000',
-                ];
-            }
+        if ($nameInput !== '') {
+            $fullName = $nameInput;
+            $nameParts = preg_split('/\s+/u', $fullName, 2);
+            $firstName = $nameParts[0] ?? $fullName;
+            $lastName = $nameParts[1] ?? ($lastNameInput !== '' ? $lastNameInput : null);
+        } else {
+            $firstName = $firstNameInput;
+            $lastName = $lastNameInput !== '' ? $lastNameInput : null;
+            $fullName = trim($firstName.' '.($lastName ?? ''));
         }
 
-        $validated = $request->validate(
-            $rules,
-            [
-                'first_name.required' => 'اسم العميل الأول مطلوب.',
-                'phone.required' => 'رقم الهاتف مطلوب.',
-                'source.required' => 'المصدر مطلوب.',
-                'next_follow_up_at.required' => 'حدد موعد المتابعة القادمة.',
-                'next_follow_up_at.date_format' => 'موعد المتابعة القادمة غير صحيح.',
-                'disinterest_reason.required' => 'سبب عدم الاهتمام مطلوب.',
-                'solution_type.required' => 'نوع النظام مطلوب.',
-                'lines_count.required' => 'عدد الخطوط مطلوب.',
-                'extensions.required' => 'الملحقات مطلوبة.',
-                'departments.required' => 'الأقسام مطلوبة.',
-                'quotation_file.required' => 'ملف عرض السعر مطلوب.',
-                'quotation_file.mimes' => 'صيغة ملف عرض السعر غير مدعومة.',
-                'quotation_file.max' => 'حجم ملف عرض السعر يجب ألا يتجاوز 2 ميجابايت.',
-            ]
-        );
+        // Status / Stage resolution
+        $status = null;
+        if (! empty($validated['lead_status_id'])) {
+            $status = LeadStatus::query()->find((int) $validated['lead_status_id']);
+        } elseif (! empty($validated['pipeline_stage_id'])) {
+            $stage = PipelineStage::query()->find((int) $validated['pipeline_stage_id']);
+            $status = $stage?->statuses()->first();
+        }
+
+        if ($status === null) {
+            $newStage = PipelineStage::query()->where('code', 'new')->first();
+            $status = $newStage?->statuses()->first() ?? LeadStatus::query()->orderBy('position')->first();
+        }
+
+        abort_if($status === null, 422, 'No valid lead status found.');
+
+        // Assignee resolution
         $assignee = $actor;
-
-        if (isset($validated['assigned_user_id'])) {
-            $assignee = User::query()->findOrFail(
-                (int) $validated['assigned_user_id']
-            );
-
+        $assignedUserId = $validated['assigned_user_id'] ?? $validated['responding_user_id'] ?? null;
+        if ($assignedUserId !== null) {
+            $assignee = User::query()->findOrFail((int) $assignedUserId);
             abort_unless(
                 LeadAssignment::canAssignTo($actor, $assignee),
                 403,
@@ -652,237 +498,161 @@ class LeadController extends Controller
 
         if ($campaign !== null) {
             abort_unless(
-                $assignee->is($actor)
-                || $campaign->users()->whereKey($assignee->id)->exists(),
+                $assignee->is($actor) || $campaign->users()->whereKey($assignee->id)->exists(),
                 403,
                 'The assignee must belong to this campaign.'
             );
         }
 
         $assignedEmployee = trim((string) $assignee->name);
+        abort_if($assignedEmployee === '', 403, 'Assignee identity is required.');
 
-        abort_if(
-            $assignedEmployee === '',
-            403,
-            'Assignee identity is required.'
-        );
-
-        $nullableText = static function (
-            mixed $value
-        ): ?string {
-            $value = trim((string) $value);
-
-            return $value === ''
-                ? null
-                : $value;
-        };
-
-        $detailsEnabled = in_array(
-            $status->code,
-            [
-                'interested',
-                'no_answer',
-                'meeting',
-                'quotation',
-                'discussion',
-                'contract_closed',
-                'execution',
-            ],
-            true
-        );
-
-        $quotationPath = null;
-
-        if ($isQuotationStage) {
-            $quotationPath = $request
-                ->file('quotation_file')
-                ->store(
-                    'crm-v2/quotation-files',
-                    'local'
-                );
-
-            if (! $quotationPath) {
-                throw new \RuntimeException(
-                    'Quotation file could not be stored.'
-                );
+        // Donation lookup names
+        $donationTypeStr = $validated['donation_type'] ?? null;
+        if (! empty($validated['donation_type_id'])) {
+            $typeModel = DonationType::query()->find((int) $validated['donation_type_id']);
+            if ($typeModel) {
+                $donationTypeStr = $typeModel->name_ar;
             }
         }
 
-        $firstName = trim(
-            $validated['first_name']
-        );
+        $donationPurposeStr = $validated['donation_purpose'] ?? null;
+        if (! empty($validated['donation_purpose_id'])) {
+            $purposeModel = DonationPurpose::query()->find((int) $validated['donation_purpose_id']);
+            if ($purposeModel) {
+                $donationPurposeStr = $purposeModel->name_ar;
+            }
+        }
 
-        $lastName = trim(
-            (string) ($validated['last_name'] ?? '')
-        );
-
-        $fullName = preg_replace(
-            '/\s+/u',
-            ' ',
-            trim($firstName.' '.$lastName)
-        );
+        // Dates parsing
+        $contactDate = ! empty($validated['contact_date'])
+            ? Carbon::parse($validated['contact_date'])
+            : null;
 
         $nextFollowUpAt = null;
+        if (! empty($validated['next_follow_up_at'])) {
+            try {
+                $nextFollowUpAt = Carbon::parse($validated['next_follow_up_at']);
+            } catch (\Throwable) {
+                $nextFollowUpAt = null;
+            }
+        }
 
-        if ($requiresNextFollowUp) {
-            $nextFollowUpAt =
-                Carbon::createFromFormat(
-                    'Y-m-d\TH:i',
-                    (string)
-                        $validated[
-                            'next_follow_up_at'
-                        ],
-                    (string)
-                        config(
-                            'app.timezone',
-                            'UTC'
-                        )
-                );
+        $branchId = null;
+        if ($actor->isSuperAdmin() && ! empty($validated['branch_id'])) {
+            $branchId = (int) $validated['branch_id'];
+        } elseif (! empty($actor->branch_id)) {
+            $branchId = (int) $actor->branch_id;
+        } elseif (! empty($validated['branch_id'])) {
+            $branchId = (int) $validated['branch_id'];
+        } else {
+            $branchId = Branch::value('id');
         }
 
         $leadData = [
+            'branch_id' => $branchId,
             'lead_status_id' => $status->id,
             'name' => $fullName,
             'first_name' => $firstName,
-            'last_name' => $lastName === ''
-                ? null
-                : $lastName,
-            'phone' => trim($validated['phone']),
-            'source' => trim($validated['source']),
+            'last_name' => $lastName,
+            'phone' => trim((string) $validated['phone']),
+            'email' => $request->input('email'),
+            'source' => trim((string) ($validated['source'] ?? 'مباشر')),
             'assigned_employee' => $assignedEmployee,
             'assigned_user_id' => $assignee->id,
+            'responding_user_id' => $assignee->id,
             'created_by' => $creatorName,
             'created_by_user_id' => $actor->id,
-            'quotation_sent' => $isQuotationStage,
-
-            'company_name' => $detailsEnabled
-                ? $nullableText(
-                    $validated['company_name'] ?? null
-                )
-                : null,
-
-            'activity' => $detailsEnabled
-                ? $nullableText(
-                    $validated['activity'] ?? null
-                )
-                : null,
-
-            'governorate' => $detailsEnabled
-                ? $nullableText(
-                    $validated['governorate'] ?? null
-                )
-                : null,
-
-            'address' => $detailsEnabled
-                ? $nullableText(
-                    $validated['address'] ?? null
-                )
-                : null,
-
-            'users_count' => (
-                $detailsEnabled
-                && isset($validated['users_count'])
-                && $validated['users_count'] !== ''
-            )
-                ? (int) $validated['users_count']
-                : null,
-
-            'branches_count' => (
-                $detailsEnabled
-                && isset($validated['branches_count'])
-                && $validated['branches_count'] !== ''
-            )
-                ? (int) $validated['branches_count']
-                : null,
-
-            'job_title' => $detailsEnabled
-                ? $nullableText(
-                    $validated['job_title'] ?? null
-                )
-                : null,
-
-            'disinterest_reason' => $status->code === 'not_interested'
-                    ? $nullableText(
-                        $validated[
-                            'disinterest_reason'
-                        ] ?? null
-                    )
-                    : null,
-
-            'solution_type' => $isQuotationStage
-                    ? $nullableText(
-                        $validated['solution_type'] ?? null
-                    )
-                    : null,
-
-            'lines_count' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'call_center'
-            )
-                ? (int) $validated['lines_count']
-                : null,
-
-            'extensions' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'call_center'
-            )
-                ? $nullableText(
-                    $validated['extensions'] ?? null
-                )
-                : null,
-
-            'departments' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'erp'
-            )
-                ? $nullableText(
-                    $validated['departments'] ?? null
-                )
-                : null,
-
+            'donation_type' => $donationTypeStr,
+            'donation_type_id' => ! empty($validated['donation_type_id']) ? (int) $validated['donation_type_id'] : null,
+            'donation_cycle' => $validated['donation_cycle'] ?? null,
+            'donation_value' => isset($validated['donation_value']) && $validated['donation_value'] !== '' ? (float) $validated['donation_value'] : null,
+            'donation_purpose' => $donationPurposeStr,
+            'donation_purpose_id' => ! empty($validated['donation_purpose_id']) ? (int) $validated['donation_purpose_id'] : null,
+            'response_details' => $validated['response_details'] ?? null,
+            'notes' => $validated['response_details'] ?? null,
+            'contact_date' => $contactDate,
             'next_follow_up_at' => $nextFollowUpAt,
-
-            'quotation_file_path' => $quotationPath,
+            'company_name' => $validated['company_name'] ?? null,
+            'activity' => $validated['activity'] ?? null,
+            'governorate' => $validated['governorate'] ?? null,
+            'address' => $validated['address'] ?? null,
         ];
 
-        try {
-            $createdLead = DB::transaction(
-                static function () use ($campaign, $leadData): Lead {
-                    $lead = Lead::query()->create($leadData);
+        $createdLead = DB::transaction(function () use ($leadData, $validated, $campaign, $actor, $status, $assignee, $assignedEmployee): Lead {
+            $lead = Lead::query()->create($leadData);
 
-                    $campaign?->leads()->attach($lead->id);
+            // 1. Primary phone in lead_phones
+            LeadPhone::query()->create([
+                'lead_id' => $lead->id,
+                'phone' => $lead->phone,
+                'is_primary' => true,
+                'label' => 'أساسي',
+            ]);
 
-                    return $lead;
+            // 2. Additional phones
+            if (! empty($validated['additional_phones']) && is_array($validated['additional_phones'])) {
+                foreach ($validated['additional_phones'] as $phoneRow) {
+                    $extraPhone = trim((string) ($phoneRow['phone'] ?? ''));
+                    if ($extraPhone !== '' && $extraPhone !== $lead->phone) {
+                        LeadPhone::query()->create([
+                            'lead_id' => $lead->id,
+                            'phone' => $extraPhone,
+                            'is_primary' => false,
+                            'label' => trim((string) ($phoneRow['label'] ?? 'إضافي')) ?: 'إضافي',
+                        ]);
+                    }
                 }
-            );
-        } catch (\Throwable $exception) {
-            if ($quotationPath !== null) {
-                Storage::disk('local')
-                    ->delete($quotationPath);
             }
 
-            throw $exception;
-        }
+            // 3. Related people
+            if (! empty($validated['related_people']) && is_array($validated['related_people'])) {
+                foreach ($validated['related_people'] as $personRow) {
+                    $pName = trim((string) ($personRow['name'] ?? ''));
+                    if ($pName !== '') {
+                        LeadRelatedPerson::query()->create([
+                            'lead_id' => $lead->id,
+                            'name' => $pName,
+                            'phone' => trim((string) ($personRow['phone'] ?? '')) ?: null,
+                            'relationship_type' => trim((string) ($personRow['relationship_type'] ?? 'أخرى')) ?: 'أخرى',
+                            'notes' => trim((string) ($personRow['notes'] ?? '')) ?: null,
+                        ]);
+                    }
+                }
+            }
 
-        if (
-            $request->input('after_save')
-                === 'followup'
-            && $status->code === 'no_answer'
-        ) {
-            return redirect()
-                ->route(
-                    'v2.leads.followups.index',
-                    $createdLead
-                )
-                ->with(
-                    'success',
-                    'تم حفظ بيانات العميل بنجاح. '
-                    .'سجل المتابعة الآن.'
-                );
-        }
+            // 4. Attach campaign
+            $campaign?->leads()->attach($lead->id);
+
+            // 5. Initial status history
+            LeadStatusHistory::query()->create([
+                'lead_id' => $lead->id,
+                'from_status_id' => null,
+                'to_status_id' => $status->id,
+                'changed_by' => $actor->name,
+                'changed_by_user_id' => $actor->id,
+                'note' => ! empty($lead->response_details) ? 'إنشاء العميل: '.$lead->response_details : 'إنشاء العميل',
+                'changed_at' => now(),
+            ]);
+
+            // 6. Initial followup if response details or contact date provided
+            if (! empty($lead->response_details) || $lead->contact_date !== null || $lead->next_follow_up_at !== null) {
+                LeadFollowup::query()->create([
+                    'branch_id' => $lead->branch_id,
+                    'lead_id' => $lead->id,
+                    'from_status_id' => null,
+                    'to_status_id' => $status->id,
+                    'employee_name' => $assignedEmployee,
+                    'user_id' => $assignee->id,
+                    'communication_type' => 'مكالمة هاتفية',
+                    'outcome' => $lead->response_details ?? 'تم إنشاء العميل',
+                    'next_follow_up_at' => $lead->next_follow_up_at,
+                    'followed_up_at' => $lead->contact_date ?? now(),
+                ]);
+            }
+
+            return $lead;
+        });
 
         if ($campaign !== null) {
             return redirect()
@@ -895,335 +665,162 @@ class LeadController extends Controller
 
         return redirect()
             ->route('v2.leads')
-            ->with(
-                'success',
-                'تمت إضافة العميل بنجاح.'
-            );
+            ->with('success', 'تمت إضافة العميل بنجاح.');
     }
 
-    private function campaignForManualLead(Request $request): ?Campaign
+    public function show(Request $request, string $lead): View|RedirectResponse
     {
-        $campaignId = $request->integer('campaign_id');
-
-        if ($campaignId <= 0) {
-            return null;
-        }
-
-        $campaign = Campaign::query()->findOrFail($campaignId);
-        $actor = $request->user();
-
-        abort_unless(
-            $actor->isSuperAdmin()
-            || (
-                (int) $campaign->created_by_user_id === (int) $actor->id
-                && $actor->hasPermission(CrmPermission::CAMPAIGNS_CREATE)
-            ),
-            403,
-        );
-
-        return $campaign;
-    }
-
-    public function show(
-        Request $request,
-        string $lead
-    ): View|RedirectResponse {
-
         $this->assertCrmV2Database();
 
         $leadRecord = Lead::query()
             ->with([
                 'status.stage',
-                'assignedUser:id,name',
+                'branch:id,name_ar,name_en,code',
+                'assignedUser:id,name,username',
+                'respondingUser:id,name,username',
+                'creator:id,name',
+                'phones',
+                'relatedPeople',
+                'donationTypeRel:id,name_ar',
+                'donationPurposeRel:id,name_ar',
+                'statusHistory.changedByUser:id,name',
+                'statusHistory.fromStatus.stage',
+                'statusHistory.toStatus.stage',
+                'followups.user:id,name',
+                'followups.fromStatus.stage',
+                'followups.toStatus.stage',
             ])
-            ->findOrFail(
-                (int) $lead
-            );
+            ->findOrFail((int) $lead);
+
         Gate::authorize('view', $leadRecord);
 
-        $latestFollowups = $request->user()->can(
-            'leads.followups.view'
-        )
-            ? LeadFollowup::query()
-                ->with([
-                    'fromStatus.stage',
-                    'toStatus.stage',
-                    'user:id,name',
-                ])
-                ->where(
-                    'lead_id',
-                    $leadRecord->id
-                )
-                ->orderByDesc(
-                    'followed_up_at'
-                )
-                ->orderByDesc('id')
-                ->limit(5)
-                ->get()
-            : collect();
+        // Build unified chronological timeline
+        $timelineEvents = collect();
 
-        $followupCommunicationTypes = [
-            'call' => 'اتصال هاتفي',
-            'whatsapp' => 'واتساب',
-            'meeting' => 'مقابلة',
-            'email' => 'بريد إلكتروني',
-            'other' => 'متابعة عامة',
-        ];
+        foreach ($leadRecord->followups as $followup) {
+            $timelineEvents->push([
+                'type' => 'followup',
+                'timestamp' => $followup->followed_up_at ?? $followup->created_at,
+                'employee' => $followup->user?->name ?? $followup->employee_name ?? 'موظف',
+                'from_status' => $followup->fromStatus?->name_ar,
+                'to_status' => $followup->toStatus?->name_ar,
+                'communication_type' => $followup->communication_type,
+                'details' => $followup->outcome,
+                'next_follow_up' => $followup->next_follow_up_at,
+                'field_changes' => $followup->field_changes,
+            ]);
+        }
 
-        $statusColorValue = trim(
-            (string) $leadRecord->status?->color
-        );
+        foreach ($leadRecord->statusHistory as $history) {
+            // Check if there's already a matching followup at approximately the same minute
+            $alreadyIncluded = $timelineEvents->contains(function ($item) use ($history) {
+                return $item['type'] === 'followup'
+                    && abs(($item['timestamp']?->timestamp ?? 0) - ($history->changed_at?->timestamp ?? 0)) < 60;
+            });
 
-        $statusColor = preg_match(
-            '/^#[0-9a-fA-F]{6}$/',
-            $statusColorValue
-        ) === 1
-            ? $statusColorValue
-            : '#64748b';
-
-        $quotationPath = trim(
-            (string)
-                $leadRecord->quotation_file_path
-        );
-
-        $quotationPrefix =
-            'crm-v2/quotation-files/';
-
-        $safeQuotationPath = (
-            $quotationPath !== ''
-            && str_starts_with(
-                $quotationPath,
-                $quotationPrefix
-            )
-            && ! str_contains(
-                $quotationPath,
-                '..'
-            )
-            && ! str_starts_with(
-                $quotationPath,
-                '/'
-            )
-        );
-
-        $hasQuotationFile = false;
-
-        if ($safeQuotationPath) {
-            try {
-                $disk = Storage::disk('local');
-
-                if ($disk->exists($quotationPath)) {
-                    $quotationDirectory = realpath(
-                        $disk->path(
-                            'crm-v2/quotation-files'
-                        )
-                    );
-
-                    $absolutePath = realpath(
-                        $disk->path(
-                            $quotationPath
-                        )
-                    );
-
-                    $hasQuotationFile = (
-                        $quotationDirectory !== false
-                        && $absolutePath !== false
-                        && str_starts_with(
-                            $absolutePath,
-                            $quotationDirectory
-                                .DIRECTORY_SEPARATOR
-                        )
-                    );
-                }
-            } catch (\Throwable) {
-                $hasQuotationFile = false;
+            if (! $alreadyIncluded) {
+                $timelineEvents->push([
+                    'type' => 'status_change',
+                    'timestamp' => $history->changed_at ?? $history->created_at,
+                    'employee' => $history->changedByUser?->name ?? $history->changed_by ?? 'النظام',
+                    'from_status' => $history->fromStatus?->name_ar,
+                    'to_status' => $history->toStatus?->name_ar,
+                    'communication_type' => null,
+                    'details' => $history->note,
+                    'next_follow_up' => null,
+                    'field_changes' => null,
+                ]);
             }
         }
 
-        $quotationFileName =
-            $hasQuotationFile
-                ? basename($quotationPath)
-                : null;
+        $timelineEvents = $timelineEvents->sortByDesc('timestamp')->values();
 
-        $solutionType = trim(
-            (string) $leadRecord->solution_type
-        );
+        $statusColorValue = trim((string) $leadRecord->status?->stage?->color ?? $leadRecord->status?->color ?? '#3478f6');
+        $statusColor = preg_match('/^#[0-9a-fA-F]{6}$/', $statusColorValue) === 1 ? $statusColorValue : '#3478f6';
 
-        $solutionLabels = [
-            'call_center' => 'Call Center',
-            'erp' => 'ERP',
-        ];
-
-        $solutionTypeLabel =
-            $solutionLabels[$solutionType]
-            ?? (
-                $solutionType !== ''
-                    ? $solutionType
-                    : 'غير محدد'
-            );
-
-        $phoneRaw = trim(
-            (string) $leadRecord->phone
-        );
-
-        $phoneDigits = preg_replace(
-            '/\D+/',
-            '',
-            $phoneRaw
-        ) ?? '';
-
-        $callPhone = preg_match(
-            '/^[0-9]{2,20}$/',
-            $phoneDigits
-        ) === 1
-            ? $phoneDigits
-            : null;
-
-        $whatsappPhone = null;
-
-        if (
-            str_starts_with(
-                $phoneDigits,
-                '0020'
-            )
-        ) {
-            $whatsappPhone = substr(
-                $phoneDigits,
-                2
-            );
-        } elseif (
-            preg_match(
-                '/^01[0125][0-9]{8}$/',
-                $phoneDigits
-            ) === 1
-        ) {
-            $whatsappPhone =
-                '20'.substr(
-                    $phoneDigits,
-                    1
-                );
-        } elseif (
-            preg_match(
-                '/^20[0-9]{10}$/',
-                $phoneDigits
-            ) === 1
-        ) {
-            $whatsappPhone =
-                $phoneDigits;
-        } elseif (
-            preg_match(
-                '/^[1-9][0-9]{7,14}$/',
-                $phoneDigits
-            ) === 1
-        ) {
-            $whatsappPhone =
-                $phoneDigits;
-        }
+        // Phone formatting
+        $phoneRaw = trim((string) $leadRecord->phone);
+        $phoneDigits = preg_replace('/\D+/', '', $phoneRaw) ?? '';
+        $callPhone = preg_match('/^[0-9]{2,20}$/', $phoneDigits) === 1 ? $phoneDigits : null;
+        $whatsappPhone = $callPhone;
 
         $backQuery = [];
-
         $queryLimits = [
             'q' => 150,
+            'stage' => 50,
             'status' => 50,
+            'donation_type' => 100,
+            'donation_cycle' => 50,
             'employee' => 150,
             'source' => 100,
             'follow_up' => 20,
             'sort' => 20,
         ];
 
-        foreach (
-            $queryLimits as $key => $limit
-        ) {
-            $rawValue = $request->query(
-                $key,
-                ''
-            );
-
-            if (! is_scalar($rawValue)) {
-                continue;
-            }
-
-            $value = mb_substr(
-                trim((string) $rawValue),
-                0,
-                $limit
-            );
-
-            if ($value !== '') {
-                $backQuery[$key] = $value;
+        foreach ($queryLimits as $key => $limit) {
+            $rawValue = $request->query($key, '');
+            if (is_scalar($rawValue) && trim((string) $rawValue) !== '') {
+                $backQuery[$key] = mb_substr(trim((string) $rawValue), 0, $limit);
             }
         }
 
-        $pageRaw = $request->query('page');
-
-        $page = is_scalar($pageRaw)
-            ? filter_var(
-                (string) $pageRaw,
-                FILTER_VALIDATE_INT,
-                [
-                    'options' => [
-                        'min_range' => 1,
-                    ],
-                ]
-            )
-            : false;
-
-        if ($page !== false) {
-            $backQuery['page'] = (int) $page;
-        }
-
-        return view(
-            'leads.show',
-            [
-                'lead' => $leadRecord,
-                'latestFollowups' => $latestFollowups,
-                'followupCommunicationTypes' => $followupCommunicationTypes,
-                'statusColor' => $statusColor,
-                'hasQuotationFile' => $hasQuotationFile,
-                'quotationFileName' => $quotationFileName,
-                'solutionTypeLabel' => $solutionTypeLabel,
-                'callPhone' => $callPhone,
-                'whatsappPhone' => $whatsappPhone,
-                'backQuery' => $backQuery,
-            ]
-        );
+        return view('leads.show', [
+            'lead' => $leadRecord,
+            'timelineEvents' => $timelineEvents,
+            'statusColor' => $statusColor,
+            'callPhone' => $callPhone,
+            'whatsappPhone' => $whatsappPhone,
+            'donationCycles' => self::DONATION_CYCLES,
+            'backQuery' => $backQuery,
+        ]);
     }
 
-    public function edit(
-        Request $request,
-        string $lead
-    ): View|RedirectResponse {
-
+    public function edit(Request $request, string $lead): View|RedirectResponse
+    {
         $this->assertCrmV2Database();
 
         $leadRecord = Lead::query()
-            ->with('assignedUser:id,name,username')
-            ->findOrFail(
-                (int) $lead
-            );
+            ->with([
+                'branch:id,name_ar,name_en,code',
+                'assignedUser:id,name,username',
+                'respondingUser:id,name,username',
+                'phones',
+                'relatedPeople',
+                'status.stage',
+            ])
+            ->findOrFail((int) $lead);
+
         Gate::authorize('update', $leadRecord);
 
         $actor = $request->user();
-        $canAssignLead = $actor->hasPermission(
-            CrmPermission::LEADS_ASSIGN
-        );
+        $canAssignLead = $actor->hasPermission(CrmPermission::LEADS_ASSIGN);
         $assignableUsers = $canAssignLead
             ? LeadAssignment::assignableUsers($actor)
             : collect();
-        if (
-            $canAssignLead
-            && $leadRecord->assignedUser !== null
-            && ! $assignableUsers->contains(
-                'id',
-                $leadRecord->assignedUser->id
-            )
-        ) {
+
+        if ($canAssignLead && $leadRecord->assignedUser !== null && ! $assignableUsers->contains('id', $leadRecord->assignedUser->id)) {
             $assignableUsers->push($leadRecord->assignedUser);
         }
+
+        $stages = PipelineStage::query()
+            ->with('statuses')
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
 
         $statuses = LeadStatus::query()
             ->with('stage')
             ->orderBy('position')
-            ->orderBy('id')
+            ->get();
+
+        $donationTypes = DonationType::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
+        $donationPurposes = DonationPurpose::query()
+            ->where('is_active', true)
+            ->orderBy('position')
             ->get();
 
         $sources = Lead::query()
@@ -1234,1545 +831,366 @@ class LeadController extends Controller
             ->orderBy('source')
             ->pluck('source');
 
-        $quotationPath = trim(
-            (string) $leadRecord->quotation_file_path
-        );
-
-        $hasQuotationFile = (
-            $quotationPath !== ''
-            && Storage::disk('local')->exists(
-                $quotationPath
-            )
-        );
-
-        $quotationFileName = $hasQuotationFile
-            ? basename($quotationPath)
-            : null;
-
-        $quotationFileHelpText = $hasQuotationFile
-            ? 'يوجد ملف حالي: '
-                .$quotationFileName
-                .' — ارفع ملفًا جديدًا لاستبداله.'
-            : 'لا يوجد ملف حالي — الحد الأقصى 2MB.';
-
-        return view(
-            'leads.edit',
-            [
-                'lead' => $leadRecord,
-                'statuses' => $statuses,
-                'sources' => $sources,
-                'canAssignLead' => $canAssignLead,
-                'assignableUsers' => $assignableUsers,
-                'assignedEmployee' => $leadRecord->assignedUser?->name
-                    ?? $leadRecord->assigned_employee
-                    ?: 'غير مسند',
-                'hasQuotationFile' => $hasQuotationFile,
-                'quotationFileName' => $quotationFileName,
-                'quotationFileHelpText' => $quotationFileHelpText,
-            ]
-        );
+        return view('leads.edit', [
+            'lead' => $leadRecord,
+            'branches' => Branch::query()->orderBy('name_ar')->get(),
+            'stages' => $stages,
+            'statuses' => $statuses,
+            'donationTypes' => $donationTypes,
+            'donationPurposes' => $donationPurposes,
+            'donationCycles' => self::DONATION_CYCLES,
+            'sources' => $sources,
+            'canAssignLead' => $canAssignLead,
+            'assignableUsers' => $assignableUsers,
+            'assignedEmployee' => $leadRecord->assignedUser?->name ?? $leadRecord->assigned_employee ?: 'غير مسند',
+        ]);
     }
 
-    public function exportSelected(
-        Request $request
-    ): BinaryFileResponse|RedirectResponse {
-
+    public function update(Request $request, string $lead): RedirectResponse
+    {
         $this->assertCrmV2Database();
 
-        abort_unless(
-            class_exists(\ZipArchive::class)
-            && class_exists(\XMLWriter::class),
-            500,
-            'XLSX export support is unavailable.'
-        );
+        $leadRecord = Lead::query()
+            ->with(['status.stage', 'phones', 'relatedPeople'])
+            ->findOrFail((int) $lead);
 
-        $validated = $request->validate(
-            [
-                'lead_ids' => [
-                    'required',
-                    'array',
-                    'min:1',
-                    'max:1000',
-                ],
-                'lead_ids.*' => [
-                    'required',
-                    'integer',
-                    'distinct',
-                    Rule::exists(
-                        'leads',
-                        'id'
-                    ),
-                ],
-            ],
-            [
-                'lead_ids.required' => 'اختر عميلًا واحدًا على الأقل.',
-                'lead_ids.array' => 'قائمة العملاء المختارة غير صحيحة.',
-                'lead_ids.min' => 'اختر عميلًا واحدًا على الأقل.',
-                'lead_ids.max' => 'لا يمكن تصدير أكثر من 1000 عميل مرة واحدة.',
-                'lead_ids.*.integer' => 'أحد العملاء المختارين غير صحيح.',
-                'lead_ids.*.distinct' => 'تم تكرار أحد العملاء المختارين.',
-                'lead_ids.*.exists' => 'أحد العملاء المختارين لم يعد موجودًا.',
-            ]
-        );
-
-        $selectedIds = collect(
-            $validated['lead_ids']
-        )
-            ->map(
-                static fn (mixed $id): int => (int) $id
-            )
-            ->unique()
-            ->values();
-
-        $leadsById = Lead::query()
-            ->accessibleTo($request->user())
-            ->with([
-                'status.stage',
-                'assignedUser:id,name',
-            ])
-            ->whereIn(
-                'id',
-                $selectedIds->all()
-            )
-            ->get()
-            ->keyBy('id');
-
-        $selectedLeads = $selectedIds
-            ->map(
-                static fn (int $id): ?Lead => $leadsById->get($id)
-            )
-            ->filter()
-            ->values();
-
-        abort_unless(
-            $selectedLeads->count()
-                === $selectedIds->count(),
-            422,
-            'One or more selected leads could not be loaded.'
-        );
-
-        $headers = [
-            'رقم العميل',
-            'اسم العميل',
-            'الهاتف',
-            'البريد الإلكتروني',
-            'الشركة',
-            'النشاط',
-            'المحافظة',
-            'العنوان',
-            'عدد المستخدمين',
-            'عدد الفروع',
-            'المسمى الوظيفي',
-            'المصدر',
-            'الحالة',
-            'المرحلة',
-            'الموظف المسؤول',
-            'المتابعة القادمة',
-            'نوع النظام',
-            'عدد الخطوط',
-            'الملحقات',
-            'الأقسام',
-            'عرض السعر مرسل',
-            'ملف عرض السعر',
-            'سبب عدم الاهتمام',
-            'ملاحظات',
-            'أنشأ بواسطة',
-            'تاريخ الإضافة',
-            'آخر تحديث',
-        ];
-
-        $solutionLabels = [
-            'call_center' => 'Call Center',
-            'erp' => 'ERP',
-        ];
-
-        $formatDate = static function (
-            mixed $value
-        ): string {
-            if ($value instanceof \DateTimeInterface) {
-                return $value->format(
-                    'Y-m-d H:i'
-                );
-            }
-
-            if (is_string($value)) {
-                return trim($value);
-            }
-
-            return '';
-        };
-
-        $rows = $selectedLeads
-            ->map(
-                static function (
-                    Lead $lead
-                ) use (
-                    $formatDate,
-                    $solutionLabels
-                ): array {
-                    $quotationPath = trim(
-                        (string)
-                            $lead->quotation_file_path
-                    );
-
-                    $quotationFileState =
-                        'غير مرفوع';
-
-                    if ($quotationPath !== '') {
-                        try {
-                            $quotationFileState =
-                                Storage::disk('local')
-                                    ->exists(
-                                        $quotationPath
-                                    )
-                                    ? 'موجود'
-                                    : 'المسار مسجل والملف غير موجود';
-                        } catch (\Throwable) {
-                            $quotationFileState =
-                                'تعذر التحقق من الملف';
-                        }
-                    }
-
-                    $solutionType = trim(
-                        (string) $lead->solution_type
-                    );
-
-                    return [
-                        (int) $lead->id,
-                        (string) $lead->name,
-                        (string) $lead->phone,
-                        (string) $lead->email,
-                        (string) $lead->company_name,
-                        (string) $lead->activity,
-                        (string) $lead->governorate,
-                        (string) $lead->address,
-
-                        $lead->users_count === null
-                            ? ''
-                            : (int) $lead->users_count,
-
-                        $lead->branches_count === null
-                            ? ''
-                            : (int) $lead->branches_count,
-
-                        (string) $lead->job_title,
-                        (string) $lead->source,
-
-                        (string) (
-                            $lead->status?->name_ar
-                            ?? ''
-                        ),
-
-                        (string) (
-                            $lead->status?->stage
-                                ?->name_ar
-                            ?? ''
-                        ),
-
-                        (string) (
-                            $lead->assignedUser?->name
-                            ?? $lead->assigned_employee
-                        ),
-
-                        $formatDate(
-                            $lead->next_follow_up_at
-                        ),
-
-                        $solutionLabels[
-                            $solutionType
-                        ] ?? $solutionType,
-
-                        $lead->lines_count === null
-                            ? ''
-                            : (int) $lead->lines_count,
-
-                        (string) $lead->extensions,
-                        (string) $lead->departments,
-
-                        $lead->quotation_sent
-                            ? 'نعم'
-                            : 'لا',
-
-                        $quotationFileState,
-
-                        (string)
-                            $lead->disinterest_reason,
-
-                        (string) $lead->notes,
-                        (string) $lead->created_by,
-
-                        $formatDate(
-                            $lead->created_at
-                        ),
-
-                        $formatDate(
-                            $lead->updated_at
-                        ),
-                    ];
-                }
-            )
-            ->all();
-
-        $temporaryFile = tempnam(
-            sys_get_temp_dir(),
-            'crm-v2-selected-leads-'
-        );
-
-        if (
-            ! is_string($temporaryFile)
-            || $temporaryFile === ''
-        ) {
-            throw new \RuntimeException(
-                'Could not create the temporary export file.'
-            );
-        }
-
-        try {
-            $this->writeSelectedLeadsWorkbook(
-                $temporaryFile,
-                $headers,
-                $rows
-            );
-
-            $downloadName =
-                'crm-v2-selected-leads-'
-                .now()->format('Ymd-His')
-                .'.xlsx';
-
-            return response()
-                ->download(
-                    $temporaryFile,
-                    $downloadName,
-                    [
-                        'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                        'Cache-Control' => 'private, no-store, max-age=0',
-                        'Pragma' => 'no-cache',
-                        'X-Content-Type-Options' => 'nosniff',
-                    ]
-                )
-                ->deleteFileAfterSend(true);
-        } catch (\Throwable $exception) {
-            if (is_file($temporaryFile)) {
-                @unlink($temporaryFile);
-            }
-
-            throw $exception;
-        }
-    }
-
-    public function quotationPreview(
-        string $lead
-    ): BinaryFileResponse|RedirectResponse {
-
-        $this->assertCrmV2Database();
-
-        $leadRecord = Lead::query()->findOrFail(
-            (int) $lead
-        );
-        Gate::authorize('viewQuotation', $leadRecord);
-
-        $quotationPath = trim(
-            (string) $leadRecord->quotation_file_path
-        );
-
-        $expectedPrefix =
-            'crm-v2/quotation-files/';
-
-        $isSafeRelativePath = (
-            $quotationPath !== ''
-            && str_starts_with(
-                $quotationPath,
-                $expectedPrefix
-            )
-            && ! str_contains(
-                $quotationPath,
-                '..'
-            )
-            && ! str_starts_with(
-                $quotationPath,
-                '/'
-            )
-        );
-
-        abort_unless(
-            $isSafeRelativePath,
-            404,
-            'Quotation file was not found.'
-        );
-
-        $disk = Storage::disk('local');
-
-        abort_unless(
-            $disk->exists($quotationPath),
-            404,
-            'Quotation file was not found.'
-        );
-
-        $quotationDirectory = realpath(
-            $disk->path(
-                'crm-v2/quotation-files'
-            )
-        );
-
-        $absolutePath = realpath(
-            $disk->path($quotationPath)
-        );
-
-        $isInsideQuotationDirectory = (
-            $quotationDirectory !== false
-            && $absolutePath !== false
-            && str_starts_with(
-                $absolutePath,
-                $quotationDirectory
-                    .DIRECTORY_SEPARATOR
-            )
-        );
-
-        abort_unless(
-            $isInsideQuotationDirectory,
-            404,
-            'Quotation file was not found.'
-        );
-
-        $extension = strtolower(
-            pathinfo(
-                $absolutePath,
-                PATHINFO_EXTENSION
-            )
-        );
-
-        $allowedExtensions = [
-            'pdf',
-            'png',
-            'jpg',
-            'jpeg',
-            'doc',
-            'docx',
-            'xls',
-            'xlsx',
-        ];
-
-        abort_unless(
-            in_array(
-                $extension,
-                $allowedExtensions,
-                true
-            ),
-            415,
-            'Quotation file type is not supported.'
-        );
-
-        try {
-            $mimeType = $disk->mimeType(
-                $quotationPath
-            );
-        } catch (\Throwable) {
-            $mimeType = null;
-        }
-
-        if (
-            ! is_string($mimeType)
-            || trim($mimeType) === ''
-        ) {
-            $mimeType =
-                'application/octet-stream';
-        }
-
-        $fileName = basename($absolutePath);
-
-        return response()->file(
-            $absolutePath,
-            [
-                'Content-Type' => $mimeType,
-                'Content-Disposition' => 'inline; filename="'
-                    .addcslashes(
-                        $fileName,
-                        '"\\'
-                    )
-                    .'"',
-                'X-Content-Type-Options' => 'nosniff',
-                'Cache-Control' => 'private, no-store, max-age=0',
-                'Pragma' => 'no-cache',
-            ]
-        );
-    }
-
-    public function update(
-        Request $request,
-        string $lead
-    ): RedirectResponse {
-
-        $this->assertCrmV2Database();
-
-        $leadRecord = Lead::query()->findOrFail(
-            (int) $lead
-        );
         Gate::authorize('update', $leadRecord);
         $actor = $request->user();
 
-        $status = LeadStatus::query()
-            ->findOrFail(
-                (int)
-                    $leadRecord->lead_status_id
-            );
-
-        $businessStatusCodes = [
-            'interested',
-            'no_answer',
-            'meeting',
-            'quotation',
-            'discussion',
-            'contract_closed',
-            'execution',
+        $rules = [
+            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'name' => ['nullable', 'string', 'max:150'],
+            'first_name' => ['nullable', 'string', 'max:75'],
+            'last_name' => ['nullable', 'string', 'max:75'],
+            'phone' => ['required', 'string', 'max:50'],
+            'additional_phones' => ['nullable', 'array'],
+            'additional_phones.*.phone' => ['nullable', 'string', 'max:50'],
+            'additional_phones.*.label' => ['nullable', 'string', 'max:50'],
+            'donation_type' => ['nullable', 'string', 'max:100'],
+            'donation_type_id' => ['nullable', 'integer', 'exists:donation_types,id'],
+            'donation_cycle' => ['nullable', 'string', 'max:50'],
+            'donation_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
+            'donation_purpose' => ['nullable', 'string', 'max:150'],
+            'donation_purpose_id' => ['nullable', 'integer', 'exists:donation_purposes,id'],
+            'responding_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
+            'lead_status_id' => ['nullable', 'integer', 'exists:lead_statuses,id'],
+            'pipeline_stage_id' => ['nullable', 'integer', 'exists:pipeline_stages,id'],
+            'contact_date' => ['nullable', 'date'],
+            'next_follow_up_at' => ['nullable', 'string'],
+            'response_details' => ['nullable', 'string', 'max:10000'],
+            'related_people' => ['nullable', 'array'],
+            'related_people.*.name' => ['nullable', 'string', 'max:150'],
+            'related_people.*.phone' => ['nullable', 'string', 'max:50'],
+            'related_people.*.relationship_type' => ['nullable', 'string', 'max:100'],
+            'related_people.*.notes' => ['nullable', 'string', 'max:1000'],
+            'source' => ['nullable', 'string', 'max:100'],
+            'company_name' => ['nullable', 'string', 'max:150'],
+            'activity' => ['nullable', 'string', 'max:150'],
+            'governorate' => ['nullable', 'string', 'max:100'],
+            'address' => ['nullable', 'string', 'max:255'],
         ];
 
-        $quotationStageCodes = [
-            'quotation',
-            'discussion',
-            'contract_closed',
-            'execution',
-        ];
+        $validated = $request->validate($rules, [
+            'phone.required' => 'رقم الهاتف الأساسي مطلوب.',
+            'donation_value.numeric' => 'قيمة التبرع يجب أن تكون رقمية.',
+            'donation_value.min' => 'قيمة التبرع لا يمكن أن تكون سالبة.',
+        ]);
 
-        $hasBusinessDetails = in_array(
-            $status->code,
-            $businessStatusCodes,
-            true
-        );
+        // Customer Name resolution
+        $nameInput = trim((string) ($validated['name'] ?? ''));
+        $firstNameInput = trim((string) ($validated['first_name'] ?? ''));
+        $lastNameInput = trim((string) ($validated['last_name'] ?? ''));
 
-        $isQuotationStage = in_array(
-            $status->code,
-            $quotationStageCodes,
-            true
-        );
+        if ($nameInput !== '') {
+            $fullName = $nameInput;
+            $nameParts = preg_split('/\s+/u', $fullName, 2);
+            $firstName = $nameParts[0] ?? $fullName;
+            $lastName = $nameParts[1] ?? ($lastNameInput !== '' ? $lastNameInput : null);
+        } elseif ($firstNameInput !== '') {
+            $firstName = $firstNameInput;
+            $lastName = $lastNameInput !== '' ? $lastNameInput : null;
+            $fullName = trim($firstName.' '.($lastName ?? ''));
+        } else {
+            $fullName = $leadRecord->name;
+            $firstName = $leadRecord->first_name;
+            $lastName = $leadRecord->last_name;
+        }
 
-        $currentQuotationPath = trim(
-            (string) $leadRecord->quotation_file_path
-        );
+        // Status resolution
+        $oldStatusId = (int) $leadRecord->lead_status_id;
+        $newStatusId = $oldStatusId;
 
-        $hasCurrentQuotationFile = (
-            $currentQuotationPath !== ''
-            && Storage::disk('local')->exists(
-                $currentQuotationPath
-            )
-        );
+        if (! empty($validated['lead_status_id'])) {
+            $newStatusId = (int) $validated['lead_status_id'];
+        } elseif (! empty($validated['pipeline_stage_id'])) {
+            $stage = PipelineStage::query()->find((int) $validated['pipeline_stage_id']);
+            $firstStatus = $stage?->statuses()->first();
+            if ($firstStatus) {
+                $newStatusId = (int) $firstStatus->id;
+            }
+        }
 
-        $solutionTypeInput = trim(
-            (string) $request->input(
-                'solution_type',
-                ''
-            )
-        );
-
-        $validated = $request->validate(
-            [
-                'first_name' => [
-                    'required',
-                    'string',
-                    'max:75',
-                ],
-                'last_name' => [
-                    'nullable',
-                    'string',
-                    'max:75',
-                ],
-                'phone' => [
-                    'required',
-                    'string',
-                    'max:50',
-                ],
-                'source' => [
-                    'required',
-                    'string',
-                    'max:100',
-                ],
-                'assigned_user_id' => [
-                    'nullable',
-                    'integer',
-                    'exists:users,id',
-                ],
-                'company_name' => [
-                    'nullable',
-                    'string',
-                    'max:150',
-                ],
-                'activity' => [
-                    'nullable',
-                    'string',
-                    'max:150',
-                ],
-                'governorate' => [
-                    'nullable',
-                    'string',
-                    'max:100',
-                ],
-                'address' => [
-                    'nullable',
-                    'string',
-                    'max:255',
-                ],
-                'users_count' => [
-                    'nullable',
-                    'integer',
-                    'min:0',
-                    'max:1000000',
-                ],
-                'branches_count' => [
-                    'nullable',
-                    'integer',
-                    'min:0',
-                    'max:1000000',
-                ],
-                'job_title' => [
-                    'nullable',
-                    'string',
-                    'max:150',
-                ],
-                'disinterest_reason' => [
-                    Rule::requiredIf(
-                        $status->code ===
-                            'not_interested'
-                    ),
-                    'nullable',
-                    'string',
-                    'max:5000',
-                ],
-                'solution_type' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                    ),
-                    'nullable',
-                    Rule::in([
-                        'call_center',
-                        'erp',
-                    ]),
-                ],
-                'lines_count' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput ===
-                            'call_center'
-                    ),
-                    'nullable',
-                    'integer',
-                    'min:1',
-                    'max:1000000',
-                ],
-                'extensions' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput ===
-                            'call_center'
-                    ),
-                    'nullable',
-                    'string',
-                    'max:5000',
-                ],
-                'departments' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput === 'erp'
-                    ),
-                    'nullable',
-                    'string',
-                    'max:5000',
-                ],
-                'quotation_file' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && ! $hasCurrentQuotationFile
-                    ),
-                    'nullable',
-                    'file',
-                    'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg',
-                    'max:2048',
-                ],
-            ],
-            [
-                'first_name.required' => 'اسم العميل الأول مطلوب.',
-                'phone.required' => 'رقم الهاتف مطلوب.',
-                'source.required' => 'المصدر مطلوب.',
-                'disinterest_reason.required' => 'سبب عدم الاهتمام مطلوب.',
-                'solution_type.required' => 'نوع النظام مطلوب.',
-                'lines_count.required' => 'عدد الخطوط مطلوب.',
-                'extensions.required' => 'تفاصيل الملحقات مطلوبة.',
-                'departments.required' => 'الأقسام المطلوبة مطلوبة.',
-                'quotation_file.required' => 'ملف عرض السعر مطلوب.',
-                'quotation_file.max' => 'الحد الأقصى لملف عرض السعر 2MB.',
-                'quotation_file.mimes' => 'صيغة ملف عرض السعر غير مدعومة.',
-            ]
-        );
+        // Assignee resolution
         $assignmentChanged = false;
         $assignee = null;
+        $assignedUserId = $validated['assigned_user_id'] ?? $validated['responding_user_id'] ?? null;
 
-        if (isset($validated['assigned_user_id'])) {
-            $assignee = User::query()->findOrFail(
-                (int) $validated['assigned_user_id']
-            );
-            $assignmentChanged = (int) $leadRecord->assigned_user_id
-                !== (int) $assignee->id;
+        if ($assignedUserId !== null) {
+            $assignee = User::query()->findOrFail((int) $assignedUserId);
+            $assignmentChanged = (int) $leadRecord->assigned_user_id !== (int) $assignee->id;
 
             if ($assignmentChanged) {
                 abort_unless(
-                    $actor->hasPermission(CrmPermission::LEADS_ASSIGN)
-                    && LeadAssignment::canAssignTo($actor, $assignee),
+                    $actor->hasPermission(CrmPermission::LEADS_ASSIGN) && LeadAssignment::canAssignTo($actor, $assignee),
                     403,
                     'You cannot reassign this lead to the selected user.'
                 );
             }
         }
 
-        $nullableText = static function (
-            mixed $value
-        ): ?string {
-            if (! is_string($value)) {
-                return null;
+        // Donation lookup names
+        $donationTypeStr = $validated['donation_type'] ?? $leadRecord->donation_type;
+        if (! empty($validated['donation_type_id'])) {
+            $typeModel = DonationType::query()->find((int) $validated['donation_type_id']);
+            if ($typeModel) {
+                $donationTypeStr = $typeModel->name_ar;
             }
-
-            $value = trim($value);
-
-            return $value === ''
-                ? null
-                : $value;
-        };
-
-        $integerOrNull = static function (
-            mixed $value
-        ): ?int {
-            if ($value === null || $value === '') {
-                return null;
-            }
-
-            return (int) $value;
-        };
-
-        $firstName = trim(
-            (string) $validated['first_name']
-        );
-
-        $lastName = $nullableText(
-            $validated['last_name'] ?? null
-        );
-
-        $fullName = trim(
-            $firstName.' '.($lastName ?? '')
-        );
-
-        $newQuotationPath = null;
-
-        if ($request->hasFile('quotation_file')) {
-            $storedPath = $request
-                ->file('quotation_file')
-                ->store(
-                    'crm-v2/quotation-files',
-                    'local'
-                );
-
-            if (
-                ! is_string($storedPath)
-                || trim($storedPath) === ''
-            ) {
-                throw new \RuntimeException(
-                    'Quotation file storage failed.'
-                );
-            }
-
-            $newQuotationPath = $storedPath;
         }
 
+        $donationPurposeStr = $validated['donation_purpose'] ?? $leadRecord->donation_purpose;
+        if (! empty($validated['donation_purpose_id'])) {
+            $purposeModel = DonationPurpose::query()->find((int) $validated['donation_purpose_id']);
+            if ($purposeModel) {
+                $donationPurposeStr = $purposeModel->name_ar;
+            }
+        }
+
+        // Dates
+        $contactDate = ! empty($validated['contact_date'])
+            ? Carbon::parse($validated['contact_date'])
+            : $leadRecord->contact_date;
+
+        $nextFollowUpAt = $leadRecord->next_follow_up_at;
+        if (array_key_exists('next_follow_up_at', $validated)) {
+            $nextFollowUpAt = ! empty($validated['next_follow_up_at'])
+                ? Carbon::parse($validated['next_follow_up_at'])
+                : null;
+        }
+
+        $targetStatus = LeadStatus::query()->find($newStatusId);
+        if ($targetStatus && $targetStatus->code === 'not_interested') {
+            $nextFollowUpAt = null;
+        }
         $leadData = [
             'name' => $fullName,
             'first_name' => $firstName,
             'last_name' => $lastName,
-            'phone' => trim(
-                (string) $validated['phone']
-            ),
-            'source' => trim(
-                (string) $validated['source']
-            ),
-
-            'company_name' => $hasBusinessDetails
-                ? $nullableText(
-                    $validated['company_name'] ?? null
-                )
-                : null,
-
-            'activity' => $hasBusinessDetails
-                ? $nullableText(
-                    $validated['activity'] ?? null
-                )
-                : null,
-
-            'governorate' => $hasBusinessDetails
-                ? $nullableText(
-                    $validated['governorate'] ?? null
-                )
-                : null,
-
-            'address' => $hasBusinessDetails
-                ? $nullableText(
-                    $validated['address'] ?? null
-                )
-                : null,
-
-            'users_count' => $hasBusinessDetails
-                ? $integerOrNull(
-                    $validated['users_count'] ?? null
-                )
-                : null,
-
-            'branches_count' => $hasBusinessDetails
-                ? $integerOrNull(
-                    $validated['branches_count'] ?? null
-                )
-                : null,
-
-            'job_title' => $hasBusinessDetails
-                ? $nullableText(
-                    $validated['job_title'] ?? null
-                )
-                : null,
-
-            'disinterest_reason' => $status->code === 'not_interested'
-                    ? $nullableText(
-                        $validated[
-                            'disinterest_reason'
-                        ] ?? null
-                    )
-                    : null,
-
-            'solution_type' => $isQuotationStage
-                ? $nullableText(
-                    $validated['solution_type'] ?? null
-                )
-                : null,
-
-            'lines_count' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'call_center'
-            )
-                ? (int) $validated['lines_count']
-                : null,
-
-            'extensions' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'call_center'
-            )
-                ? $nullableText(
-                    $validated['extensions'] ?? null
-                )
-                : null,
-
-            'departments' => (
-                $isQuotationStage
-                && ($validated['solution_type'] ?? null)
-                    === 'erp'
-            )
-                ? $nullableText(
-                    $validated['departments'] ?? null
-                )
-                : null,
-
-            'quotation_sent' => $isQuotationStage,
-
-            'quotation_file_path' => $newQuotationPath
-                ?? (
-                    $hasCurrentQuotationFile
-                        ? $currentQuotationPath
-                        : null
-                ),
+            'phone' => trim((string) $validated['phone']),
+            'source' => trim((string) ($validated['source'] ?? $leadRecord->source)),
+            'lead_status_id' => $newStatusId,
+            'donation_type' => $donationTypeStr,
+            'donation_type_id' => ! empty($validated['donation_type_id']) ? (int) $validated['donation_type_id'] : $leadRecord->donation_type_id,
+            'donation_cycle' => $validated['donation_cycle'] ?? $leadRecord->donation_cycle,
+            'donation_value' => isset($validated['donation_value']) && $validated['donation_value'] !== '' ? (float) $validated['donation_value'] : $leadRecord->donation_value,
+            'donation_purpose' => $donationPurposeStr,
+            'donation_purpose_id' => ! empty($validated['donation_purpose_id']) ? (int) $validated['donation_purpose_id'] : $leadRecord->donation_purpose_id,
+            'response_details' => $validated['response_details'] ?? $leadRecord->response_details,
+            'notes' => $validated['response_details'] ?? $leadRecord->notes,
+            'contact_date' => $contactDate,
+            'next_follow_up_at' => $nextFollowUpAt,
+            'governorate' => $validated['governorate'] ?? $leadRecord->governorate,
+            'address' => $validated['address'] ?? $leadRecord->address,
         ];
+
+        if ($actor->isSuperAdmin() && array_key_exists('branch_id', $validated)) {
+            $leadData['branch_id'] = ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
+        }
+
         if ($assignmentChanged && $assignee !== null) {
             $assignedEmployee = trim((string) $assignee->name);
-
-            abort_if(
-                $assignedEmployee === '',
-                403,
-                'Assignee identity is required.'
-            );
-
+            abort_if($assignedEmployee === '', 403, 'Assignee identity is required.');
             $leadData['assigned_user_id'] = $assignee->id;
+            $leadData['responding_user_id'] = $assignee->id;
             $leadData['assigned_employee'] = $assignedEmployee;
         }
 
-        try {
-            DB::transaction(
-                static function () use (
-                    $leadRecord,
-                    $leadData
-                ): void {
-                    $leadRecord->update($leadData);
-                }
+        DB::transaction(function () use ($leadRecord, $leadData, $validated, $oldStatusId, $newStatusId, $actor): void {
+            $leadRecord->update($leadData);
+
+            // 1. Sync primary phone
+            LeadPhone::query()->updateOrInsert(
+                ['lead_id' => $leadRecord->id, 'is_primary' => true],
+                ['phone' => $leadRecord->phone, 'label' => 'أساسي', 'updated_at' => now()]
             );
-        } catch (\Throwable $exception) {
-            if ($newQuotationPath !== null) {
-                Storage::disk('local')->delete(
-                    $newQuotationPath
-                );
+
+            // 2. Sync additional phones
+            if (isset($validated['additional_phones']) && is_array($validated['additional_phones'])) {
+                // Remove existing additional phones
+                LeadPhone::query()
+                    ->where('lead_id', $leadRecord->id)
+                    ->where('is_primary', false)
+                    ->delete();
+
+                foreach ($validated['additional_phones'] as $phoneRow) {
+                    $extraPhone = trim((string) ($phoneRow['phone'] ?? ''));
+                    if ($extraPhone !== '' && $extraPhone !== $leadRecord->phone) {
+                        LeadPhone::query()->create([
+                            'lead_id' => $leadRecord->id,
+                            'phone' => $extraPhone,
+                            'is_primary' => false,
+                            'label' => trim((string) ($phoneRow['label'] ?? 'إضافي')) ?: 'إضافي',
+                        ]);
+                    }
+                }
             }
 
-            throw $exception;
-        }
+            // 3. Sync related people
+            if (isset($validated['related_people']) && is_array($validated['related_people'])) {
+                LeadRelatedPerson::query()
+                    ->where('lead_id', $leadRecord->id)
+                    ->delete();
 
-        if (
-            $newQuotationPath !== null
-            && $currentQuotationPath !== ''
-            && $currentQuotationPath
-                !== $newQuotationPath
-            && Storage::disk('local')->exists(
-                $currentQuotationPath
-            )
-        ) {
-            Storage::disk('local')->delete(
-                $currentQuotationPath
-            );
-        }
+                foreach ($validated['related_people'] as $personRow) {
+                    $pName = trim((string) ($personRow['name'] ?? ''));
+                    if ($pName !== '') {
+                        LeadRelatedPerson::query()->create([
+                            'lead_id' => $leadRecord->id,
+                            'name' => $pName,
+                            'phone' => trim((string) ($personRow['phone'] ?? '')) ?: null,
+                            'relationship_type' => trim((string) ($personRow['relationship_type'] ?? 'أخرى')) ?: 'أخرى',
+                            'notes' => trim((string) ($personRow['notes'] ?? '')) ?: null,
+                        ]);
+                    }
+                }
+            }
+
+            // 4. Status history if changed
+            if ($oldStatusId !== $newStatusId) {
+                LeadStatusHistory::query()->create([
+                    'lead_id' => $leadRecord->id,
+                    'from_status_id' => $oldStatusId,
+                    'to_status_id' => $newStatusId,
+                    'changed_by' => $actor->name,
+                    'changed_by_user_id' => $actor->id,
+                    'note' => 'تحديث الحالة من شاشة تعديل العميل',
+                    'changed_at' => now(),
+                ]);
+            }
+        });
 
         return redirect()
             ->route('v2.leads')
-            ->with(
-                'success',
-                'تم تحديث بيانات العميل '
-                .$fullName
-                .' بنجاح.'
-            );
+            ->with('success', 'تم تحديث بيانات العميل '.$fullName.' بنجاح.');
     }
 
-    public function destroy(
-        string $lead
-    ): RedirectResponse {
-
+    public function destroy(string $lead): RedirectResponse
+    {
         $this->assertCrmV2Database();
 
-        $leadRecord = Lead::query()->findOrFail(
-            (int) $lead
-        );
+        $leadRecord = Lead::query()->findOrFail((int) $lead);
         Gate::authorize('delete', $leadRecord);
 
-        $leadName = trim(
-            (string) $leadRecord->name
-        );
-
-        $quotationPath = trim(
-            (string) $leadRecord->quotation_file_path
-        );
-
-        DB::transaction(
-            static function () use (
-                $leadRecord
-            ): void {
-                $leadRecord->delete();
-            }
-        );
-
-        if (
-            $quotationPath !== ''
-            && Storage::disk('local')->exists(
-                $quotationPath
-            )
-        ) {
-            Storage::disk('local')->delete(
-                $quotationPath
-            );
-        }
+        DB::transaction(static function () use ($leadRecord): void {
+            $leadRecord->delete();
+        });
 
         return redirect()
             ->route('v2.leads')
-            ->with(
-                'success',
-                'تم حذف العميل '
-                .$leadName
-                .' بنجاح.'
-            );
+            ->with('success', 'تم حذف العميل بنجاح.');
     }
 
-    private function writeSelectedLeadsWorkbook(
-        string $path,
-        array $headers,
-        array $rows
-    ): void {
-        if ($headers === []) {
-            throw new \InvalidArgumentException(
-                'Workbook headers cannot be empty.'
-            );
+    public function exportSelected(Request $request): BinaryFileResponse|RedirectResponse
+    {
+        $this->assertCrmV2Database();
+        $actor = $request->user();
+
+        $leadIds = (array) $request->input('lead_ids', []);
+        $leadIds = array_filter(array_map('intval', $leadIds));
+
+        if ($leadIds === []) {
+            return redirect()->back()->withErrors(['lead_ids' => 'لم يتم تحديد أي عميل.']);
         }
 
-        $lastColumn = $this->xlsxColumnName(
-            count($headers)
-        );
+        $leads = Lead::query()
+            ->accessibleTo($actor)
+            ->with(['status.stage', 'assignedUser', 'phones', 'donationTypeRel'])
+            ->whereIn('id', $leadIds)
+            ->get();
 
-        $lastRow = count($rows) + 1;
+        if ($leads->count() !== count($leadIds)) {
+            abort(422, 'Invalid leads selected.');
+        }
 
-        $worksheetWriter = new \XMLWriter;
-
-        $worksheetWriter->openMemory();
-
-        $worksheetWriter->startDocument(
-            '1.0',
-            'UTF-8',
-            'yes'
-        );
-
-        $worksheetWriter->startElement(
-            'worksheet'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'xmlns',
-            'http://schemas.openxmlformats.org/spreadsheetml/2006/main'
-        );
-
-        $worksheetWriter->startElement(
-            'dimension'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'ref',
-            'A1:'.$lastColumn.$lastRow
-        );
-
-        $worksheetWriter->endElement();
-
-        $worksheetWriter->startElement(
-            'sheetViews'
-        );
-
-        $worksheetWriter->startElement(
-            'sheetView'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'workbookViewId',
-            '0'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'rightToLeft',
-            '1'
-        );
-
-        $worksheetWriter->startElement(
-            'pane'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'ySplit',
-            '1'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'topLeftCell',
-            'A2'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'activePane',
-            'bottomLeft'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'state',
-            'frozen'
-        );
-
-        $worksheetWriter->endElement();
-        $worksheetWriter->endElement();
-        $worksheetWriter->endElement();
-
-        $worksheetWriter->startElement(
-            'sheetFormatPr'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'defaultRowHeight',
-            '20'
-        );
-
-        $worksheetWriter->endElement();
-
-        $widths = [
-            10,
-            24,
-            16,
-            28,
-            22,
-            20,
-            16,
-            30,
-            14,
-            12,
-            20,
-            16,
-            16,
-            16,
-            20,
-            20,
-            16,
-            12,
-            28,
-            28,
-            15,
-            24,
-            30,
-            35,
-            20,
-            20,
-            20,
+        $fileName = 'customers-export-'.now()->format('Y-m-d-His').'.csv';
+        $headers = [
+            'Content-Type' => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
         ];
 
-        $worksheetWriter->startElement('cols');
+        $callback = function () use ($leads) {
+            $file = fopen('php://output', 'w');
+            // Add BOM for Excel UTF-8
+            fputs($file, "\xEF\xBB\xBF");
+            fputcsv($file, [
+                'ID',
+                'الاسم',
+                'الهاتف الأساسي',
+                'المرحلة',
+                'الحالة',
+                'نوع التبرع',
+                'دورة التبرع',
+                'قيمة التبرع',
+                'الموظف المسند',
+                'تاريخ التواصل',
+                'المتابعة القادمة',
+                'تفاصيل الرد',
+            ]);
 
-        foreach (
-            array_keys($headers) as $columnIndex
-        ) {
-            $excelColumn = $columnIndex + 1;
-
-            $worksheetWriter->startElement(
-                'col'
-            );
-
-            $worksheetWriter->writeAttribute(
-                'min',
-                (string) $excelColumn
-            );
-
-            $worksheetWriter->writeAttribute(
-                'max',
-                (string) $excelColumn
-            );
-
-            $worksheetWriter->writeAttribute(
-                'width',
-                (string) (
-                    $widths[$columnIndex]
-                    ?? 18
-                )
-            );
-
-            $worksheetWriter->writeAttribute(
-                'customWidth',
-                '1'
-            );
-
-            $worksheetWriter->endElement();
-        }
-
-        $worksheetWriter->endElement();
-
-        $worksheetWriter->startElement(
-            'sheetData'
-        );
-
-        $workbookRows = array_merge(
-            [$headers],
-            $rows
-        );
-
-        foreach (
-            $workbookRows as $rowIndex => $row
-        ) {
-            $excelRow = $rowIndex + 1;
-            $isHeader = $excelRow === 1;
-
-            $worksheetWriter->startElement(
-                'row'
-            );
-
-            $worksheetWriter->writeAttribute(
-                'r',
-                (string) $excelRow
-            );
-
-            if ($isHeader) {
-                $worksheetWriter->writeAttribute(
-                    'ht',
-                    '26'
-                );
-
-                $worksheetWriter->writeAttribute(
-                    'customHeight',
-                    '1'
-                );
+            foreach ($leads as $lead) {
+                fputcsv($file, [
+                    $lead->id,
+                    $lead->name,
+                    $lead->phone,
+                    $lead->status?->stage?->name_ar ?? '—',
+                    $lead->status?->name_ar ?? '—',
+                    $lead->donation_type ?? '—',
+                    $lead->donation_cycle ?? '—',
+                    $lead->donation_value !== null ? number_format((float) $lead->donation_value, 2) : '—',
+                    $lead->assignedUser?->name ?? $lead->assigned_employee ?? '—',
+                    $lead->contact_date?->format('Y-m-d') ?? '—',
+                    $lead->next_follow_up_at?->format('Y-m-d H:i') ?? '—',
+                    $lead->response_details ?? '',
+                ]);
             }
-
-            foreach (
-                array_keys($headers) as $columnIndex
-            ) {
-                $cellReference =
-                    $this->xlsxColumnName(
-                        $columnIndex + 1
-                    )
-                    .$excelRow;
-
-                $value =
-                    $row[$columnIndex]
-                    ?? '';
-
-                $worksheetWriter->startElement(
-                    'c'
-                );
-
-                $worksheetWriter->writeAttribute(
-                    'r',
-                    $cellReference
-                );
-
-                $worksheetWriter->writeAttribute(
-                    's',
-                    $isHeader
-                        ? '1'
-                        : '2'
-                );
-
-                if (
-                    ! $isHeader
-                    && (
-                        is_int($value)
-                        || is_float($value)
-                    )
-                ) {
-                    $worksheetWriter->writeAttribute(
-                        't',
-                        'n'
-                    );
-
-                    $worksheetWriter->startElement(
-                        'v'
-                    );
-
-                    $worksheetWriter->text(
-                        (string) $value
-                    );
-
-                    $worksheetWriter->endElement();
-                } else {
-                    $worksheetWriter->writeAttribute(
-                        't',
-                        'inlineStr'
-                    );
-
-                    $worksheetWriter->startElement(
-                        'is'
-                    );
-
-                    $worksheetWriter->startElement(
-                        't'
-                    );
-
-                    $worksheetWriter->writeAttribute(
-                        'xml:space',
-                        'preserve'
-                    );
-
-                    $worksheetWriter->text(
-                        (string) $value
-                    );
-
-                    $worksheetWriter->endElement();
-                    $worksheetWriter->endElement();
-                }
-
-                $worksheetWriter->endElement();
-            }
-
-            $worksheetWriter->endElement();
-        }
-
-        $worksheetWriter->endElement();
-
-        $worksheetWriter->startElement(
-            'autoFilter'
-        );
-
-        $worksheetWriter->writeAttribute(
-            'ref',
-            'A1:'.$lastColumn.$lastRow
-        );
-
-        $worksheetWriter->endElement();
-
-        $worksheetWriter->startElement(
-            'pageMargins'
-        );
-
-        foreach (
-            [
-                'left' => '0.3',
-                'right' => '0.3',
-                'top' => '0.5',
-                'bottom' => '0.5',
-                'header' => '0.2',
-                'footer' => '0.2',
-            ] as $name => $value
-        ) {
-            $worksheetWriter->writeAttribute(
-                $name,
-                $value
-            );
-        }
-
-        $worksheetWriter->endElement();
-        $worksheetWriter->endElement();
-        $worksheetWriter->endDocument();
-
-        $worksheetXml =
-            $worksheetWriter->outputMemory();
-
-        $contentTypes = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
- <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
- <Default Extension="xml" ContentType="application/xml"/>
- <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
- <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
- <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
- <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
- <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>
-XML;
-
-        $rootRelationships = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
- <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
- <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
- <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>
-XML;
-
-        $workbook = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
- <bookViews>
-  <workbookView xWindow="0" yWindow="0" windowWidth="24000" windowHeight="15000"/>
- </bookViews>
- <sheets>
-  <sheet name="العملاء المحددون" sheetId="1" r:id="rId1"/>
- </sheets>
-</workbook>
-XML;
-
-        $workbookRelationships = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
- <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
- <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>
-XML;
-
-        $styles = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
- <fonts count="2">
-  <font>
-   <sz val="11"/>
-   <name val="Calibri"/>
-   <family val="2"/>
-  </font>
-  <font>
-   <b/>
-   <color rgb="FFFFFFFF"/>
-   <sz val="11"/>
-   <name val="Arial"/>
-   <family val="2"/>
-  </font>
- </fonts>
- <fills count="3">
-  <fill>
-   <patternFill patternType="none"/>
-  </fill>
-  <fill>
-   <patternFill patternType="gray125"/>
-  </fill>
-  <fill>
-   <patternFill patternType="solid">
-    <fgColor rgb="FF1F4E78"/>
-    <bgColor indexed="64"/>
-   </patternFill>
-  </fill>
- </fills>
- <borders count="1">
-  <border>
-   <left/>
-   <right/>
-   <top/>
-   <bottom/>
-   <diagonal/>
-  </border>
- </borders>
- <cellStyleXfs count="1">
-  <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
- </cellStyleXfs>
- <cellXfs count="3">
-  <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-  <xf numFmtId="0" fontId="1" fillId="2" borderId="0" xfId="0" applyFont="1" applyFill="1" applyAlignment="1">
-   <alignment horizontal="center" vertical="center" wrapText="1"/>
-  </xf>
-  <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0" applyAlignment="1">
-   <alignment horizontal="right" vertical="center" wrapText="1"/>
-  </xf>
- </cellXfs>
- <cellStyles count="1">
-  <cellStyle name="Normal" xfId="0" builtinId="0"/>
- </cellStyles>
- <dxfs count="0"/>
- <tableStyles count="0" defaultTableStyle="TableStyleMedium2" defaultPivotStyle="PivotStyleLight16"/>
-</styleSheet>
-XML;
-
-        $applicationProperties = <<<'XML'
-<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
- <Application>CRM v2</Application>
- <AppVersion>1.0</AppVersion>
-</Properties>
-XML;
-
-        $timestamp = gmdate(
-            'Y-m-d\TH:i:s\Z'
-        );
-
-        $coreProperties =
-            '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>'
-            .'<cp:coreProperties '
-            .'xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" '
-            .'xmlns:dc="http://purl.org/dc/elements/1.1/" '
-            .'xmlns:dcterms="http://purl.org/dc/terms/" '
-            .'xmlns:dcmitype="http://purl.org/dc/dcmitype/" '
-            .'xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">'
-            .'<dc:creator>CRM v2</dc:creator>'
-            .'<cp:lastModifiedBy>CRM v2</cp:lastModifiedBy>'
-            .'<dcterms:created xsi:type="dcterms:W3CDTF">'
-            .$timestamp
-            .'</dcterms:created>'
-            .'<dcterms:modified xsi:type="dcterms:W3CDTF">'
-            .$timestamp
-            .'</dcterms:modified>'
-            .'</cp:coreProperties>';
-
-        $zip = new \ZipArchive;
-
-        $openResult = $zip->open(
-            $path,
-            \ZipArchive::CREATE
-            | \ZipArchive::OVERWRITE
-        );
-
-        if ($openResult !== true) {
-            throw new \RuntimeException(
-                'Could not create the XLSX archive.'
-            );
-        }
-
-        $addFile = static function (
-            \ZipArchive $archive,
-            string $name,
-            string $contents
-        ): void {
-            if (
-                ! $archive->addFromString(
-                    $name,
-                    $contents
-                )
-            ) {
-                throw new \RuntimeException(
-                    'Could not add XLSX part: '
-                    .$name
-                );
-            }
+            fclose($file);
         };
 
-        try {
-            $addFile(
-                $zip,
-                '[Content_Types].xml',
-                $contentTypes
-            );
-
-            $addFile(
-                $zip,
-                '_rels/.rels',
-                $rootRelationships
-            );
-
-            $addFile(
-                $zip,
-                'xl/workbook.xml',
-                $workbook
-            );
-
-            $addFile(
-                $zip,
-                'xl/_rels/workbook.xml.rels',
-                $workbookRelationships
-            );
-
-            $addFile(
-                $zip,
-                'xl/styles.xml',
-                $styles
-            );
-
-            $addFile(
-                $zip,
-                'xl/worksheets/sheet1.xml',
-                $worksheetXml
-            );
-
-            $addFile(
-                $zip,
-                'docProps/core.xml',
-                $coreProperties
-            );
-
-            $addFile(
-                $zip,
-                'docProps/app.xml',
-                $applicationProperties
-            );
-
-            if (! $zip->close()) {
-                throw new \RuntimeException(
-                    'Could not finalize the XLSX archive.'
-                );
-            }
-        } catch (\Throwable $exception) {
-            $zip->close();
-
-            if (is_file($path)) {
-                @unlink($path);
-            }
-
-            throw $exception;
-        }
+        return response()->stream($callback, 200, $headers);
     }
 
-    private function xlsxColumnName(
-        int $index
-    ): string {
-        if ($index < 1) {
-            throw new \InvalidArgumentException(
-                'XLSX column index must be positive.'
-            );
+    public function quotationPreview(string $lead): BinaryFileResponse|RedirectResponse
+    {
+        $this->assertCrmV2Database();
+        $leadRecord = Lead::query()->findOrFail((int) $lead);
+        Gate::authorize('viewQuotation', $leadRecord);
+
+        $path = trim((string) $leadRecord->quotation_file_path);
+        if ($path === '' || ! Storage::disk('local')->exists($path)) {
+            abort(404, 'Quotation file not found.');
         }
 
-        $columnName = '';
+        return response()->download(Storage::disk('local')->path($path));
+    }
 
-        while ($index > 0) {
-            $index--;
-
-            $columnName =
-                chr(65 + ($index % 26))
-                .$columnName;
-
-            $index = intdiv(
-                $index,
-                26
-            );
+    private function campaignForManualLead(Request $request): ?Campaign
+    {
+        $campaignId = $request->integer('campaign_id');
+        if ($campaignId <= 0) {
+            return null;
         }
 
-        return $columnName;
+        return Campaign::query()->find($campaignId);
     }
 
     private function assertCrmV2Database(): void

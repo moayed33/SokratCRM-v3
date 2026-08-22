@@ -32,10 +32,13 @@
                 <tr>
                     <th>{{ __('crm.user') }}</th>
                     <th>{{ __('crm.username') }}</th>
+                    <th>{{ __('crm.branch') }}</th>
                     @if(!empty($isVoipConnected))
                     <th>{{ __('crm.voip_extension') }}</th>
                     @endif
                     <th>{{ __('crm.groups') }}</th>
+                    <th>{{ __('crm.status_th') }}</th>
+                    <th>{{ __('crm.last_login') }}</th>
                     <th>{{ __('crm.actions') }}</th>
                 </tr>
             </thead>
@@ -47,6 +50,15 @@
                             <div class="hint">{{ $managedUser->email ?: __('crm.no_email') }}</div>
                         </td>
                         <td><code>{{ $managedUser->username }}</code></td>
+                        <td>
+                            @if ($managedUser->branch)
+                                <span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe">
+                                    <i class="bi bi-buildings"></i> {{ $managedUser->branch->name_ar }}
+                                </span>
+                            @else
+                                <span class="hint">—</span>
+                            @endif
+                        </td>
                         @if(!empty($isVoipConnected))
                         <td>
                             @if ($managedUser->voip_extension)
@@ -92,7 +104,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ !empty($isVoipConnected) ? 7 : 6 }}" style="text-align:center;color:#697386;padding:30px">{{ __('crm.no_matching_users') }}</td></tr>
+                    <tr><td colspan="{{ !empty($isVoipConnected) ? 8 : 7 }}" style="text-align:center;color:#697386;padding:30px">{{ __('crm.no_matching_users') }}</td></tr>
                 @endforelse
             </tbody>
         </table>

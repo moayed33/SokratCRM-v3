@@ -9,7 +9,7 @@
     <div class="panel-head">
         <div>
             <h2>{{ __('crm.permissions_by_group') }}</h2>
-            <p>صلاحيات مدير النظام كاملة ومحمية. ويمكن ضبط صلاحيات بقية المجموعات من هذه المصفوفة. عند منح «عرض العملاء» دون نطاق «جميع العملاء» أو «مجموعات المستخدم»، يقتصر العرض تلقائيًا على العملاء المسندة للمستخدم أو المنشأة بواسطته.</p>
+            <p>{{ __('crm.permissions_matrix_desc') }}</p>
         </div>
     </div>
 
@@ -21,7 +21,7 @@
             <table class="permission-table">
                 <thead>
                     <tr>
-                        <th>الصلاحية</th>
+                        <th>{{ __('crm.permission_col') }}</th>
                         @foreach ($groups as $group)
                             <th>
                                 {{ $group->name }}

@@ -353,13 +353,14 @@
  const firstMessage = (
   payload
  ) => {
+  const isEn = (document.documentElement.getAttribute('lang') || '').toLowerCase().startsWith('en');
   const errors =
    payload?.errors;
 
   if (!errors) {
    return (
     payload?.message
-     || 'تعذر حفظ عرض السعر.'
+     || (isEn ? 'Failed to save quotation.' : 'تعذر حفظ عرض السعر.')
    );
   }
 
@@ -374,13 +375,13 @@
   ) {
    return (
     values[0][0]
-     || 'راجع البيانات المطلوبة.'
+     || (isEn ? 'Please check required fields.' : 'راجع البيانات المطلوبة.')
    );
   }
 
   return (
    payload?.message
-    || 'راجع البيانات المطلوبة.'
+    || (isEn ? 'Please check required fields.' : 'راجع البيانات المطلوبة.')
   );
  };
 
@@ -388,22 +389,22 @@
   saveButton.addEventListener(
    'click',
    async () => {
+    const isEn = (document.documentElement.getAttribute('lang') || '').toLowerCase().startsWith('en');
     const state =
      collectState();
 
     if (!state.clientName) {
      setStatus(
-      'اسم العميل مطلوب.',
+      isEn ? 'Client name is required.' : 'اسم العميل مطلوب.',
       'error'
      );
 
      els.clientName.focus();
      return;
     }
-
     if (!state.quotationNo) {
      setStatus(
-      'رقم عرض السعر مطلوب.',
+      isEn ? 'Quotation number is required.' : 'رقم عرض السعر مطلوب.',
       'error'
      );
 
@@ -413,7 +414,7 @@
 
     if (!state.quoteDate) {
      setStatus(
-      'تاريخ عرض السعر مطلوب.',
+      isEn ? 'Quotation date is required.' : 'تاريخ عرض السعر مطلوب.',
       'error'
      );
 
@@ -425,9 +426,8 @@
      true;
 
     setStatus(
-     'جاري الحفظ...'
+     isEn ? 'Saving...' : 'جاري الحفظ...'
     );
-
     try {
      const response =
       await fetch(
@@ -470,7 +470,7 @@
      }
 
      setStatus(
-      'تم حفظ عرض السعر.',
+      isEn ? 'Quotation saved successfully.' : 'تم حفظ عرض السعر.',
       'ok'
      );
 
@@ -479,7 +479,7 @@
     } catch (error) {
      setStatus(
       error?.message
-       || 'تعذر حفظ عرض السعر.',
+       || (isEn ? 'Failed to save quotation.' : 'تعذر حفظ عرض السعر.'),
       'error'
      );
 

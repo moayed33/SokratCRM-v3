@@ -7,6 +7,7 @@ namespace App\Http\Controllers\Settings;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\StoreUserRequest;
 use App\Http\Requests\Settings\UpdateUserRequest;
+use App\Models\Branch;
 use App\Models\Group;
 use App\Models\User;
 use Illuminate\Contracts\View\View;
@@ -28,7 +29,7 @@ class UserController extends Controller
         );
 
         $users = User::query()
-            ->with('groups:id,name,code')
+            ->with(['groups:id,name,code', 'branch:id,name_ar,name_en,code'])
             ->when(
                 $search !== '',
                 static function ($query) use ($search): void {
@@ -53,6 +54,7 @@ class UserController extends Controller
         $isVoipConnected = app(\App\Services\VoipService::class)->isConfigured();
 
         return view('settings.users.create', [
+            'branches' => Branch::query()->where('is_active', true)->orderBy('name_ar')->get(),
             'groups' => $this->availableGroups($request->user()),
             'voipExtensions' => $this->getVoipExtensions(),
             'isVoipConnected' => $isVoipConnected,
@@ -71,6 +73,7 @@ class UserController extends Controller
         $user = DB::transaction(function () use ($validated, $email): User {
             $voipExt = ! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null;
             $user = User::query()->create([
+                'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
                 'name' => trim($validated['name']),
                 'username' => trim($validated['username']),
                 'email' => $email !== '' ? $email : null,
@@ -122,6 +125,7 @@ class UserController extends Controller
 
         return view('settings.users.edit', [
             'managedUser' => $user,
+            'branches' => Branch::query()->orderBy('name_ar')->get(),
             'groups' => $this->availableGroups($request->user()),
             'voipExtensions' => $this->getVoipExtensions(),
             'voipStats' => $voipStats,
@@ -150,6 +154,7 @@ class UserController extends Controller
         ): void {
             $voipExt = ! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null;
             $user->update([
+                'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
                 'name' => trim($validated['name']),
                 'username' => trim($validated['username']),
                 'email' => $email !== '' ? $email : null,

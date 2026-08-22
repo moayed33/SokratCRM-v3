@@ -3,10 +3,13 @@
         'dashboard'
     );
 
-    $crmSidebarLeadsActive = request()->routeIs(
-        'v2.leads',
-        'v2.leads.*'
-    );
+    $crmSidebarKanbanActive = request()->routeIs('v2.leads.kanban');
+
+    $crmSidebarLeadsActive = ! $crmSidebarKanbanActive
+        && request()->routeIs(
+            'v2.leads',
+            'v2.leads.*'
+        );
 
     $crmSidebarTasksActive = request()->routeIs(
         'v2.followups',
@@ -84,7 +87,6 @@
    <small>{{ __('crm.crm_subtitle') }}</small>
   </span>
  </a>
-
  <button
   class="crm-sidebar-collapse-btn flex items-center justify-center"
   id="crmSidebarCollapseBtn"
@@ -107,6 +109,15 @@
   >
    <span class="crm-ico ico"><i class="bi bi-house-add"></i></span>
    <span class="crm-label label">{{ __('crm.dashboard') }}</span>
+  </a>
+
+  <a
+   class="crm-link link {{ $crmSidebarKanbanActive ? 'active' : '' }}"
+   href="{{ route('v2.leads.kanban') }}"
+   aria-label="{{ __('crm.kanban_view') }}"
+  >
+   <span class="crm-ico ico"><i class="bi bi-kanban"></i></span>
+   <span class="crm-label label">{{ __('crm.kanban_view') }}</span>
   </a>
 
   <div>
@@ -195,73 +206,19 @@
     <div class="crm-sub-inner">
      <nav>
       <a
-       class="{{ request()->routeIs('v2.tasks.daily', 'v2.tasks.upcoming', 'v2.followups.scope') ? 'active' : '' }}"
+       class="{{ request()->routeIs('v2.tasks.daily', 'v2.tasks.upcoming', 'v2.followups.scope') && !request()->filled('stage_id') ? 'active' : '' }}"
        href="{{ route('v2.tasks.daily') }}"
       >
        {{ __('crm.daily_tasks') }}
       </a>
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'new' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'new']) }}"
-      >
-       {{ __('crm.status_new') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'no-answer' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'no-answer']) }}"
-      >
-       {{ __('crm.status_no_answer') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'interested' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'interested']) }}"
-      >
-       {{ __('crm.status_interested') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'not-interested' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'not-interested']) }}"
-      >
-       {{ __('crm.status_not_interested') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'meeting' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'meeting']) }}"
-      >
-       {{ __('crm.status_meeting') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'quotation' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'quotation']) }}"
-      >
-       {{ __('crm.status_quotation') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'discussion' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'discussion']) }}"
-      >
-       {{ __('crm.status_discussion') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'contract-closing' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'contract-closing']) }}"
-      >
-       {{ __('crm.status_contract_closing') }}
-      </a>
-
-      <a
-       class="crm-task-status-link {{ request()->routeIs('v2.tasks.status') && (string) request()->route('status') === 'execution' ? 'active' : '' }}"
-       href="{{ route('v2.tasks.status', ['status' => 'execution']) }}"
-      >
-       {{ __('crm.status_execution') }}
-      </a>
+      @foreach (($sidebarPipelineStages ?? []) as $sidebarStage)
+       <a
+        class="crm-task-status-link {{ request()->routeIs('v2.tasks.daily') && (string) request('stage_id') === (string) $sidebarStage->id ? 'active' : '' }}"
+        href="{{ route('v2.tasks.daily', ['stage_id' => $sidebarStage->id]) }}"
+       >
+        {{ $sidebarStage->localizedName() }}
+       </a>
+      @endforeach
      </nav>
     </div>
    </div>

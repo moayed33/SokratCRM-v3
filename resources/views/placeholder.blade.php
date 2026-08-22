@@ -79,17 +79,17 @@
     <aside class="sidebar">
         <div class="brand">
             <h1>SokratCRM</h1>
-            <span>لوحة التحكم</span>
+            <span>{{ __('crm.dashboard') }}</span>
         </div>
-        <a class="btn" href="{{ route("dashboard") }}">العودة للوحة التحكم</a>
+        <a class="btn" href="{{ route('dashboard') }}">{{ __('crm.back_to_dashboard') }}</a>
     </aside>
     <main class="main">
         <section class="top-card">
             <h2>{{ $title ?? 'SokratCRM' }}</h2>
-            <p>هذه الصفحة داخل نسخة Laravel v2 ولن تفتح النظام القديم.</p>
+            <p>{{ __('crm.placeholder_version_notice') }}</p>
         </section>
         <section class="empty-card">
-            سيتم بناء هذه الصفحة في Laravel v2 لاحقاً.
+            {{ __('crm.placeholder_future_build_notice') }}
         </section>
     </main>
 </div>

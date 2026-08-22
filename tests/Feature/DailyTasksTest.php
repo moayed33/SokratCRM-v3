@@ -65,7 +65,7 @@ class DailyTasksTest extends TestCase
     public function test_daily_tasks_displays_leads_in_correct_time_buckets(): void
     {
         $user = $this->userWithPermissions(['tasks.view', 'leads.view', 'leads.scope.all']);
-        $status = $this->createStatus('interested', 'مهتم');
+        $status = $this->createStatus('no_answer', 'لم يتم الرد');
 
         // Overdue lead
         $overdueLead = Lead::query()->create([
@@ -118,7 +118,7 @@ class DailyTasksTest extends TestCase
     public function test_daily_tasks_scope_filtering(): void
     {
         $user = $this->userWithPermissions(['tasks.view', 'leads.view', 'leads.scope.all']);
-        $status = $this->createStatus('interested', 'مهتم');
+        $status = $this->createStatus('no_answer', 'لم يتم الرد');
 
         $overdueLead = Lead::query()->create([
             'lead_status_id' => $status->id,
@@ -187,7 +187,7 @@ class DailyTasksTest extends TestCase
         ]);
 
         $statusNew = $this->createStatus('new', 'جديد');
-        $statusInterested = $this->createStatus('interested', 'مهتم');
+        $statusDonor = $this->createStatus('donor', 'متبرع');
 
         $lead = Lead::query()->create([
             'lead_status_id' => $statusNew->id,
@@ -202,7 +202,7 @@ class DailyTasksTest extends TestCase
         $response = $this->actingAs($user)->postJson(route('v2.tasks.quick_followup', $lead), [
             'communication_type' => 'call',
             'outcome' => 'Called client, customer confirmed high interest and requested proposal review.',
-            'lead_status_id' => $statusInterested->id,
+            'lead_status_id' => $statusDonor->id,
             'next_follow_up_at' => $nextFollowup,
         ]);
 
@@ -210,7 +210,7 @@ class DailyTasksTest extends TestCase
         $response->assertJsonPath('success', true);
 
         $lead->refresh();
-        $this->assertSame($statusInterested->id, $lead->lead_status_id);
+        $this->assertSame($statusDonor->id, $lead->lead_status_id);
         $this->assertSame(
             now()->addDays(3)->format('Y-m-d H:i'),
             $lead->next_follow_up_at->format('Y-m-d H:i')
@@ -220,7 +220,7 @@ class DailyTasksTest extends TestCase
             'lead_id' => $lead->id,
             'user_id' => $user->id,
             'from_status_id' => $statusNew->id,
-            'to_status_id' => $statusInterested->id,
+            'to_status_id' => $statusDonor->id,
             'communication_type' => 'call',
         ]);
     }
@@ -228,7 +228,7 @@ class DailyTasksTest extends TestCase
     public function test_daily_tasks_calculates_progress_and_completed_today(): void
     {
         $user = $this->userWithPermissions(['tasks.view', 'leads.view', 'leads.scope.all']);
-        $status = $this->createStatus('interested', 'مهتم');
+        $status = $this->createStatus('no_answer', 'لم يتم الرد');
 
         $lead = Lead::query()->create([
             'lead_status_id' => $status->id,
@@ -248,7 +248,7 @@ class DailyTasksTest extends TestCase
             'followed_up_at' => now(),
         ]);
 
-        $response = $this->actingAs($user)->get(route('v2.tasks.daily'));
+        $response = $this->actingAs($user)->withSession(['locale' => 'en'])->get(route('v2.tasks.daily'));
         $response->assertOk();
         $response->assertSee('Completed Today', false);
     }

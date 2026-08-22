@@ -58,20 +58,32 @@
 
   const icon = collapseButton.querySelector('i');
   const label = collapseButton.querySelector('span');
-  const title = collapsed ? 'توسيع القائمة الجانبية' : 'طي القائمة الجانبية';
+  const isEn = (root.getAttribute('lang') || '').toLowerCase().startsWith('en');
+  const isRtl = (root.getAttribute('dir') || '').toLowerCase() === 'rtl';
+  const title = collapsed
+   ? (isEn ? 'Expand Menu' : 'توسيع القائمة الجانبية')
+   : (isEn ? 'Collapse Menu' : 'طي القائمة الجانبية');
 
   collapseButton.setAttribute('aria-label', title);
   collapseButton.setAttribute('aria-pressed', collapsed ? 'true' : 'false');
   collapseButton.setAttribute('title', title);
 
   if (label) {
-   label.textContent = collapsed ? 'توسيع القائمة' : 'طي القائمة';
+   label.textContent = collapsed
+    ? (isEn ? 'Expand Menu' : 'توسيع القائمة')
+    : (isEn ? 'Collapse Menu' : 'طي القائمة');
   }
 
   if (icon) {
-   icon.className = collapsed
-    ? 'bi bi-chevron-double-left'
-    : 'bi bi-chevron-double-right';
+   if (isRtl) {
+    icon.className = collapsed
+     ? 'bi bi-chevron-double-left'
+     : 'bi bi-chevron-double-right';
+   } else {
+    icon.className = collapsed
+     ? 'bi bi-chevron-double-right'
+     : 'bi bi-chevron-double-left';
+   }
   }
  };
 
