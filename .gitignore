@@ -1,0 +1,72 @@
+*.log
+.DS_Store
+.env
+.env.backup
+.env.production
+.phpactor.json
+.phpunit.result.cache
+/.codex
+/.cursor/
+/.idea
+/.nova
+/.phpunit.cache
+/.vscode
+/.zed
+/auth.json
+/node_modules
+/public/build
+/public/fonts-manifest.dev.json
+/public/hot
+/public/storage
+/storage/*.key
+/storage/pail
+/vendor
+_ide_helper.php
+Homestead.json
+Homestead.yaml
+Thumbs.db
+
+# ==================================================
+# SOKRAT CRM GITHUB SECURITY V3
+# ==================================================
+
+# Real environment / credentials
+/.env
+/.env.*
+!/.env.example
+/auth.json
+
+# Dependencies
+/vendor/
+/node_modules/
+
+# Live backup directories
+/backups-*/
+
+# Local .gitignore backups
+/.gitignore.backup-*
+
+# Temporary downloadable archives
+/public/temp-downloads/
+
+# Actual customer/private CRM content
+/storage/app/private/crm-v2/
+
+# Laravel runtime
+/storage/logs/
+/storage/framework/cache/
+/storage/framework/sessions/
+/storage/framework/views/
+
+# Local databases
+/database/*.sqlite
+/database/*.sqlite-*
+/database/*.db
+
+# ==================================================
+# END SOKRAT CRM GITHUB SECURITY V3
+# ==================================================
+
+# Live-only database download utility.
+# Never publish this file in the CRM source repository.
+/public/download-laravel-db.php
