@@ -42,6 +42,10 @@
             <span>{{ __('crm.custom_pipeline_stages') }}</span>
             <b style="font-size:20px">{{ __('crm.customize_pipeline_stages') }}</b>
         </a>
+        <a class="stat-card action-card" href="{{ route('v2.settings.fields.index') }}">
+            <span>{{ __('crm.lead_fields') }}</span>
+            <b style="font-size:20px">{{ __('crm.lead_fields_manage') }}</b>
+        </a>
         @can('users.view')
             <a class="stat-card action-card" href="{{ route('v2.settings.users.index') }}">
                 <span>{{ __('crm.users') }}</span>

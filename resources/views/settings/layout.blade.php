@@ -68,6 +68,7 @@
         <nav class="settings-tabs">
             <a class="{{ request()->routeIs('v2.settings') ? 'active' : '' }}" href="{{ route('v2.settings') }}">{{ __('crm.overview') }}</a>
             <a class="{{ request()->routeIs('v2.settings.stages.*') ? 'active' : '' }}" href="{{ route('v2.settings.stages.index') }}">{{ __('crm.custom_pipeline_stages') }}</a>
+            <a class="{{ request()->routeIs('v2.settings.fields.*') ? 'active' : '' }}" href="{{ route('v2.settings.fields.index') }}">{{ __('crm.lead_fields') }}</a>
             @can('branches.view')
                 <a class="{{ request()->routeIs('v2.settings.branches.*') ? 'active' : '' }}" href="{{ route('v2.settings.branches.index') }}">{{ __('crm.branches') }}</a>
             @endcan
@@ -89,7 +90,7 @@
         @if (session('success'))
             <div class="flash success">{{ session('success') }}</div>
         @endif
-        @if ($errors->any())
+        @if (!empty($errors) && $errors->any())
             <div class="flash error">
                 {{ __('crm.save_failed') }}
                 <ul>

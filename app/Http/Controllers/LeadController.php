@@ -10,6 +10,7 @@ use App\Models\DonationPurpose;
 use App\Models\DonationType;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
+use App\Models\LeadFormField;
 use App\Models\LeadPhone;
 use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
@@ -18,7 +19,9 @@ use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Security\LeadAssignment;
+use App\Services\LeadTransitionService;
 use App\Support\CrmDatabaseGuard;
+use App\Support\LeadFieldSchema;
 use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
@@ -26,8 +29,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Validation\Rule;
 use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class LeadController extends Controller
 {
@@ -102,6 +105,27 @@ class LeadController extends Controller
             $filters['sort'] = 'latest';
         }
 
+        // Configurable field filters managed through Settings -> Lead Fields.
+        // Each field flagged "show in filter" contributes its own query param.
+        $filterFields = LeadFieldSchema::filterable();
+        foreach ($filterFields as $field) {
+            $rawValue = $request->query($field->key);
+
+            if ($field->type === LeadFormField::TYPE_MULTISELECT) {
+                $filters[$field->key] = collect((array) ($rawValue ?? []))
+                    ->map(static fn ($value) => mb_substr(trim((string) $value), 0, 150))
+                    ->filter(static fn (string $value) => $value !== '')
+                    ->unique()
+                    ->take(20)
+                    ->values()
+                    ->all();
+
+                continue;
+            }
+
+            $filters[$field->key] = mb_substr(trim((string) $rawValue), 0, 150);
+        }
+
         $visibleAssignedUserIds = Lead::query()
             ->accessibleTo($user)
             ->whereNotNull('assigned_user_id')
@@ -164,6 +188,7 @@ class LeadController extends Controller
                 'leads.contact_date',
                 'leads.next_follow_up_at',
                 'leads.created_at',
+                'leads.custom_fields',
             ])
             ->with([
                 'status.stage:id,name_ar,color,position,code',
@@ -177,7 +202,15 @@ class LeadController extends Controller
             ]);
         if ($filters['q'] !== '') {
             $search = '%'.$filters['q'].'%';
-            $query->where(function ($searchQuery) use ($search): void {
+            $searchableCustomFields = LeadFieldSchema::customFields()
+                ->filter(static fn (LeadFormField $field) => in_array($field->type, [
+                    LeadFormField::TYPE_TEXT,
+                    LeadFormField::TYPE_EMAIL,
+                    LeadFormField::TYPE_TEL,
+                    LeadFormField::TYPE_URL,
+                ], true) && LeadFieldSchema::isSafeKey($field->key));
+
+            $query->where(function ($searchQuery) use ($search, $searchableCustomFields): void {
                 $searchQuery
                     ->where('name', 'like', $search)
                     ->orWhere('company_name', 'like', $search)
@@ -188,6 +221,13 @@ class LeadController extends Controller
                     ->orWhere('response_details', 'like', $search)
                     ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', $search))
                     ->orWhereHas('relatedPeople', static fn ($rq) => $rq->where('name', 'like', $search)->orWhere('phone', 'like', $search));
+
+                foreach ($searchableCustomFields as $customField) {
+                    $searchQuery->orWhereRaw(
+                        "JSON_UNQUOTE(JSON_EXTRACT(custom_fields, '$.".$customField->key."')) LIKE ?",
+                        [$search],
+                    );
+                }
             });
         }
 
@@ -269,6 +309,9 @@ class LeadController extends Controller
                 break;
         }
 
+        // Filters: configurable fields (custom JSON values + whitelisted system columns)
+        $this->applyFieldFilters($query, $filterFields, $filters);
+
         // Sort
         switch ($filters['sort']) {
             case 'oldest':
@@ -299,7 +342,7 @@ class LeadController extends Controller
 
         $activeQuery = array_filter(
             $filters,
-            static fn ($value) => $value !== '' && $value !== 'latest'
+            static fn ($value) => is_array($value) ? $value !== [] : ($value !== '' && $value !== 'latest')
         );
 
         $queryWithoutStatus = $request->query();
@@ -318,6 +361,10 @@ class LeadController extends Controller
             'activeQuery' => $activeQuery,
             'queryWithoutStatus' => $queryWithoutStatus,
             'totalLeads' => $totalLeads,
+            'filterFields' => $filterFields,
+            'tableColumns' => LeadFieldSchema::tableColumns()
+                ->where('is_system', false)
+                ->values(),
         ]);
     }
 
@@ -392,6 +439,7 @@ class LeadController extends Controller
             'totalLeads' => $totalLeads,
             'campaign' => $campaign,
             'campaigns' => $campaigns,
+            'customFields' => LeadFieldSchema::customFields(),
         ]);
     }
 
@@ -405,46 +453,15 @@ class LeadController extends Controller
 
         abort_if($creatorName === '', 403, 'Employee identity is required.');
 
-        // Validation rules
-        $rules = [
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
-            'name' => ['nullable', 'string', 'max:150'],
-            'first_name' => ['nullable', 'string', 'max:75'],
-            'last_name' => ['nullable', 'string', 'max:75'],
-            'phone' => ['required', 'string', 'max:50'],
-            'additional_phones' => ['nullable', 'array'],
-            'additional_phones.*.phone' => ['nullable', 'string', 'max:50'],
-            'additional_phones.*.label' => ['nullable', 'string', 'max:50'],
-            'donation_type' => ['nullable', 'string', 'max:100'],
-            'donation_type_id' => ['nullable', 'integer', 'exists:donation_types,id'],
-            'donation_cycle' => ['nullable', 'string', 'max:50'],
-            'donation_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
-            'donation_purpose' => ['nullable', 'string', 'max:150'],
-            'donation_purpose_id' => ['nullable', 'integer', 'exists:donation_purposes,id'],
-            'responding_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'lead_status_id' => ['nullable', 'integer', 'exists:lead_statuses,id'],
-            'pipeline_stage_id' => ['nullable', 'integer', 'exists:pipeline_stages,id'],
-            'contact_date' => ['nullable', 'date'],
-            'next_follow_up_at' => ['nullable', 'string'],
-            'response_details' => ['nullable', 'string', 'max:10000'],
-            'related_people' => ['nullable', 'array'],
-            'related_people.*.name' => ['nullable', 'string', 'max:150'],
-            'related_people.*.phone' => ['nullable', 'string', 'max:50'],
-            'related_people.*.relationship_type' => ['nullable', 'string', 'max:100'],
-            'related_people.*.notes' => ['nullable', 'string', 'max:1000'],
-            'source' => ['nullable', 'string', 'max:100'],
-            'company_name' => ['nullable', 'string', 'max:150'],
-            'activity' => ['nullable', 'string', 'max:150'],
-            'governorate' => ['nullable', 'string', 'max:100'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ];
+        // Validation rules: system rules + rules generated from the
+        // configurable lead form fields managed in Settings.
+        $rules = LeadFieldSchema::validationRules();
 
         $validated = $request->validate($rules, [
             'phone.required' => 'رقم الهاتف الأساسي مطلوب.',
             'donation_value.numeric' => 'قيمة التبرع يجب أن تكون قيمة رقمية صحيحة.',
             'donation_value.min' => 'قيمة التبرع لا يمكن أن تكون سالبة.',
-        ]);
+        ], LeadFieldSchema::validationAttributes());
 
         // Customer Name resolution
         $nameInput = trim((string) ($validated['name'] ?? ''));
@@ -577,6 +594,7 @@ class LeadController extends Controller
             'activity' => $validated['activity'] ?? null,
             'governorate' => $validated['governorate'] ?? null,
             'address' => $validated['address'] ?? null,
+            'custom_fields' => LeadFieldSchema::extractForStore((array) $request->input('custom_fields', [])),
         ];
 
         $createdLead = DB::transaction(function () use ($leadData, $validated, $campaign, $actor, $status, $assignee, $assignedEmployee): Lead {
@@ -764,6 +782,17 @@ class LeadController extends Controller
             }
         }
 
+        foreach (LeadFieldSchema::filterable() as $filterField) {
+            if ($filterField->type === LeadFormField::TYPE_MULTISELECT) {
+                continue;
+            }
+
+            $rawValue = $request->query($filterField->key, '');
+            if (is_scalar($rawValue) && trim((string) $rawValue) !== '') {
+                $backQuery[$filterField->key] = mb_substr(trim((string) $rawValue), 0, 150);
+            }
+        }
+
         return view('leads.show', [
             'lead' => $leadRecord,
             'timelineEvents' => $timelineEvents,
@@ -843,6 +872,7 @@ class LeadController extends Controller
             'canAssignLead' => $canAssignLead,
             'assignableUsers' => $assignableUsers,
             'assignedEmployee' => $leadRecord->assignedUser?->name ?? $leadRecord->assigned_employee ?: 'غير مسند',
+            'customFields' => LeadFieldSchema::customFields(),
         ]);
     }
 
@@ -857,45 +887,15 @@ class LeadController extends Controller
         Gate::authorize('update', $leadRecord);
         $actor = $request->user();
 
-        $rules = [
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
-            'name' => ['nullable', 'string', 'max:150'],
-            'first_name' => ['nullable', 'string', 'max:75'],
-            'last_name' => ['nullable', 'string', 'max:75'],
-            'phone' => ['required', 'string', 'max:50'],
-            'additional_phones' => ['nullable', 'array'],
-            'additional_phones.*.phone' => ['nullable', 'string', 'max:50'],
-            'additional_phones.*.label' => ['nullable', 'string', 'max:50'],
-            'donation_type' => ['nullable', 'string', 'max:100'],
-            'donation_type_id' => ['nullable', 'integer', 'exists:donation_types,id'],
-            'donation_cycle' => ['nullable', 'string', 'max:50'],
-            'donation_value' => ['nullable', 'numeric', 'min:0', 'max:999999999999'],
-            'donation_purpose' => ['nullable', 'string', 'max:150'],
-            'donation_purpose_id' => ['nullable', 'integer', 'exists:donation_purposes,id'],
-            'responding_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'assigned_user_id' => ['nullable', 'integer', 'exists:users,id'],
-            'lead_status_id' => ['nullable', 'integer', 'exists:lead_statuses,id'],
-            'pipeline_stage_id' => ['nullable', 'integer', 'exists:pipeline_stages,id'],
-            'contact_date' => ['nullable', 'date'],
-            'next_follow_up_at' => ['nullable', 'string'],
-            'response_details' => ['nullable', 'string', 'max:10000'],
-            'related_people' => ['nullable', 'array'],
-            'related_people.*.name' => ['nullable', 'string', 'max:150'],
-            'related_people.*.phone' => ['nullable', 'string', 'max:50'],
-            'related_people.*.relationship_type' => ['nullable', 'string', 'max:100'],
-            'related_people.*.notes' => ['nullable', 'string', 'max:1000'],
-            'source' => ['nullable', 'string', 'max:100'],
-            'company_name' => ['nullable', 'string', 'max:150'],
-            'activity' => ['nullable', 'string', 'max:150'],
-            'governorate' => ['nullable', 'string', 'max:100'],
-            'address' => ['nullable', 'string', 'max:255'],
-        ];
+        // Validation rules: system rules + rules generated from the
+        // configurable lead form fields managed in Settings.
+        $rules = LeadFieldSchema::validationRules();
 
         $validated = $request->validate($rules, [
             'phone.required' => 'رقم الهاتف الأساسي مطلوب.',
             'donation_value.numeric' => 'قيمة التبرع يجب أن تكون رقمية.',
             'donation_value.min' => 'قيمة التبرع لا يمكن أن تكون سالبة.',
-        ]);
+        ], LeadFieldSchema::validationAttributes());
 
         // Customer Name resolution
         $nameInput = trim((string) ($validated['name'] ?? ''));
@@ -1001,6 +1001,7 @@ class LeadController extends Controller
             'next_follow_up_at' => $nextFollowUpAt,
             'governorate' => $validated['governorate'] ?? $leadRecord->governorate,
             'address' => $validated['address'] ?? $leadRecord->address,
+            'custom_fields' => LeadFieldSchema::mergeForUpdate($leadRecord->custom_fields, (array) $request->input('custom_fields', [])),
         ];
 
         if ($actor->isSuperAdmin() && array_key_exists('branch_id', $validated)) {
@@ -1018,7 +1019,7 @@ class LeadController extends Controller
         DB::transaction(function () use ($leadRecord, $leadData, $validated, $oldStatusId, $newStatusId, $actor, $nextFollowUpAt): void {
             if ($oldStatusId !== $newStatusId) {
                 $targetStatus = LeadStatus::query()->findOrFail($newStatusId);
-                app(\App\Services\LeadTransitionService::class)->transition(
+                app(LeadTransitionService::class)->transition(
                     $leadRecord,
                     $targetStatus,
                     $actor,
@@ -1101,7 +1102,7 @@ class LeadController extends Controller
             ->with('success', 'تم حذف العميل بنجاح.');
     }
 
-    public function exportSelected(Request $request): BinaryFileResponse|RedirectResponse
+    public function exportSelected(Request $request): BinaryFileResponse|StreamedResponse|RedirectResponse
     {
         $this->assertCrmV2Database();
         $actor = $request->user();
@@ -1129,10 +1130,14 @@ class LeadController extends Controller
             'Content-Disposition' => "attachment; filename=\"{$fileName}\"",
         ];
 
-        $callback = function () use ($leads) {
+        $exportFields = LeadFieldSchema::exportColumns()
+            ->where('is_system', false)
+            ->values();
+
+        $callback = function () use ($leads, $exportFields) {
             $file = fopen('php://output', 'w');
             // Add BOM for Excel UTF-8
-            fputs($file, "\xEF\xBB\xBF");
+            fwrite($file, "\xEF\xBB\xBF");
             fputcsv($file, [
                 'ID',
                 'الاسم',
@@ -1146,9 +1151,12 @@ class LeadController extends Controller
                 'تاريخ التواصل',
                 'المتابعة القادمة',
                 'تفاصيل الرد',
+                ...$exportFields->map(static fn (LeadFormField $field) => $field->label())->all(),
             ]);
 
             foreach ($leads as $lead) {
+                $leadCustomFields = is_array($lead->custom_fields) ? $lead->custom_fields : [];
+
                 fputcsv($file, [
                     $lead->id,
                     $lead->name,
@@ -1162,6 +1170,15 @@ class LeadController extends Controller
                     $lead->contact_date?->format('Y-m-d') ?? '—',
                     $lead->next_follow_up_at?->format('Y-m-d H:i') ?? '—',
                     $lead->response_details ?? '',
+                    ...$exportFields->map(static function (LeadFormField $field) use ($leadCustomFields): string {
+                        $value = $leadCustomFields[$field->key] ?? null;
+
+                        if ($value === null || $value === '' || $value === []) {
+                            return '';
+                        }
+
+                        return LeadFieldSchema::formatValue($field, $value);
+                    })->all(),
                 ]);
             }
             fclose($file);
@@ -1182,6 +1199,114 @@ class LeadController extends Controller
         }
 
         return response()->download(Storage::disk('local')->path($path));
+    }
+
+    /**
+     * Applies the configurable field filters to the leads listing query.
+     * Custom values live in leads.custom_fields JSON; whitelisted system
+     * fields filter their real columns directly.
+     */
+    private function applyFieldFilters($query, $filterFields, array $filters): void
+    {
+        foreach ($filterFields as $field) {
+            /** @var LeadFormField $field */
+            $value = $filters[$field->key] ?? null;
+
+            if ($field->type === LeadFormField::TYPE_MULTISELECT) {
+                if (! is_array($value) || $value === []) {
+                    continue;
+                }
+            } else {
+                if (! is_string($value) || $value === '') {
+                    continue;
+                }
+            }
+
+            $isCustom = ! $field->is_system || $field->system_column === null;
+
+            // Guard against unsafe identifiers before touching SQL.
+            if ($isCustom && ! LeadFieldSchema::isSafeKey($field->key)) {
+                continue;
+            }
+
+            if (! $isCustom && ($field->system_column === null || ! LeadFieldSchema::isSafeKey((string) $field->system_column))) {
+                continue;
+            }
+
+            if ($isCustom) {
+                switch ($field->type) {
+                    case LeadFormField::TYPE_SELECT:
+                        $query->where('custom_fields->'.$field->key, (string) $value);
+                        break;
+
+                    case LeadFormField::TYPE_MULTISELECT:
+                        foreach ($value as $singleValue) {
+                            $query->whereJsonContains('custom_fields->'.$field->key, $singleValue);
+                        }
+                        break;
+
+                    case LeadFormField::TYPE_CHECKBOX:
+                        $wantsTrue = in_array($value, ['1', 'true', 'yes'], true);
+                        $query->whereRaw(
+                            "JSON_EXTRACT(custom_fields, '$.".$field->key."') = CAST(? AS JSON)",
+                            [$wantsTrue ? 'true' : 'false'],
+                        );
+                        break;
+
+                    case LeadFormField::TYPE_NUMBER:
+                        if (is_numeric($value)) {
+                            $query->where('custom_fields->'.$field->key, (float) $value);
+                        }
+                        break;
+
+                    case LeadFormField::TYPE_DATE:
+                    case LeadFormField::TYPE_DATETIME:
+                        if (strtotime($value) !== false) {
+                            $query->whereRaw(
+                                "DATE(JSON_UNQUOTE(JSON_EXTRACT(custom_fields, '$.".$field->key."'))) = ?",
+                                [date('Y-m-d', (int) strtotime($value))],
+                            );
+                        }
+                        break;
+
+                    default:
+                        $query->where('custom_fields->'.$field->key, 'like', '%'.$value.'%');
+                        break;
+                }
+
+                continue;
+            }
+
+            $column = (string) $field->system_column;
+
+            switch ($field->type) {
+                case LeadFormField::TYPE_SELECT:
+                case LeadFormField::TYPE_MULTISELECT:
+                    $query->whereIn($column, is_array($value) ? $value : [$value]);
+                    break;
+
+                case LeadFormField::TYPE_CHECKBOX:
+                    $query->where($column, (bool) in_array($value, ['1', 'true', 'yes'], true));
+                    break;
+
+                case LeadFormField::TYPE_NUMBER:
+                    if (is_numeric($value)) {
+                        $query->where($column, (float) $value);
+                    }
+                    break;
+
+                case LeadFormField::TYPE_DATE:
+                case LeadFormField::TYPE_DATETIME:
+                    if (strtotime($value) !== false) {
+                        $query->whereDate($column, date('Y-m-d', (int) strtotime($value)));
+                    }
+                    break;
+
+                default:
+                    $query->where($column, 'like', '%'.$value.'%');
+                    break;
+            }
+        }
     }
 
     private function campaignForManualLead(Request $request): ?Campaign

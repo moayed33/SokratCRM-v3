@@ -5,6 +5,7 @@ declare(strict_types=1);
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CampaignController;
+use App\Http\Controllers\CampaignReportController;
 use App\Http\Controllers\DailyTaskController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LeadController;
@@ -16,6 +17,7 @@ use App\Http\Controllers\PushSubscriptionController;
 use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\Settings\BranchController;
 use App\Http\Controllers\Settings\GroupController;
+use App\Http\Controllers\Settings\LeadFieldController;
 use App\Http\Controllers\Settings\NotificationRuleController;
 use App\Http\Controllers\Settings\PipelineStageController;
 use App\Http\Controllers\Settings\PermissionController;
@@ -313,10 +315,8 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->whereNumber('campaign')
         ->middleware('can:campaigns.create')
         ->name('v2.campaigns.destroy');
-    Route::get(
-        '/campaigns/reports',
-        static fn () => view('placeholder', ['title' => 'تقارير الحملة']),
-    )->middleware('can:campaigns.reports')
+    Route::get('/campaigns/reports', CampaignReportController::class)
+        ->middleware('can:campaigns.reports')
         ->name('v2.campaigns.reports');
 
     Route::get('/campaigns/{campaign}', [CampaignController::class, 'show'])
@@ -353,6 +353,28 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             Route::get('/', [SettingsController::class, 'index'])
                 ->name('');
 
+
+            Route::get('/lead-fields', [LeadFieldController::class, 'index'])
+                ->name('.fields.index');
+            Route::get('/lead-fields/create', [LeadFieldController::class, 'create'])
+                ->name('.fields.create');
+            Route::post('/lead-fields', [LeadFieldController::class, 'store'])
+                ->name('.fields.store');
+            Route::get('/lead-fields/{field}/edit', [LeadFieldController::class, 'edit'])
+                ->whereNumber('field')
+                ->name('.fields.edit');
+            Route::patch('/lead-fields/{field}', [LeadFieldController::class, 'update'])
+                ->whereNumber('field')
+                ->name('.fields.update');
+            Route::patch('/lead-fields/{field}/toggle', [LeadFieldController::class, 'toggleActive'])
+                ->whereNumber('field')
+                ->name('.fields.toggle');
+            Route::patch('/lead-fields/{field}/move', [LeadFieldController::class, 'move'])
+                ->whereNumber('field')
+                ->name('.fields.move');
+            Route::delete('/lead-fields/{field}', [LeadFieldController::class, 'destroy'])
+                ->whereNumber('field')
+                ->name('.fields.destroy');
 
             Route::get('/branches', [BranchController::class, 'index'])
                 ->middleware('can:branches.view')
