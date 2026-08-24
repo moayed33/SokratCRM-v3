@@ -202,7 +202,9 @@
      </option>
     </select>
    </div>
-  @if ($selectedStatus)
+  @if ($selectedStage)
+   <input type="hidden" name="stage" value="{{ $selectedStage->id }}">
+  @elseif ($selectedStatus)
    <input type="hidden" name="status" value="{{ $selectedStatus->code }}">
   @endif
  </form>
@@ -212,41 +214,42 @@
 <section class="transfer-card campaign-status-section">
  <header class="campaign-status-head">
   <div>
-   <h3>{{ __('crm.lead_statuses') }}</h3>
-   <p>{{ __('crm.campaign_status_filter_notice') }}</p>
+   <h3>{{ __('crm.customer_stages') }}</h3>
+   <p>{{ __('crm.campaign_stage_filter_notice') }}</p>
   </div>
   <a
-   class="campaign-all-statuses {{ $selectedStatus === null ? 'active' : '' }}"
+   class="campaign-all-statuses {{ $selectedStage === null && $selectedStatus === null ? 'active' : '' }}"
    href="{{ route('v2.campaigns.show', array_filter([
     'campaign' => $campaign,
     'assigned_user_id' => $canManage ? ($showUnassigned ? 'unassigned' : $selectedAssignee->id) : null,
    ])) }}"
   >
-   {{ __('crm.all_states') }}
+   {{ __('crm.all_stages') }}
   </a>
  </header>
  <div class="campaign-status-grid">
-  @foreach ($statuses as $status)
+  @foreach ($pipelineStages as $stage)
    @php
-    $cardColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $status->color)
-     ? $status->color
+    $cardColor = preg_match('/^#[0-9a-fA-F]{6}$/', (string) $stage->color)
+     ? $stage->color
      : '#64748b';
+    $isSelected = ($selectedStage?->id === $stage->id) || ($selectedStatus && $selectedStatus->pipeline_stage_id === $stage->id);
    @endphp
    <a
-    class="campaign-status-card {{ $selectedStatus?->is($status) ? 'selected' : '' }}"
+    class="campaign-status-card {{ $isSelected ? 'selected' : '' }}"
     href="{{ route('v2.campaigns.show', array_filter([
      'campaign' => $campaign,
      'assigned_user_id' => $canManage ? ($showUnassigned ? 'unassigned' : $selectedAssignee->id) : null,
-     'status' => $status->code,
+     'stage' => $stage->id,
     ])) }}"
     style="--status-color:{{ $cardColor }}"
    >
     <span class="campaign-status-name">
-     <i></i>
-     <strong>{{ (app()->getLocale() === 'en' && !empty($status->name_en)) ? $status->name_en : $status->name_ar }}</strong>
+     <i style="background:{{ $cardColor }}"></i>
+     <strong>{{ (app()->getLocale() === 'en' && !empty($stage->name_en)) ? $stage->name_en : $stage->name_ar }}</strong>
     </span>
-    <b>{{ number_format($status->campaign_leads_count) }}</b>
-    <small>{{ (app()->getLocale() === 'en' && !empty($status->stage?->name_en)) ? $status->stage?->name_en : ($status->stage?->name_ar ?? __('crm.without_stage')) }}</small>
+    <b>{{ number_format($stage->campaign_leads_count) }}</b>
+    <small>{{ $stage->isPrimary() ? __('crm.stage_type_primary') : __('crm.stage_type_additional') }}</small>
    </a>
   @endforeach
  </div>
@@ -257,9 +260,13 @@
   <div>
    <h3>{{ $assigneeLabel }}</h3>
    <p>
-    {{ $selectedStatus
-      ? __('crm.status_label_prefix', ['name' => (app()->getLocale() === 'en' && !empty($selectedStatus->name_en) ? $selectedStatus->name_en : $selectedStatus->name_ar)])
-      : __('crm.all_lead_statuses') }}
+    @if ($selectedStage)
+     {{ __('crm.stage_label_prefix', ['name' => (app()->getLocale() === 'en' && !empty($selectedStage->name_en) ? $selectedStage->name_en : $selectedStage->name_ar)]) }}
+    @elseif ($selectedStatus)
+     {{ __('crm.status_label_prefix', ['name' => (app()->getLocale() === 'en' && !empty($selectedStatus->name_en) ? $selectedStatus->name_en : $selectedStatus->name_ar)]) }}
+    @else
+     {{ __('crm.all_stages') }}
+    @endif
    </p>
   </div>
   <span class="campaign-result-count">{{ __('crm.results_count', ['count' => number_format($leads->total())]) }}</span>

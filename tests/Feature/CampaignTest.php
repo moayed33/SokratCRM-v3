@@ -535,7 +535,7 @@ class CampaignTest extends TestCase
             'pipeline_stage_id' => $newStatus->pipeline_stage_id,
             'code' => 'campaign-won',
             'name_ar' => 'مكتمل',
-            'position' => 2,
+            'position' => 99,
             'is_terminal' => true,
         ]);
         $newLead = $this->lead([
@@ -573,6 +573,58 @@ class CampaignTest extends TestCase
         );
 
         return $campaign;
+    }
+
+    public function test_campaign_show_renders_dynamic_pipeline_stages_and_filters_by_stage(): void
+    {
+        $admin = $this->superAdmin();
+        $agent = User::factory()->create();
+        $campaign = $this->campaign($admin, [$agent]);
+
+        $stageA = PipelineStage::query()->firstOrCreate(
+            ['code' => 'new'],
+            ['name_ar' => 'جديد', 'position' => 1, 'is_active' => true]
+        );
+        $statusA = LeadStatus::query()->firstOrCreate(
+            ['code' => 'new'],
+            ['pipeline_stage_id' => $stageA->id, 'name_ar' => 'جديد', 'position' => 1, 'is_terminal' => false]
+        );
+
+        $customStage = PipelineStage::query()->create([
+            'code' => 'stage_custom_campaign',
+            'name_ar' => 'مرحلة حملة مخصصة',
+            'position' => 5,
+            'color' => '#8b5cf6',
+            'is_primary' => false,
+            'is_active' => true,
+        ]);
+        $customStatus = $customStage->statuses()->first() ?? LeadStatus::query()->create([
+            'pipeline_stage_id' => $customStage->id,
+            'code' => 'status_custom_campaign',
+            'name_ar' => 'حالة حملة مخصصة',
+            'position' => 5,
+            'is_terminal' => false,
+        ]);
+
+        $lead1 = $this->lead(['name' => 'عميل مرحلة أ', 'lead_status_id' => $statusA->id, 'assigned_user_id' => $admin->id]);
+        $lead2 = $this->lead(['name' => 'عميل مرحلة مخصصة', 'lead_status_id' => $customStatus->id, 'assigned_user_id' => $admin->id]);
+
+        $campaign->leads()->attach([$lead1->id, $lead2->id]);
+
+        // 1. Show page renders custom stage card
+        $response = $this->actingAs($admin)->get(route('v2.campaigns.show', $campaign));
+        $response->assertOk();
+        $response->assertSee('مرحلة حملة مخصصة');
+        $response->assertSee('مراحل العملاء');
+
+        // 2. Filter by custom stage
+        $filteredResponse = $this->actingAs($admin)->get(route('v2.campaigns.show', [
+            'campaign' => $campaign,
+            'stage' => $customStage->id,
+        ]));
+        $filteredResponse->assertOk();
+        $filteredResponse->assertSee('عميل مرحلة مخصصة');
+        $filteredResponse->assertDontSee('عميل مرحلة أ');
     }
 
     private function lead(array $attributes = []): Lead
