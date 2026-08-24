@@ -410,6 +410,35 @@ a{color:inherit}
                     @endif
                 </section>
 
+                <!-- CONFIGURABLE ADDITIONAL DATA -->
+                @php
+                    $profileFields = \App\Support\LeadFieldSchema::customFields();
+                    $leadCustomValues = is_array($lead->custom_fields) ? $lead->custom_fields : [];
+                @endphp
+                @if ($profileFields->isNotEmpty())
+                    <section class="panel">
+                        <div class="panel-head">
+                            <h2><i class="bi bi-grid-3x3-gap"></i> {{ __('crm.lf_additional_data') }}</h2>
+                        </div>
+                        <div class="info-list">
+                            @foreach ($profileFields as $profileField)
+                                @php
+                                    $profileValue = $leadCustomValues[$profileField->key] ?? null;
+                                    $hasValue = ! ($profileValue === null || $profileValue === '' || $profileValue === []);
+                                @endphp
+                                <div class="info-row">
+                                    <span class="info-label">
+                                        {{ $profileField->label() }}@if ($profileField->is_required) <span style="color:#dc2637">*</span> @endif
+                                    </span>
+                                    <span class="info-value" style="max-width:60%;text-align:end">
+                                        {{ $hasValue ? \App\Support\LeadFieldSchema::formatValue($profileField, $profileValue) : '—' }}
+                                    </span>
+                                </div>
+                            @endforeach
+                        </div>
+                    </section>
+                @endif
+
                 <!-- LATEST RESPONSE DETAILS -->
                 @if ($lead->response_details)
                     <section class="panel">

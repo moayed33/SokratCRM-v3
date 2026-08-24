@@ -672,6 +672,54 @@ html.dark-mode .flash.success {
                     </select>
                 </div>
 
+                <!-- Configurable Field Filters (Settings -> Lead Fields) -->
+                @foreach ($filterFields as $filterField)
+                    @php
+                        $fieldFilterValue = $filters[$filterField->key] ?? ($filterField->type === 'multiselect' ? [] : '');
+                        $isMulti = $filterField->type === 'multiselect';
+                    @endphp
+                    <div class="filter-field">
+                        <label for="cfFilter_{{ $filterField->key }}"><i class="bi bi-list-ul"></i> {{ $filterField->label() }}</label>
+                        @switch ($filterField->type)
+                            @case ('select')
+                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control" onchange="this.form.submit()">
+                                    <option value="">{{ __('crm.lf_filter_all') }}</option>
+                                    @foreach ($filterField->options ?? [] as $option)
+                                        <option value="{{ $option['value'] ?? '' }}" @selected($fieldFilterValue === (string) ($option['value'] ?? ''))>
+                                            {{ app()->getLocale() === 'en' && trim((string) ($option['label_en'] ?? '')) !== '' ? trim((string) $option['label_en']) : trim((string) ($option['label_ar'] ?? '')) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @break
+                            @case ('multiselect')
+                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}[]" class="filter-control" multiple size="3">
+                                    @foreach ($filterField->options ?? [] as $option)
+                                        <option value="{{ $option['value'] ?? '' }}" @selected(in_array((string) ($option['value'] ?? ''), (array) $fieldFilterValue, true))>
+                                            {{ app()->getLocale() === 'en' && trim((string) ($option['label_en'] ?? '')) !== '' ? trim((string) $option['label_en']) : trim((string) ($option['label_ar'] ?? '')) }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                @break
+                            @case ('checkbox')
+                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control" onchange="this.form.submit()">
+                                    <option value="">{{ __('crm.lf_filter_any') }}</option>
+                                    <option value="1" @selected($fieldFilterValue === '1')>{{ __('crm.lf_filter_yes') }}</option>
+                                    <option value="0" @selected($fieldFilterValue === '0')>{{ __('crm.lf_filter_no') }}</option>
+                                </select>
+                                @break
+                            @case ('number')
+                                <input type="number" step="any" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control">
+                                @break
+                            @case ('date')
+                            @case ('datetime')
+                                <input type="date" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control" onchange="this.form.submit()">
+                                @break
+                            @default
+                                <input type="text" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control" placeholder="{{ __('crm.lf_filter_contains') }}">
+                        @endswitch
+                    </div>
+                @endforeach
+
                 <!-- Action Buttons: Apply & Reset -->
                 <div class="filter-actions">
                     <button type="submit" class="btn primary small" title="{{ __('crm.apply_filter') }}">
@@ -703,6 +751,9 @@ html.dark-mode .flash.success {
                             <th style="min-width:140px">{{ __('crm.assigned_employee') }}</th>
                             <th style="min-width:110px">{{ __('crm.last_contact') }}</th>
                             <th style="min-width:130px">{{ __('crm.next_followup') }}</th>
+                            @foreach ($tableColumns as $tableColumn)
+                                <th style="min-width:120px">{{ $tableColumn->label() }}</th>
+                            @endforeach
                             <th style="min-width:120px">{{ __('crm.actions') }}</th>
                         </tr>
                     </thead>
@@ -816,7 +867,19 @@ html.dark-mode .flash.success {
                                     @endif
                                 </td>
 
-                                <!-- 9. Actions -->
+                                <!-- 9. Configurable table columns -->
+                                @php $leadCustomValues = is_array($lead->custom_fields) ? $lead->custom_fields : []; @endphp
+                                @foreach ($tableColumns as $tableColumn)
+                                    @php
+                                        $columnValue = $leadCustomValues[$tableColumn->key] ?? null;
+                                        $hasColumnValue = ! ($columnValue === null || $columnValue === '' || $columnValue === []);
+                                    @endphp
+                                    <td>
+                                        {{ $hasColumnValue ? \App\Support\LeadFieldSchema::formatValue($tableColumn, $columnValue) : '—' }}
+                                    </td>
+                                @endforeach
+
+                                <!-- 10. Actions -->
                                 <td>
                                     <div class="actions-cell">
                                         <a href="{{ route('v2.leads.show', $lead) }}" class="btn-action" title="{{ __('crm.view_details') }}">
@@ -837,7 +900,7 @@ html.dark-mode .flash.success {
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ auth()->user()->isSuperAdmin() ? 10 : 9 }}" style="text-align:center; padding:48px 20px; color:var(--muted)">
+                                <td colspan="{{ (auth()->user()->isSuperAdmin() ? 10 : 9) + $tableColumns->count() }}" style="text-align:center; padding:48px 20px; color:var(--muted)">
                                     <i class="bi bi-inbox" style="font-size:36px; display:block; margin-bottom:10px; opacity:0.6;"></i>
                                     <strong style="font-size:15px; display:block; margin-bottom:4px; color:var(--dark)">{{ __('crm.no_leads_data') }}</strong>
                                     <span>{{ __('crm.no_leads_matching_filter') }}</span>

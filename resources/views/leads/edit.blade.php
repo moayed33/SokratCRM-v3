@@ -178,6 +178,14 @@ textarea{resize:vertical;min-height:90px}
                     </div>
                 </div>
 
+                <!-- CONFIGURABLE BASIC-INFO FIELDS -->
+                @php $basicInfoFields = $customFields->where('section', 'basic_info')->values(); @endphp
+                @if ($basicInfoFields->isNotEmpty())
+                    <div class="form-grid two-cols" style="margin-top:20px">
+                        @include('partials.lead-custom-field-inputs', ['fields' => $basicInfoFields, 'recordValues' => is_array($lead->custom_fields) ? $lead->custom_fields : []])
+                    </div>
+                @endif
+
                 <!-- ADDITIONAL PHONE NUMBERS REPEATER -->
                 <div style="margin-top:20px;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
@@ -196,12 +204,10 @@ textarea{resize:vertical;min-height:90px}
                         @foreach ($currentPhones as $index => $phoneRow)
                             <div class="repeater-row">
                                 <input type="tel" name="additional_phones[{{ $index }}][phone]" value="{{ $phoneRow['phone'] ?? '' }}" placeholder="{{ __('crm.additional_phone_placeholder') }}" dir="ltr">
-                                <select name="additional_phones[{{ $index }}][label]">
-                                    <option value="عمل" {{ ($phoneRow['label'] ?? '') === 'عمل' ? 'selected' : '' }}>{{ __('crm.phone_type_work') }}</option>
-                                    <option value="منزل" {{ ($phoneRow['label'] ?? '') === 'منزل' ? 'selected' : '' }}>{{ __('crm.phone_type_home') }}</option>
-                                    <option value="واتساب" {{ ($phoneRow['label'] ?? '') === 'واتساب' ? 'selected' : '' }}>{{ __('crm.phone_type_whatsapp') }}</option>
-                                    <option value="إضافي" {{ ($phoneRow['label'] ?? '') === 'إضافي' ? 'selected' : '' }}>{{ __('crm.phone_type_extra') }}</option>
-                                    <option value="أخرى" {{ ($phoneRow['label'] ?? '') === 'أخرى' ? 'selected' : '' }}>{{ __('crm.phone_type_other') }}</option>
+                                <select name="additional_phones[{{ $index }}[label]">
+                                    @foreach (\App\Support\CrmOptions::get('phone_label') as $phoneLabel)
+                                        <option value="{{ $phoneLabel['value'] }}" @selected(($phoneRow['label'] ?? '') === $phoneLabel['value'])>{{ \App\Support\CrmOptions::labelOf($phoneLabel) }}</option>
+                                    @endforeach
                                 </select>
                                 <button type="button" class="btn small danger" onclick="this.closest('.repeater-row').remove()" title="{{ __('crm.delete') }}">
                                     <i class="bi bi-trash"></i>
@@ -262,6 +268,8 @@ textarea{resize:vertical;min-height:90px}
                             @endforeach
                         </select>
                     </div>
+
+                    @include('partials.lead-custom-field-inputs', ['fields' => $customFields->where('section', 'donation_info')->values(), 'recordValues' => is_array($lead->custom_fields) ? $lead->custom_fields : []])
                 </div>
             </section>
 
@@ -324,8 +332,27 @@ textarea{resize:vertical;min-height:90px}
                         <label for="responseDetails">{{ __('crm.response_call_details') }}</label>
                         <textarea id="responseDetails" name="response_details" rows="3">{{ old('response_details', $lead->response_details ?? $lead->notes) }}</textarea>
                     </div>
+
+                    @include('partials.lead-custom-field-inputs', ['fields' => $customFields->where('section', 'contact_followup')->values(), 'recordValues' => is_array($lead->custom_fields) ? $lead->custom_fields : []])
                 </div>
             </section>
+
+            @php $otherFields = $customFields->where('section', 'other')->values(); @endphp
+            @if ($otherFields->isNotEmpty())
+                <!-- SECTION 5: CONFIGURABLE ADDITIONAL FIELDS -->
+                <section class="form-card">
+                    <div class="section-head">
+                        <div>
+                            <h2><i class="bi bi-grid-3x3-gap"></i> {{ __('crm.lf_additional_section') }}</h2>
+                            <p>{{ __('crm.lf_additional_section_desc') }}</p>
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        @include('partials.lead-custom-field-inputs', ['fields' => $otherFields, 'recordValues' => is_array($lead->custom_fields) ? $lead->custom_fields : []])
+                    </div>
+                </section>
+            @endif
 
             <!-- SECTION 4: RELATED PEOPLE -->
             <section class="form-card">
@@ -353,12 +380,10 @@ textarea{resize:vertical;min-height:90px}
                         <div class="person-row">
                             <input type="text" name="related_people[{{ $pIndex }}][name]" value="{{ $person['name'] ?? '' }}" placeholder="{{ __('crm.person_name_placeholder') }}" required>
                             <input type="tel" name="related_people[{{ $pIndex }}][phone]" value="{{ $person['phone'] ?? '' }}" placeholder="{{ __('crm.person_phone_placeholder') }}" dir="ltr">
-                            <select name="related_people[{{ $pIndex }}][relationship_type]">
-                                <option value="عائلة / قريب" {{ ($person['relationship_type'] ?? '') === 'عائلة / قريب' ? 'selected' : '' }}>{{ __('crm.relation_family') }}</option>
-                                <option value="صديق" {{ ($person['relationship_type'] ?? '') === 'صديق' ? 'selected' : '' }}>{{ __('crm.relation_friend') }}</option>
-                                <option value="ممثل / مفوض" {{ ($person['relationship_type'] ?? '') === 'ممثل / مفوض' ? 'selected' : '' }}>{{ __('crm.relation_representative') }}</option>
-                                <option value="زميل" {{ ($person['relationship_type'] ?? '') === 'زميل' ? 'selected' : '' }}>{{ __('crm.relation_colleague') }}</option>
-                                <option value="أخرى" {{ ($person['relationship_type'] ?? '') === 'أخرى' ? 'selected' : '' }}>{{ __('crm.relation_other') }}</option>
+                            <select name="related_people[{{ $pIndex }}[relationship_type]">
+                                @foreach (\App\Support\CrmOptions::get('relation_type') as $relationType)
+                                    <option value="{{ $relationType['value'] }}" @selected(($person['relationship_type'] ?? '') === $relationType['value'])>{{ \App\Support\CrmOptions::labelOf($relationType) }}</option>
+                                @endforeach
                             </select>
                             <input type="text" name="related_people[{{ $pIndex }}][notes]" value="{{ $person['notes'] ?? '' }}" placeholder="{{ __('crm.note_optional_placeholder') }}">
                             <button type="button" class="btn small danger btn-remove" onclick="this.closest('.person-row').remove()" title="{{ __('crm.delete') }}">
@@ -382,9 +407,15 @@ textarea{resize:vertical;min-height:90px}
     </main>
 </div>
 
-@push('scripts')
 <script>
 (() => {
+
+    const PHONE_LABELS = @json(\App\Support\CrmOptions::get('phone_label'), JSON_UNESCAPED_UNICODE);
+    const RELATION_TYPES = @json(\App\Support\CrmOptions::get('relation_type'), JSON_UNESCAPED_UNICODE);
+    const OPTION_LABEL_LOCALE = @json(app()->getLocale());
+    const optionLabel = (opt) => (OPTION_LABEL_LOCALE === 'en' && opt.label_en && String(opt.label_en).trim() !== '') ? String(opt.label_en).trim() : String(opt.label_ar);
+    const escapeHtml = (text) => String(text ?? '').replace(/[&<>\"']/g, (ch) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+    const escapeAttr = escapeHtml;
     let phoneCounter = {{ count($currentPhones) }};
     const phoneContainer = document.getElementById('additionalPhonesContainer');
     const addPhoneBtn = document.getElementById('addPhoneBtn');
@@ -396,11 +427,7 @@ textarea{resize:vertical;min-height:90px}
         row.innerHTML = `
             <input type="tel" name="additional_phones[${phoneCounter}][phone]" placeholder="@json(__('crm.additional_phone_placeholder'))" dir="ltr" required>
             <select name="additional_phones[${phoneCounter}][label]">
-                <option value="عمل">@json(__('crm.phone_type_work'))</option>
-                <option value="منزل">@json(__('crm.phone_type_home'))</option>
-                <option value="واتساب">@json(__('crm.phone_type_whatsapp'))</option>
-                <option value="إضافي" selected>@json(__('crm.phone_type_extra'))</option>
-                <option value="أخرى">@json(__('crm.phone_type_other'))</option>
+                ${PHONE_LABELS.map((opt, i) => `<option value="${escapeAttr(opt.value)}" ${i === 0 ? 'selected' : ''}>${escapeHtml(optionLabel(opt))}</option>`).join('')}
             </select>
             <button type="button" class="btn small danger" onclick="this.closest('.repeater-row').remove()" title="@json(__('crm.delete'))">
                 <i class="bi bi-trash"></i>
@@ -425,11 +452,7 @@ textarea{resize:vertical;min-height:90px}
             <input type="text" name="related_people[${personCounter}][name]" placeholder="@json(__('crm.person_name_placeholder'))" required autofocus>
             <input type="tel" name="related_people[${personCounter}][phone]" placeholder="@json(__('crm.person_phone_placeholder'))" dir="ltr">
             <select name="related_people[${personCounter}][relationship_type]">
-                <option value="عائلة / قريب">@json(__('crm.relation_family'))</option>
-                <option value="صديق">@json(__('crm.relation_friend'))</option>
-                <option value="ممثل / مفوض">@json(__('crm.relation_representative'))</option>
-                <option value="زميل">@json(__('crm.relation_colleague'))</option>
-                <option value="أخرى">@json(__('crm.relation_other'))</option>
+                ${RELATION_TYPES.map((opt, i) => `<option value="${escapeAttr(opt.value)}" ${i === 0 ? 'selected' : ''}>${escapeHtml(optionLabel(opt))}</option>`).join('')}
             </select>
             <input type="text" name="related_people[${personCounter}][notes]" placeholder="@json(__('crm.note_optional_placeholder'))">
             <button type="button" class="btn small danger btn-remove" onclick="removePersonRow(this)" title="@json(__('crm.delete'))">
@@ -446,7 +469,6 @@ textarea{resize:vertical;min-height:90px}
     };
 })();
 </script>
-@endpush
 <script src="{{ asset('quotation-generator/crm-sidebar.js') }}"></script>
 </body>
 </html>
