@@ -12,12 +12,10 @@ return new class extends Migration
         $database = (string) DB::connection()
             ->getDatabaseName();
         $environment = app()->environment();
-        $allowedDatabases = [
-            'production' => 'sokrat_crm_v2',
-            'testing' => 'sokrat_crm_v2_testing',
-        ];
-        $expectedDatabase = $allowedDatabases[$environment]
-            ?? null;
+        $expectedDatabase = match ($environment) {
+            'testing' => 'sokrat_crm_v3_testing',
+            default => 'sokrat_crm_v3',
+        };
 
         if ($database !== $expectedDatabase) {
             throw new RuntimeException(sprintf(

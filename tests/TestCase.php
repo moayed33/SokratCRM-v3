@@ -9,7 +9,7 @@ use RuntimeException;
 
 abstract class TestCase extends BaseTestCase
 {
-    private const TEST_DATABASE = 'sokrat_crm_v2_testing';
+    private const TEST_DATABASE = 'sokrat_crm_v3_testing';
 
     public function createApplication(): Application
     {

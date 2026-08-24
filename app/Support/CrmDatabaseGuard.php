@@ -16,9 +16,8 @@ final class CrmDatabaseGuard
     {
         $environment = app()->environment();
         $expectedDatabase = match ($environment) {
-            'production' => 'sokrat_crm_v2',
-            'testing' => 'sokrat_crm_v2_testing',
-            default => null,
+            'testing' => 'sokrat_crm_v3_testing',
+            default => 'sokrat_crm_v3',
         };
         $connection = DB::connection();
         $database = (string) $connection->getDatabaseName();
@@ -29,7 +28,7 @@ final class CrmDatabaseGuard
             || $database !== $expectedDatabase
         ) {
             throw new RuntimeException(sprintf(
-                'CRM v2 database isolation failed for environment %s on database %s.',
+                'CRM v3 database isolation failed for environment %s on database %s.',
                 $environment,
                 $database,
             ));

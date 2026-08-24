@@ -11,9 +11,8 @@ return new class extends Migration
     {
         $environment = app()->environment();
         $expectedDatabase = match ($environment) {
-            'production' => 'sokrat_crm_v2',
-            'testing' => 'sokrat_crm_v2_testing',
-            default => null,
+            'testing' => 'sokrat_crm_v3_testing',
+            default => 'sokrat_crm_v3',
         };
         $connection = DB::connection();
         $database = (string) $connection->getDatabaseName();
