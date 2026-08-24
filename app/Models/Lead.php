@@ -48,6 +48,7 @@ class Lead extends Model
         'donation_purpose',
         'donation_purpose_id',
         'response_details',
+        'custom_fields',
         'contact_date',
         'responding_user_id',
     ];
@@ -60,6 +61,7 @@ class Lead extends Model
             'branches_count' => 'integer',
             'lines_count' => 'integer',
             'donation_value' => 'decimal:2',
+            'custom_fields' => 'array',
             'contact_date' => 'datetime',
             'next_follow_up_at' => 'datetime',
         ];
