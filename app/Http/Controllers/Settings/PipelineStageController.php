@@ -20,13 +20,14 @@ use Illuminate\Validation\Rule;
 
 class PipelineStageController extends Controller
 {
-    private const MAX_STAGES = 3;
-
     public function index(): View
     {
         $this->assertCrmDatabase();
 
         $stages = PipelineStage::query()
+            ->with([
+                'statuses' => static fn ($q) => $q->withCount('leads')->orderBy('position')->orderBy('id'),
+            ])
             ->withCount([
                 'statuses as statuses_count',
             ])
@@ -36,14 +37,13 @@ class PipelineStageController extends Controller
 
         // Calculate lead counts per stage
         foreach ($stages as $stage) {
-            $stage->leads_count = Lead::query()
-                ->whereHas('status', static fn ($q) => $q->where('pipeline_stage_id', $stage->id))
-                ->count();
+            $stage->leads_count = (int) $stage->statuses->sum('leads_count');
         }
 
         $totalStagesCount = $stages->count();
-        $canAddStage = $totalStagesCount < self::MAX_STAGES;
-
+        $primaryStagesCount = $stages->where('is_primary', true)->count();
+        $customStagesCount = $stages->where('is_primary', false)->count();
+        $totalStatusesCount = LeadStatus::query()->count();
         $donationTypes = DonationType::query()
             ->withCount('leads')
             ->orderBy('position')
@@ -57,8 +57,10 @@ class PipelineStageController extends Controller
         return view('settings.stages.index', [
             'stages' => $stages,
             'totalStagesCount' => $totalStagesCount,
-            'maxStages' => self::MAX_STAGES,
-            'canAddStage' => $canAddStage,
+            'primaryStagesCount' => $primaryStagesCount,
+            'customStagesCount' => $customStagesCount,
+            'totalStatusesCount' => $totalStatusesCount,
+            'canAddStage' => true,
             'donationTypes' => $donationTypes,
             'donationPurposes' => $donationPurposes,
         ]);
@@ -67,16 +69,6 @@ class PipelineStageController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $this->assertCrmDatabase();
-
-        $currentStagesCount = PipelineStage::query()->count();
-
-        if ($currentStagesCount >= self::MAX_STAGES) {
-            return redirect()
-                ->route('v2.settings.stages.index')
-                ->withErrors([
-                    'stage' => 'تم الوصول إلى الحد الأقصى للمراحل (3 مراحل). لا يمكن إضافة مراحل أخرى.',
-                ]);
-        }
 
         $validated = $request->validate([
             'name_ar' => ['required', 'string', 'max:100'],
@@ -94,25 +86,15 @@ class PipelineStageController extends Controller
         DB::transaction(function () use ($validated, $nextPosition, $color): void {
             $code = 'stage_'.Str::lower(Str::random(8));
 
-            $stage = PipelineStage::query()->create([
+            PipelineStage::query()->create([
                 'code' => $code,
                 'name_ar' => trim($validated['name_ar']),
                 'description_ar' => $validated['description_ar'] ?? null,
                 'position' => $nextPosition,
                 'color' => $color,
-                'icon' => $validated['icon'] ?? null,
+                'icon' => ! empty($validated['icon']) ? trim($validated['icon']) : null,
                 'is_primary' => false,
                 'is_active' => true,
-            ]);
-
-            // Create a matching primary status for this stage
-            LeadStatus::query()->create([
-                'pipeline_stage_id' => $stage->id,
-                'code' => 'status_'.$stage->id.'_default',
-                'name_ar' => $stage->name_ar,
-                'position' => (int) (LeadStatus::query()->max('position') ?? 0) + 1,
-                'color' => $color,
-                'is_terminal' => false,
             ]);
         });
 
@@ -120,7 +102,7 @@ class PipelineStageController extends Controller
 
         return redirect()
             ->route('v2.settings.stages.index')
-            ->with('success', 'تمت إضافة المرحلة الإضافية بنجاح.');
+            ->with('success', 'تمت إضافة المرحلة بنجاح.');
     }
 
     public function update(Request $request, PipelineStage $stage): RedirectResponse
@@ -131,7 +113,7 @@ class PipelineStageController extends Controller
             'name_ar' => ['required', 'string', 'max:100'],
             'color' => ['nullable', 'string', 'regex:/^#[0-9a-fA-F]{6}$/'],
             'icon' => ['nullable', 'string', 'max:50'],
-            'position' => ['required', 'integer', 'min:1', 'max:10'],
+            'position' => ['required', 'integer', 'min:1', 'max:255'],
             'description_ar' => ['nullable', 'string', 'max:255'],
             'is_active' => ['nullable', 'boolean'],
         ], [
@@ -151,14 +133,58 @@ class PipelineStageController extends Controller
         }
 
         DB::transaction(function () use ($stage, $validated, $isActive): void {
+            $newPosition = (int) $validated['position'];
+            $oldPosition = (int) $stage->position;
+
+            if ($newPosition !== $oldPosition) {
+                $existing = PipelineStage::query()
+                    ->where('id', '!=', $stage->id)
+                    ->where('position', $newPosition)
+                    ->first();
+
+                if ($existing !== null) {
+                    $stage->update(['position' => 254]);
+
+                    if ($newPosition < $oldPosition) {
+                        PipelineStage::query()
+                            ->where('id', '!=', $stage->id)
+                            ->where('position', '>=', $newPosition)
+                            ->where('position', '<', $oldPosition)
+                            ->orderByDesc('position')
+                            ->each(function (PipelineStage $s) {
+                                $s->increment('position');
+                            });
+                    } else {
+                        PipelineStage::query()
+                            ->where('id', '!=', $stage->id)
+                            ->where('position', '>', $oldPosition)
+                            ->where('position', '<=', $newPosition)
+                            ->orderBy('position')
+                            ->each(function (PipelineStage $s) {
+                                $s->decrement('position');
+                            });
+                    }
+                }
+            }
+
             $stage->update([
                 'name_ar' => trim($validated['name_ar']),
                 'color' => $validated['color'] ?? $stage->color,
-                'icon' => $validated['icon'] ?? $stage->icon,
-                'position' => (int) $validated['position'],
+                'icon' => array_key_exists('icon', $validated) ? (! empty($validated['icon']) ? trim($validated['icon']) : null) : $stage->icon,
+                'position' => $newPosition,
                 'description_ar' => $validated['description_ar'] ?? null,
                 'is_active' => $isActive,
             ]);
+
+            // Re-normalize all stages to contiguous positions
+            $allStages = PipelineStage::query()->orderBy('position')->orderBy('id')->get();
+            $pos = 1;
+            foreach ($allStages as $st) {
+                if ((int) $st->position !== $pos) {
+                    $st->update(['position' => $pos]);
+                }
+                $pos++;
+            }
 
             // Update matching default status color/name if applicable
             $defaultStatus = LeadStatus::query()
@@ -209,8 +235,17 @@ class PipelineStageController extends Controller
                 ->delete();
 
             $stage->delete();
-        });
 
+            // Re-normalize positions after delete
+            $allStages = PipelineStage::query()->orderBy('position')->orderBy('id')->get();
+            $pos = 1;
+            foreach ($allStages as $st) {
+                if ((int) $st->position !== $pos) {
+                    $st->update(['position' => $pos]);
+                }
+                $pos++;
+            }
+        });
         PipelineStage::clearSidebarCache();
 
         return redirect()

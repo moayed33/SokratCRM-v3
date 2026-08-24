@@ -1015,8 +1015,22 @@ class LeadController extends Controller
             $leadData['assigned_employee'] = $assignedEmployee;
         }
 
-        DB::transaction(function () use ($leadRecord, $leadData, $validated, $oldStatusId, $newStatusId, $actor): void {
-            $leadRecord->update($leadData);
+        DB::transaction(function () use ($leadRecord, $leadData, $validated, $oldStatusId, $newStatusId, $actor, $nextFollowUpAt): void {
+            if ($oldStatusId !== $newStatusId) {
+                $targetStatus = LeadStatus::query()->findOrFail($newStatusId);
+                app(\App\Services\LeadTransitionService::class)->transition(
+                    $leadRecord,
+                    $targetStatus,
+                    $actor,
+                    [
+                        'lead_attributes' => $leadData,
+                        'next_follow_up_at' => $nextFollowUpAt,
+                        'history_note' => 'تحديث الحالة من شاشة تعديل العميل',
+                    ]
+                );
+            } else {
+                $leadRecord->update($leadData);
+            }
 
             // 1. Sync primary phone
             LeadPhone::query()->updateOrInsert(
@@ -1063,19 +1077,6 @@ class LeadController extends Controller
                         ]);
                     }
                 }
-            }
-
-            // 4. Status history if changed
-            if ($oldStatusId !== $newStatusId) {
-                LeadStatusHistory::query()->create([
-                    'lead_id' => $leadRecord->id,
-                    'from_status_id' => $oldStatusId,
-                    'to_status_id' => $newStatusId,
-                    'changed_by' => $actor->name,
-                    'changed_by_user_id' => $actor->id,
-                    'note' => 'تحديث الحالة من شاشة تعديل العميل',
-                    'changed_at' => now(),
-                ]);
             }
         });
 

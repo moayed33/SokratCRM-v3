@@ -20,12 +20,13 @@ class FourCanonicalStatusesTest extends TestCase
 
     private User $admin;
     private PipelineStage $stageNew;
+    private PipelineStage $stageNoAnswer;
+    private PipelineStage $stageNotInterested;
     private PipelineStage $stageDonor;
     private LeadStatus $statusNew;
     private LeadStatus $statusNoAnswer;
     private LeadStatus $statusNotInterested;
     private LeadStatus $statusDonor;
-
     protected function setUp(): void
     {
         parent::setUp();
@@ -42,6 +43,8 @@ class FourCanonicalStatusesTest extends TestCase
         $this->seed(\Database\Seeders\CrmV2PipelineSeeder::class);
 
         $this->stageNew = PipelineStage::query()->where('code', 'new')->firstOrFail();
+        $this->stageNoAnswer = PipelineStage::query()->where('code', 'no_answer')->firstOrFail();
+        $this->stageNotInterested = PipelineStage::query()->where('code', 'not_interested')->firstOrFail();
         $this->stageDonor = PipelineStage::query()->where('code', 'donor')->firstOrFail();
 
         $this->statusNew = LeadStatus::query()->where('code', 'new')->firstOrFail();
@@ -50,20 +53,20 @@ class FourCanonicalStatusesTest extends TestCase
         $this->statusDonor = LeadStatus::query()->where('code', 'donor')->firstOrFail();
     }
 
-    public function test_database_contains_exactly_two_stages_and_four_statuses(): void
+    public function test_database_contains_exactly_four_canonical_stages_and_four_statuses(): void
     {
         $stages = PipelineStage::query()->orderBy('position')->get();
-        $this->assertCount(2, $stages);
-        $this->assertSame(['new', 'donor'], $stages->pluck('code')->all());
+        $this->assertCount(4, $stages);
+        $this->assertSame(['new', 'no_answer', 'not_interested', 'donor'], $stages->pluck('code')->all());
 
         $statuses = LeadStatus::query()->orderBy('position')->get();
         $this->assertCount(4, $statuses);
         $this->assertSame(['new', 'no_answer', 'not_interested', 'donor'], $statuses->pluck('code')->all());
 
-        // Verify stage mappings
+        // Verify 1:1 stage mappings
         $this->assertSame($this->stageNew->id, $this->statusNew->pipeline_stage_id);
-        $this->assertSame($this->stageNew->id, $this->statusNoAnswer->pipeline_stage_id);
-        $this->assertSame($this->stageNew->id, $this->statusNotInterested->pipeline_stage_id);
+        $this->assertSame($this->stageNoAnswer->id, $this->statusNoAnswer->pipeline_stage_id);
+        $this->assertSame($this->stageNotInterested->id, $this->statusNotInterested->pipeline_stage_id);
         $this->assertSame($this->stageDonor->id, $this->statusDonor->pipeline_stage_id);
 
         // Terminal status verification
@@ -302,13 +305,16 @@ class FourCanonicalStatusesTest extends TestCase
         $response->assertViewHas('totalCustomersCount', 1);
         $response->assertViewHas('totalDonationValue', 1000.0);
     }
-    public function test_kanban_renders_exactly_four_canonical_columns(): void
+    public function test_kanban_renders_active_pipeline_stage_columns(): void
     {
         $response = $this->actingAs($this->admin)->get(route('v2.leads.kanban'));
         $response->assertOk();
         $response->assertViewHas('kanbanColumns', function ($columns) {
             $codes = array_column($columns, 'code');
-            return count($codes) === 4 && $codes === ['new', 'no_answer', 'not_interested', 'donor'];
+            return in_array('new', $codes, true)
+                && in_array('no_answer', $codes, true)
+                && in_array('not_interested', $codes, true)
+                && in_array('donor', $codes, true);
         });
     }
 
@@ -352,5 +358,51 @@ class FourCanonicalStatusesTest extends TestCase
 
         $statuses = array_column($preview['rows'], 'status');
         $this->assertSame(['جديد', 'لم يتم الرد', 'غير مهتم', 'متبرع'], $statuses);
+    }
+    public function test_settings_displays_four_independent_canonical_stages(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('v2.settings.stages.index'));
+        $response->assertOk();
+
+        // 4 independent canonical stages appear as table rows
+        $response->assertSee('جديد');
+        $response->assertSee('لم يتم الرد');
+        $response->assertSee('غير مهتم');
+        $response->assertSee('متبرع');
+
+        $stages = $response->viewData('stages');
+        $this->assertCount(4, $stages);
+        $this->assertSame(['new', 'no_answer', 'not_interested', 'donor'], $stages->pluck('code')->all());
+    }
+
+    public function test_sidebar_tasks_and_followups_displays_all_four_canonical_stages(): void
+    {
+        $sidebarStages = PipelineStage::getActiveStagesForSidebar();
+        $this->assertCount(4, $sidebarStages);
+        $this->assertSame(['new', 'no_answer', 'not_interested', 'donor'], $sidebarStages->pluck('code')->all());
+    }
+
+    public function test_leads_summary_renders_independent_canonical_stage_counts(): void
+    {
+        // Create sample leads across all 4 statuses
+        Lead::query()->create(['name' => 'L1', 'phone' => '01000000010', 'lead_status_id' => $this->statusNew->id, 'assigned_user_id' => $this->admin->id]);
+        Lead::query()->create(['name' => 'L2', 'phone' => '01000000011', 'lead_status_id' => $this->statusNew->id, 'assigned_user_id' => $this->admin->id]);
+        Lead::query()->create(['name' => 'L3', 'phone' => '01000000012', 'lead_status_id' => $this->statusNoAnswer->id, 'assigned_user_id' => $this->admin->id]);
+        Lead::query()->create(['name' => 'L4', 'phone' => '01000000013', 'lead_status_id' => $this->statusNotInterested->id, 'assigned_user_id' => $this->admin->id]);
+        Lead::query()->create(['name' => 'L5', 'phone' => '01000000014', 'lead_status_id' => $this->statusDonor->id, 'assigned_user_id' => $this->admin->id]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads'));
+        $response->assertOk();
+
+        $stages = $response->viewData('stages');
+        $this->assertCount(4, $stages);
+
+        $countsByCode = $stages->pluck('scoped_leads_count', 'code')->all();
+        $this->assertEquals(2, $countsByCode['new']);
+        $this->assertEquals(1, $countsByCode['no_answer']);
+        $this->assertEquals(1, $countsByCode['not_interested']);
+        $this->assertEquals(1, $countsByCode['donor']);
+
+        $this->assertEquals(5, $response->viewData('totalLeads'));
     }
 }

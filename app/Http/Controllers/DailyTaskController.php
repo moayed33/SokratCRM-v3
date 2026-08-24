@@ -255,13 +255,11 @@ class DailyTaskController extends Controller
         // Data for filters and modals
         $statuses = LeadStatus::query()
             ->with('stage')
+            ->whereHas('stage', static fn (Builder $q): Builder => $q->where('is_active', true))
             ->orderBy('position')
             ->get();
 
-        $stages = PipelineStage::query()
-            ->where('is_active', true)
-            ->orderBy('position')
-            ->get();
+        $stages = PipelineStage::activeOrdered();
 
         $assignableUsers = collect();
         if ($user->isSuperAdmin() || $user->hasPermission(CrmPermission::LEADS_SCOPE_ALL) || $user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
@@ -376,39 +374,22 @@ class DailyTaskController extends Controller
             'next_follow_up_at' => ['nullable', 'date'],
         ]);
 
-        $fromStatusId = $lead->lead_status_id;
-        $toStatusId = !empty($validated['lead_status_id']) ? (int) $validated['lead_status_id'] : $fromStatusId;
-        $toStatus = LeadStatus::query()->find($toStatusId);
+        $toStatusId = !empty($validated['lead_status_id']) ? (int) $validated['lead_status_id'] : (int) $lead->lead_status_id;
+        $toStatus = LeadStatus::query()->findOrFail($toStatusId);
 
-        if ($toStatus && $toStatus->code === 'no_answer' && empty($validated['next_follow_up_at'])) {
-            $request->validate(['next_follow_up_at' => ['required', 'date']], [
-                'next_follow_up_at.required' => 'موعد المتابعة القادمة إجباري عند اختيار لم يتم الرد.',
-            ]);
-        }
-
-        $nextFollowUpAt = !empty($validated['next_follow_up_at']) ? Carbon::parse($validated['next_follow_up_at']) : null;
-        if ($toStatus && $toStatus->code === 'not_interested') {
-            $nextFollowUpAt = null;
-        }
-
-        DB::transaction(static function () use ($lead, $user, $validated, $fromStatusId, $toStatusId, $nextFollowUpAt, $toStatus): void {
-            LeadFollowup::create([
-                'lead_id' => $lead->id,
-                'from_status_id' => $fromStatusId,
-                'to_status_id' => $toStatusId,
-                'employee_name' => $user->name ?? 'System',
-                'user_id' => $user->id,
+        app(\App\Services\LeadTransitionService::class)->transition(
+            $lead,
+            $toStatus,
+            $user,
+            [
+                'record_followup' => true,
                 'communication_type' => $validated['communication_type'],
                 'outcome' => $validated['outcome'],
-                'next_follow_up_at' => $nextFollowUpAt,
-                'followed_up_at' => now(),
-            ]);
-
-            $lead->update([
-                'lead_status_id' => $toStatusId,
-                'next_follow_up_at' => $nextFollowUpAt,
-            ]);
-        });
+                'next_follow_up_at' => $validated['next_follow_up_at'] ?? null,
+                'employee_name' => $user->name ?? 'System',
+                'history_note' => 'متابعة سريعة - '.$validated['outcome'],
+            ]
+        );
 
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([

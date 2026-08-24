@@ -832,211 +832,100 @@ class LeadFollowupController extends Controller
             };
 
         try {
-            $leadRecord = DB::transaction(
-                function () use (
-                    $lead,
-                    $status,
-                    $employeeName,
-                    $currentUserId,
-                    $communicationType,
-                    $communicationTypes,
-                    $outcome,
-                    $nextFollowUpAt,
-                    $stageData,
-                    $fieldLabels,
-                    $formatChangeValue,
-                    $uploadedQuotationName,
-                    $campaign,
-                    $targetUser
-                ): Lead {
-                    $lockedLead =
-                        Lead::query()
-                            ->lockForUpdate()
-                            ->findOrFail(
-                                (int) $lead
-                            );
+            $lockedLead = Lead::query()
+                ->findOrFail((int) $lead);
 
-                    $oldStatusId =
-                        (int)
-                            $lockedLead
-                                ->lead_status_id;
+            $fieldChanges = [];
 
-                    $newStatusId =
-                        (int) $status->id;
+            if ($campaign !== null && $targetUser !== null) {
+                $oldCampaignName = $lockedLead->campaigns()
+                    ->value('campaigns.name') ?? 'بدون حملة';
+                $oldAssigneeName = $lockedLead->assignedUser?->name
+                    ?? $lockedLead->assigned_employee
+                    ?? 'غير مسند';
 
-                    $fieldChanges = [];
-
-                    if ($campaign !== null && $targetUser !== null) {
-                        $oldCampaignName = $lockedLead->campaigns()
-                            ->value('campaigns.name') ?? 'بدون حملة';
-                        $oldAssigneeName = $lockedLead->assignedUser?->name
-                            ?? $lockedLead->assigned_employee
-                            ?? 'غير مسند';
-
-                        if ($oldCampaignName !== $campaign->name) {
-                            $fieldChanges[] = [
-                                'field' => 'campaign_id',
-                                'label' => 'الحملة',
-                                'old' => $oldCampaignName,
-                                'new' => $campaign->name,
-                            ];
-                        }
-
-                        if ((int) $lockedLead->assigned_user_id !== (int) $targetUser->id) {
-                            $fieldChanges[] = [
-                                'field' => 'assigned_user_id',
-                                'label' => 'الموظف المسؤول',
-                                'old' => $oldAssigneeName,
-                                'new' => $targetUser->name,
-                            ];
-                        }
-                    }
-
-                    foreach (
-                        $fieldLabels as $field => $label
-                    ) {
-                        $oldRaw =
-                            $lockedLead
-                                ->getAttribute(
-                                    $field
-                                );
-
-                        $newRaw =
-                            $stageData[
-                                $field
-                            ] ?? null;
-
-                        $oldComparable =
-                            $oldRaw === null
-                                ? null
-                                : (string)
-                                    $oldRaw;
-
-                        $newComparable =
-                            $newRaw === null
-                                ? null
-                                : (string)
-                                    $newRaw;
-
-                        if (
-                            $oldComparable
-                            === $newComparable
-                        ) {
-                            continue;
-                        }
-
-                        $oldValue =
-                            $formatChangeValue(
-                                $field,
-                                $oldRaw
-                            );
-
-                        $newValue =
-                            $formatChangeValue(
-                                $field,
-                                $newRaw
-                            );
-
-                        if (
-                            $field
-                                ===
-                                'quotation_file_path'
-                            && $uploadedQuotationName
-                                !== null
-                            && $uploadedQuotationName
-                                !== ''
-                        ) {
-                            $newValue =
-                                $uploadedQuotationName;
-                        }
-
-                        $fieldChanges[] = [
-                            'field' => $field,
-                            'label' => $label,
-                            'old' => $oldValue,
-                            'new' => $newValue,
-                        ];
-                    }
-
-                    LeadFollowup::query()
-                        ->create(
-                            [
-                                'lead_id' => $lockedLead->id,
-
-                                'from_status_id' => $oldStatusId,
-
-                                'to_status_id' => $newStatusId,
-
-                                'employee_name' => $employeeName,
-                                'user_id' => $currentUserId,
-
-                                'communication_type' => $communicationType,
-
-                                'outcome' => $outcome,
-
-                                'field_changes' => $fieldChanges === []
-                                        ? null
-                                        : $fieldChanges,
-
-                                'next_follow_up_at' => $nextFollowUpAt,
-
-                                'followed_up_at' => now(),
-                            ]
-                        );
-
-                    if (
-                        $oldStatusId
-                        !== $newStatusId
-                    ) {
-                        LeadStatusHistory::query()
-                            ->create(
-                                [
-                                    'lead_id' => $lockedLead
-                                        ->id,
-
-                                    'from_status_id' => $oldStatusId,
-
-                                    'to_status_id' => $newStatusId,
-
-                                    'changed_by' => $employeeName,
-                                    'changed_by_user_id' => $currentUserId,
-
-                                    'note' => 'متابعة - '
-                                        .$communicationTypes[
-                                            $communicationType
-                                        ]
-                                        .': '
-                                        .$outcome,
-
-                                    'changed_at' => now(),
-                                ]
-                            );
-                    }
-
-                    $lockedLead->update(
-                        array_merge(
-                            $stageData,
-                            [
-                                'lead_status_id' => $newStatusId,
-                                'response_details' => $outcome,
-                                'contact_date' => now(),
-                                'responding_user_id' => $currentUserId,
-                                'next_follow_up_at' => $nextFollowUpAt,
-                                'assigned_user_id' => $targetUser?->id
-                                    ?? $lockedLead->assigned_user_id,
-                                'assigned_employee' => $targetUser?->name
-                                    ?? $lockedLead->assigned_employee,
-                            ]
-                        )
-                    );
-
-                    if ($campaign !== null) {
-                        $lockedLead->campaigns()->sync([$campaign->id]);
-                    }
-
-                    return $lockedLead;
+                if ($oldCampaignName !== $campaign->name) {
+                    $fieldChanges[] = [
+                        'field' => 'campaign_id',
+                        'label' => 'الحملة',
+                        'old' => $oldCampaignName,
+                        'new' => $campaign->name,
+                    ];
                 }
+
+                if ((int) $lockedLead->assigned_user_id !== (int) $targetUser->id) {
+                    $fieldChanges[] = [
+                        'field' => 'assigned_user_id',
+                        'label' => 'الموظف المسؤول',
+                        'old' => $oldAssigneeName,
+                        'new' => $targetUser->name,
+                    ];
+                }
+            }
+
+            foreach ($fieldLabels as $field => $label) {
+                $oldRaw = $lockedLead->getAttribute($field);
+                $newRaw = $stageData[$field] ?? null;
+
+                $oldComparable = $oldRaw === null ? null : (string) $oldRaw;
+                $newComparable = $newRaw === null ? null : (string) $newRaw;
+
+                if ($oldComparable === $newComparable) {
+                    continue;
+                }
+
+                $oldValue = $formatChangeValue($field, $oldRaw);
+                $newValue = $formatChangeValue($field, $newRaw);
+
+                if (
+                    $field === 'quotation_file_path'
+                    && $uploadedQuotationName !== null
+                    && $uploadedQuotationName !== ''
+                ) {
+                    $newValue = $uploadedQuotationName;
+                }
+
+                $fieldChanges[] = [
+                    'field' => $field,
+                    'label' => $label,
+                    'old' => $oldValue,
+                    'new' => $newValue,
+                ];
+            }
+
+            $transitionContext = [
+                'record_followup' => true,
+                'communication_type' => $communicationType,
+                'outcome' => $outcome,
+                'employee_name' => $employeeName,
+                'next_follow_up_at' => $nextFollowUpAt,
+                'response_details' => $outcome,
+                'contact_date' => now(),
+                'responding_user_id' => $currentUserId,
+                'lead_attributes' => $stageData,
+                'field_changes' => $fieldChanges === [] ? null : $fieldChanges,
+                'history_note' => 'متابعة - '
+                    .$communicationTypes[$communicationType]
+                    .': '
+                    .$outcome,
+            ];
+
+            if ($targetUser !== null) {
+                $transitionContext['assigned_user_id'] = $targetUser->id;
+                $transitionContext['assigned_employee'] = $targetUser->name;
+            }
+            if ($campaign !== null) {
+                $transitionContext['campaign'] = $campaign;
+            }
+
+            $transitionResult = app(\App\Services\LeadTransitionService::class)->transition(
+                $lockedLead,
+                $status,
+                $request->user(),
+                $transitionContext
             );
+
+            $leadRecord = $transitionResult['lead'];
         } catch (\Throwable $exception) {
             if (
                 $newQuotationPath

@@ -12,6 +12,7 @@ use App\Models\LeadStatus;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Services\VoipService;
+use App\Support\BranchContext;
 use App\Support\CrmDatabaseGuard;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
@@ -42,8 +43,10 @@ class DashboardController extends Controller
 
         $filters = $this->resolveFilters($request);
 
-        // 1. Dynamic canonical lead statuses & active stages from database
-        $stages = PipelineStage::query()
+        $branchId = BranchContext::getCurrentBranchId($user);
+
+        // 1. Dynamic active pipeline stages from database
+        $pipelineStages = PipelineStage::query()
             ->with(['statuses'])
             ->where('is_active', true)
             ->orderBy('position')
@@ -51,6 +54,7 @@ class DashboardController extends Controller
 
         $statuses = LeadStatus::query()
             ->with(['stage'])
+            ->whereHas('stage', static fn (Builder $q) => $q->where('is_active', true))
             ->orderBy('position')
             ->get();
 
@@ -62,6 +66,27 @@ class DashboardController extends Controller
         $newCustomersCount = 0;
         $donorCustomersCount = 0;
 
+        // 2b. Compute lead counts and percentages dynamically for each active PipelineStage
+        $statusCounts = (clone $leadBase)
+            ->whereNotNull('lead_status_id')
+            ->groupBy('lead_status_id')
+            ->selectRaw('lead_status_id, count(*) as total')
+            ->pluck('total', 'lead_status_id')
+            ->all();
+
+        foreach ($pipelineStages as $stage) {
+            $stageLeadsCount = 0;
+            foreach ($stage->statuses as $st) {
+                $stageLeadsCount += ($statusCounts[$st->id] ?? 0);
+            }
+            $stage->leads_count = $stageLeadsCount;
+            $stage->percentage = $totalCustomersCount > 0
+                ? round(($stageLeadsCount / $totalCustomersCount) * 100, 1)
+                : 0.0;
+        }
+
+        $totalActiveStagesCount = $pipelineStages->count();
+        $stages = $pipelineStages;
         // 3. Four Independent Canonical Status Cards
         $statusCards = [];
         foreach ($statuses as $status) {
@@ -145,11 +170,11 @@ class DashboardController extends Controller
                 ->count(),
         ];
 
-        // 7. Chart 1 — Customer Status Distribution (Donut / Pie Chart) (Section 11)
+        // 7. Chart 1 — Customer Pipeline Stage Distribution (Donut / Pie Chart) (Section 11)
         $stageDistribution = [
-            'labels' => collect($statusCards)->pluck('name')->all(),
-            'data' => collect($statusCards)->pluck('count')->all(),
-            'colors' => collect($statusCards)->pluck('color')->all(),
+            'labels' => $pipelineStages->map(fn (PipelineStage $s) => $s->localizedName())->all(),
+            'data' => $pipelineStages->map(fn (PipelineStage $s) => (int) $s->leads_count)->all(),
+            'colors' => $pipelineStages->map(fn (PipelineStage $s) => (string) ($s->color ?: '#3478f6'))->all(),
         ];
         // 8. Chart 2 — Customer / Donation Activity Over Time (Section 11)
         $monthsTrend = [];
@@ -250,6 +275,8 @@ class DashboardController extends Controller
 
         return view('dashboard', [
             'stages' => $stages,
+            'pipelineStages' => $pipelineStages,
+            'totalActiveStagesCount' => $totalActiveStagesCount,
             'statuses' => $statuses,
             'statusCards' => $statusCards,
             'stageCards' => $stageCards,
@@ -280,24 +307,35 @@ class DashboardController extends Controller
         $todayStart = now()->startOfDay();
         $todayEnd = now()->endOfDay();
 
-        $statuses = LeadStatus::query()
-            ->with(['stage'])
+        // 1. Dynamic active pipeline stages ordered by configured position
+        $pipelineStages = PipelineStage::query()
+            ->with(['statuses'])
+            ->where('is_active', true)
             ->orderBy('position')
             ->get();
 
+        $statuses = $pipelineStages;
         $kanbanColumns = [];
         $totalLeads = 0;
 
-        foreach ($statuses as $status) {
-            $leads = Lead::query()
-                ->accessibleTo($user)
-                ->with(['assignedUser:id,name', 'phones', 'status.stage'])
-                ->where('lead_status_id', $status->id)
-                ->orderByRaw('next_follow_up_at IS NULL')
-                ->orderBy('next_follow_up_at')
-                ->orderByDesc('updated_at')
-                ->get();
+        foreach ($pipelineStages as $stage) {
+            $statusIds = $stage->statuses->pluck('id')->all();
+            $destinationStatus = $stage->statuses->first();
+            $destinationStatusId = $destinationStatus?->id;
+            $destinationStatusName = $destinationStatus?->name_ar ?? $stage->localizedName();
 
+            if (! empty($statusIds)) {
+                $leads = Lead::query()
+                    ->accessibleTo($user)
+                    ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                    ->whereIn('lead_status_id', $statusIds)
+                    ->orderByRaw('next_follow_up_at IS NULL')
+                    ->orderBy('next_follow_up_at')
+                    ->orderByDesc('updated_at')
+                    ->get();
+            } else {
+                $leads = collect();
+            }
             $totalCount = $leads->count();
             $totalLeads += $totalCount;
 
@@ -317,15 +355,19 @@ class DashboardController extends Controller
             $noDateLeads = $leads->filter(static fn (Lead $lead): bool => $lead->next_follow_up_at === null)->values();
 
             $kanbanColumns[] = [
-                'id' => $status->id,
-                'code' => $status->code,
-                'status_id' => $status->id,
-                'name' => $status->name_ar,
-                'stage_name' => $status->stage?->name_ar ?? $status->name_ar,
-                'color' => $status->color ?: '#3478f6',
-                'status_color' => $status->color ?: '#3478f6',
-                'stage_color' => $status->stage?->color ?: ($status->color ?: '#3478f6'),
-                'class' => str_replace('_', '-', $status->code),
+                'id' => $stage->id,
+                'stage_id' => $stage->id,
+                'code' => $stage->code,
+                'status_id' => $destinationStatusId,
+                'destination_status_id' => $destinationStatusId,
+                'name' => $stage->localizedName(),
+                'stage_name' => $stage->localizedName(),
+                'status_name' => $destinationStatusName,
+                'color' => $stage->color ?: '#3478f6',
+                'status_color' => $stage->color ?: '#3478f6',
+                'stage_color' => $stage->color ?: '#3478f6',
+                'icon' => $stage->icon,
+                'class' => str_replace(['_', ' '], '-', (string) $stage->code),
                 'total' => $totalCount,
                 'total_count' => $totalCount,
                 'scope_counts' => [
@@ -344,14 +386,18 @@ class DashboardController extends Controller
                 'overdue_leads' => $overdueLeads,
                 'upcoming_leads' => $upcomingLeads,
                 'no_date_leads' => $noDateLeads,
+                'has_destination_status' => $destinationStatusId !== null,
             ];
         }
 
         return view('kanban', [
             'kanbanColumns' => $kanbanColumns,
+            'pipelineStages' => $pipelineStages,
             'totalLeads' => $totalLeads,
-            'statuses' => $statuses,
+            'totalStagesCount' => count($kanbanColumns),
+            'statuses' => $pipelineStages,
         ]);
+
     }
 
     private function resolveFilters(Request $request): array

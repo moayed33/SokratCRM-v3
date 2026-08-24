@@ -93,7 +93,7 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         // Swap positions safely
         $stageNew->update(['position' => 99]);
         $stageDonor->update(['position' => 1]);
-        $stageNew->update(['position' => 2]);
+        $stageNew->update(['position' => 4]);
         PipelineStage::clearSidebarCache();
 
         $sidebarStages = PipelineStage::getActiveStagesForSidebar();
@@ -105,7 +105,7 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         $stage = PipelineStage::query()->create([
             'code' => 'custom_stage',
             'name_ar' => 'مرحلة اختيارية قابلة للتعطيل',
-            'position' => 3,
+            'position' => 5,
             'is_primary' => false,
             'is_active' => true,
         ]);
@@ -117,7 +117,7 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         // 2. Disable stage
         $this->actingAs($this->admin)->patch(route('v2.settings.stages.update', $stage), [
             'name_ar' => 'مرحلة اختيارية قابلة للتعطيل',
-            'position' => 3,
+            'position' => 5,
             'is_active' => false,
         ]);
 
@@ -128,7 +128,7 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         // 4. Re-enable stage
         $this->actingAs($this->admin)->patch(route('v2.settings.stages.update', $stage), [
             'name_ar' => 'مرحلة اختيارية قابلة للتعطيل',
-            'position' => 3,
+            'position' => 5,
             'is_active' => true,
         ]);
 
@@ -142,11 +142,10 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         $stage = PipelineStage::query()->create([
             'code' => 'stage_to_delete',
             'name_ar' => 'مرحلة سيتم حذفها',
-            'position' => 3,
+            'position' => 5,
             'is_primary' => false,
             'is_active' => true,
         ]);
-
         $response1 = $this->actingAs($this->admin)->get(route('v2.tasks.daily'));
         $response1->assertSee('مرحلة سيتم حذفها');
 
@@ -229,5 +228,26 @@ class DynamicSidebarPipelineStagesTest extends TestCase
 
         // The specific stage link has class active
         $response->assertSee('crm-task-status-link active', false);
+    }
+
+    public function test_sidebar_supports_unlimited_stages_without_three_stage_cap(): void
+    {
+        // Create 4 custom stages (making total 6 stages)
+        for ($i = 3; $i <= 6; $i++) {
+            $this->actingAs($this->admin)->post(route('v2.settings.stages.store'), [
+                'name_ar' => "المرحلة رقم {$i}",
+                'color' => '#8b5cf6',
+            ]);
+        }
+
+        $response = $this->actingAs($this->admin)->get(route('v2.tasks.daily'));
+        $response->assertOk();
+
+        for ($i = 3; $i <= 6; $i++) {
+            $response->assertSee("المرحلة رقم {$i}");
+        }
+
+        $allActive = PipelineStage::getActiveStagesForSidebar();
+        $this->assertCount(8, $allActive);
     }
 }

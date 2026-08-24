@@ -19,21 +19,37 @@ class CrmV2PipelineSeeder extends Seeder
     public function run(): void
     {
         DB::transaction(function (): void {
-            // 1. Two Default Primary Pipeline Stages
+            // 1. Four Default Primary Pipeline Stages
             $stages = [
                 [
                     'code' => 'new',
                     'name_ar' => 'جديد',
-                    'description_ar' => 'عميل مسجل جديد أو قيد التواصل والتنسيق الأولي ولم يصبح متبرعاً مؤكداً بعد',
+                    'description_ar' => 'عميل مسجل جديد أو قيد التواصل والتنسيق الأولي',
                     'position' => 1,
                     'color' => '#3478f6',
+                    'is_primary' => true,
+                ],
+                [
+                    'code' => 'no_answer',
+                    'name_ar' => 'لم يتم الرد',
+                    'description_ar' => 'عميل لم يقم بالرد على محاولات التواصل المجدولة',
+                    'position' => 2,
+                    'color' => '#e59b16',
+                    'is_primary' => true,
+                ],
+                [
+                    'code' => 'not_interested',
+                    'name_ar' => 'غير مهتم',
+                    'description_ar' => 'عميل غير مهتم بالخدمة أو التبرع حالياً',
+                    'position' => 3,
+                    'color' => '#dc2637',
                     'is_primary' => true,
                 ],
                 [
                     'code' => 'donor',
                     'name_ar' => 'متبرع',
                     'description_ar' => 'عميل متبرع مؤكد قام بتسليم أو تأكيد التبرع ويخضع للمتابعة الدورية',
-                    'position' => 2,
+                    'position' => 4,
                     'color' => '#16a34a',
                     'is_primary' => true,
                 ],
@@ -55,9 +71,8 @@ class CrmV2PipelineSeeder extends Seeder
                 );
             }
 
-            // 2. Exactly Four Canonical Lead Statuses
+            // 2. Exactly Four Canonical Lead Statuses (1:1 with Stages)
             $statuses = [
-                // Statuses under "new" (عميل جديد)
                 [
                     'stage' => 'new',
                     'code' => 'new',
@@ -67,7 +82,7 @@ class CrmV2PipelineSeeder extends Seeder
                     'terminal' => false,
                 ],
                 [
-                    'stage' => 'new',
+                    'stage' => 'no_answer',
                     'code' => 'no_answer',
                     'name_ar' => 'لم يتم الرد',
                     'position' => 2,
@@ -75,15 +90,13 @@ class CrmV2PipelineSeeder extends Seeder
                     'terminal' => false,
                 ],
                 [
-                    'stage' => 'new',
+                    'stage' => 'not_interested',
                     'code' => 'not_interested',
                     'name_ar' => 'غير مهتم',
                     'position' => 3,
                     'color' => '#dc2637',
                     'terminal' => true,
                 ],
-
-                // Status under "donor" (متبرع)
                 [
                     'stage' => 'donor',
                     'code' => 'donor',

@@ -66,28 +66,33 @@ class CustomerDonorPipelineTest extends TestCase
         $this->statusDonor = LeadStatus::query()->where('pipeline_stage_id', $this->stageDonor->id)->firstOrFail();
     }
 
-    public function test_default_pipeline_has_two_primary_stages_with_stable_codes_new_and_donor(): void
+    public function test_default_pipeline_has_four_primary_stages_with_stable_codes(): void
     {
         $stages = PipelineStage::query()->orderBy('position')->get();
-        $this->assertCount(2, $stages);
-
-        $firstStage = $stages[0];
-        $secondStage = $stages[1];
+        $this->assertCount(4, $stages);
 
         // Stable technical codes & Arabic display names
-        $this->assertEquals('new', $firstStage->code);
-        $this->assertEquals('جديد', $firstStage->name_ar);
-        $this->assertTrue($firstStage->isPrimary());
+        $this->assertEquals('new', $stages[0]->code);
+        $this->assertEquals('جديد', $stages[0]->name_ar);
+        $this->assertTrue($stages[0]->isPrimary());
 
-        $this->assertEquals('donor', $secondStage->code);
-        $this->assertEquals('متبرع', $secondStage->name_ar);
-        $this->assertTrue($secondStage->isPrimary());
+        $this->assertEquals('no_answer', $stages[1]->code);
+        $this->assertEquals('لم يتم الرد', $stages[1]->name_ar);
+        $this->assertTrue($stages[1]->isPrimary());
+
+        $this->assertEquals('not_interested', $stages[2]->code);
+        $this->assertEquals('غير مهتم', $stages[2]->name_ar);
+        $this->assertTrue($stages[2]->isPrimary());
+
+        $this->assertEquals('donor', $stages[3]->code);
+        $this->assertEquals('متبرع', $stages[3]->name_ar);
+        $this->assertTrue($stages[3]->isPrimary());
 
         $this->assertGreaterThanOrEqual(4, DonationType::query()->count());
         $this->assertGreaterThanOrEqual(4, DonationPurpose::query()->count());
     }
 
-    public function test_admin_can_add_third_optional_stage_but_cannot_exceed_max_three_stages(): void
+    public function test_admin_can_add_multiple_custom_stages_without_limit(): void
     {
         $this->actingAs($this->admin);
 
@@ -95,34 +100,62 @@ class CustomerDonorPipelineTest extends TestCase
         $response = $this->get(route('v2.settings.stages.index'));
         $response->assertOk();
         $response->assertSee('مراحل مسار العملاء');
-        $response->assertSee('إضافة مرحلة إضافية');
+        $response->assertSee('إضافة مرحلة مخصصة');
 
-        // 2. Add 3rd optional stage (should succeed)
-        $addResponse = $this->post(route('v2.settings.stages.store'), [
+        // 2. Add 5th custom stage (should succeed)
+        $add3 = $this->post(route('v2.settings.stages.store'), [
             'name_ar' => 'المتابعة اللاحقة',
             'color' => '#7b61df',
             'description_ar' => 'مرحلة إضافية للمتابعة الدورية',
         ]);
-        $addResponse->assertRedirect(route('v2.settings.stages.index'));
-        $this->assertEquals(3, PipelineStage::query()->count());
+        $add3->assertRedirect(route('v2.settings.stages.index'));
+        $this->assertEquals(5, PipelineStage::query()->count());
 
-        $stage3 = PipelineStage::query()->where('name_ar', 'المتابعة اللاحقة')->first();
-        $this->assertNotNull($stage3);
-        $this->assertFalse($stage3->isPrimary());
-
-        // 3. Attempt to add 4th stage (MUST BE REJECTED)
-        $fourthResponse = $this->post(route('v2.settings.stages.store'), [
-            'name_ar' => 'المرحلة الرابعة المرفوضة',
+        // 3. Add 6th custom stage (should also succeed without limit)
+        $add4 = $this->post(route('v2.settings.stages.store'), [
+            'name_ar' => 'المرحلة الرابعة',
             'color' => '#dc2637',
+            'description_ar' => 'مرحلة رابعة مخصصة',
         ]);
-        $fourthResponse->assertSessionHasErrors(['stage']);
-        $this->assertEquals(3, PipelineStage::query()->count());
+        $add4->assertRedirect(route('v2.settings.stages.index'));
+        $this->assertEquals(6, PipelineStage::query()->count());
 
-        // 4. View page now displays limit reached badge
+        // 4. Add 7th custom stage (should also succeed)
+        $add5 = $this->post(route('v2.settings.stages.store'), [
+            'name_ar' => 'المرحلة الخامسة',
+            'color' => '#0284c7',
+            'description_ar' => 'مرحلة خامسة مخصصة',
+        ]);
+        $add5->assertRedirect(route('v2.settings.stages.index'));
+        $this->assertEquals(7, PipelineStage::query()->count());
+        // 5. Verify all stages appear on settings page and Add button remains enabled
         $indexResponse = $this->get(route('v2.settings.stages.index'));
-        $indexResponse->assertSee('الحد الأقصى مكتمل (3 مراحل)');
+        $indexResponse->assertOk();
+        $indexResponse->assertSee('المتابعة اللاحقة');
+        $indexResponse->assertSee('المرحلة الرابعة');
+        $indexResponse->assertSee('المرحلة الخامسة');
+        $indexResponse->assertDontSee('الحد الأقصى مكتمل');
     }
+    public function test_settings_stages_index_displays_independent_canonical_stages(): void
+    {
+        $this->actingAs($this->admin);
 
+        // Add custom stage
+        $this->post(route('v2.settings.stages.store'), [
+            'name_ar' => 'المتابعة اللاحقة',
+            'color' => '#7b61df',
+        ]);
+
+        $response = $this->get(route('v2.settings.stages.index'));
+        $response->assertOk();
+
+        // Check canonical stages in table
+        $response->assertSee('جديد');
+        $response->assertSee('لم يتم الرد');
+        $response->assertSee('غير مهتم');
+        $response->assertSee('متبرع');
+        $response->assertSee('المتابعة اللاحقة');
+    }
     public function test_renaming_stage_does_not_change_stable_technical_code(): void
     {
         $this->actingAs($this->admin);
@@ -158,8 +191,16 @@ class CustomerDonorPipelineTest extends TestCase
             'color' => '#7b61df',
         ]);
         $stage3 = PipelineStage::query()->where('name_ar', 'مرحلة بها عملاء')->firstOrFail();
-        $status3 = LeadStatus::query()->where('pipeline_stage_id', $stage3->id)->firstOrFail();
-
+        $status3 = $stage3->statuses()->first() ?? LeadStatus::query()->firstOrCreate(
+            ['code' => 'status_'.$stage3->id],
+            [
+                'pipeline_stage_id' => $stage3->id,
+                'name_ar' => $stage3->name_ar,
+                'position' => 5,
+                'color' => '#7b61df',
+                'is_terminal' => false,
+            ]
+        );
         // Attach a lead to this stage
         Lead::query()->create([
             'name' => 'عميل تجريبي في المرحلة 3',
@@ -359,8 +400,16 @@ class CustomerDonorPipelineTest extends TestCase
         ]);
 
         $stage3 = PipelineStage::query()->where('name_ar', 'المتابعة اللاحقة')->firstOrFail();
-        $status3 = LeadStatus::query()->where('pipeline_stage_id', $stage3->id)->firstOrFail();
-
+        $status3 = $stage3->statuses()->first() ?? LeadStatus::query()->firstOrCreate(
+            ['code' => 'status_'.$stage3->id],
+            [
+                'pipeline_stage_id' => $stage3->id,
+                'name_ar' => $stage3->name_ar,
+                'position' => 5,
+                'color' => '#7b61df',
+                'is_terminal' => false,
+            ]
+        );
         Lead::query()->create([
             'name' => 'عميل في المرحلة الثالثة',
             'phone' => '01033334444',
@@ -372,9 +421,119 @@ class CustomerDonorPipelineTest extends TestCase
         $response = $this->get(route('dashboard'));
         $response->assertOk();
         $response->assertSee('المتابعة اللاحقة');
-        $response->assertSee(__('crm.active_statuses'));
+        $response->assertSee(__('crm.active_stages'));
     }
 
+    public function test_dashboard_shows_active_zero_lead_stage_and_excludes_inactive_stage(): void
+    {
+        $this->actingAs($this->admin);
+
+        $activeEmptyStage = PipelineStage::query()->create([
+            'code' => 'stage_empty_active',
+            'name_ar' => 'مرحلة نشطة بدون عملاء',
+            'position' => 10,
+            'color' => '#8b5cf6',
+            'is_primary' => false,
+            'is_active' => true,
+        ]);
+
+        $inactiveStage = PipelineStage::query()->create([
+            'code' => 'stage_inactive_test',
+            'name_ar' => 'مرحلة معطلة مخفية',
+            'position' => 11,
+            'color' => '#64748b',
+            'is_primary' => false,
+            'is_active' => false,
+        ]);
+
+        $response = $this->get(route('dashboard'));
+        $response->assertOk();
+        $response->assertSee('مرحلة نشطة بدون عملاء');
+        $response->assertDontSee('مرحلة معطلة مخفية');
+        $response->assertSee('0%');
+    }
+
+    public function test_kanban_dynamically_shows_active_pipeline_stages_and_zero_lead_stages(): void
+    {
+        $this->actingAs($this->admin);
+
+        $activeCustomStage = PipelineStage::query()->create([
+            'code' => 'stage_kanban_active',
+            'name_ar' => 'مرحلة كانبان مخصصة',
+            'position' => 12,
+            'color' => '#14b8a6',
+            'is_primary' => false,
+            'is_active' => true,
+        ]);
+
+        $inactiveKanbanStage = PipelineStage::query()->create([
+            'code' => 'stage_kanban_inactive',
+            'name_ar' => 'مرحلة كانبان معطلة',
+            'position' => 13,
+            'color' => '#64748b',
+            'is_primary' => false,
+            'is_active' => false,
+        ]);
+
+        $response = $this->get(route('v2.leads.kanban'));
+        $response->assertOk();
+        $response->assertSee('مرحلة كانبان مخصصة');
+        $response->assertDontSee('مرحلة كانبان معطلة');
+        $response->assertViewHas('kanbanColumns', function ($columns) {
+            $codes = array_column($columns, 'code');
+            return in_array('stage_kanban_active', $codes, true)
+                && ! in_array('stage_kanban_inactive', $codes, true);
+        });
+    }
+
+    public function test_stage_icon_can_be_saved_updated_and_cleared(): void
+    {
+        $this->actingAs($this->admin);
+
+        // 1. Create with icon
+        $response = $this->post(route('v2.settings.stages.store'), [
+            'name_ar' => 'مرحلة مع أيقونة نجمة',
+            'color' => '#f59e0b',
+            'icon' => 'bi-star',
+        ]);
+        $response->assertRedirect(route('v2.settings.stages.index'));
+
+        $stage = PipelineStage::query()->where('name_ar', 'مرحلة مع أيقونة نجمة')->firstOrFail();
+        $this->assertSame('bi-star', $stage->icon);
+
+        // 2. Update icon
+        $updateResponse = $this->patch(route('v2.settings.stages.update', $stage), [
+            'name_ar' => 'مرحلة مع أيقونة قلب',
+            'color' => '#ef4444',
+            'icon' => 'bi-heart-fill',
+            'position' => $stage->position,
+            'is_active' => 1,
+        ]);
+        $updateResponse->assertRedirect(route('v2.settings.stages.index'));
+
+        $stage->refresh();
+        $this->assertSame('bi-heart-fill', $stage->icon);
+
+        // 3. Clear icon (No Icon)
+        $clearResponse = $this->patch(route('v2.settings.stages.update', $stage), [
+            'name_ar' => 'مرحلة بدون أيقونة',
+            'color' => '#64748b',
+            'icon' => '',
+            'position' => $stage->position,
+            'is_active' => 1,
+        ]);
+        $clearResponse->assertRedirect(route('v2.settings.stages.index'));
+
+        $stage->refresh();
+        $this->assertNull($stage->icon);
+
+        // 4. View renders icon picker
+        $viewResponse = $this->get(route('v2.settings.stages.index'));
+        $viewResponse->assertOk();
+        $viewResponse->assertSee('addStageIconWrap');
+        $viewResponse->assertSee('editStageIconWrap');
+        $viewResponse->assertSee('crmIconsMap');
+    }
     public function test_customer_show_page_displays_all_normalized_data(): void
     {
         $this->actingAs($this->admin);

@@ -1119,7 +1119,7 @@ body.kanban-modal-open{
           'no-answer', 'no_answer' => 'bi bi-telephone-x-fill',
           'not_interested', 'not-interested' => 'bi bi-x-circle-fill',
           'donor' => 'bi bi-heart-fill',
-          default => 'bi bi-app-indicator',
+          default => !empty($column['icon']) ? (str_starts_with($column['icon'], 'bi-') ? 'bi ' . $column['icon'] : 'bi bi-' . $column['icon']) : 'bi bi-app-indicator',
       };
      @endphp
 
@@ -1303,31 +1303,18 @@ body.kanban-modal-open{
      )
        @php
         if ($kanbanDirectStatus) {
-         if ($scope === 'today') {
-          $scopeLeads =
-           \App\Models\Lead::query()
-            ->with([
-             'status.stage',
-            ])
-            ->where(
-             'lead_status_id',
-             (int) $column['status_id']
-            )
-            ->orderByDesc('updated_at')
-            ->orderByDesc('id')
-            ->get();
+         $scopeLeads =
+          $scope === 'today'
+           ? ($column['leads'] ?? collect())
+           : collect();
 
-          $scopeLabel =
-           __('crm.all_leads_in_stage');
-         } else {
-          $scopeLeads =
-           collect();
-         }
+         $scopeLabel =
+          __('crm.all_leads_in_stage');
         } else {
          $scopeLeads =
           $column[
            'scope_leads'
-          ][$scope];
+          ][$scope] ?? collect();
         }
        @endphp
 
@@ -1347,8 +1334,8 @@ body.kanban-modal-open{
           draggable="{{ auth()->user()->can('leads.followups.create') ? 'true' : 'false' }}"
           data-kanban-lead="{{ $lead->id }}"
           data-kanban-lead-name="{{ $lead->name }}"
-          data-current-status-id="{{ $column['status_id'] }}"
-          data-current-status-name="{{ $column['name'] }}"
+          data-current-status-id="{{ $lead->lead_status_id ?? ($column['status_id'] ?? '') }}"
+          data-current-status-name="{{ $lead->status?->name_ar ?? $column['name'] }}"
           data-followup-url="{{ route(
            'v2.leads.followups.index',
            $lead
@@ -1881,6 +1868,11 @@ document.addEventListener(
     .kanbanStatusName || '';
 
   if (!targetStatusId) {
+   showToast(
+    @json(__('crm.stage_has_no_status_for_transfer'))
+   );
+
+   dragData = null;
    return;
   }
 

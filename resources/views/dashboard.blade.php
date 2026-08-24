@@ -309,11 +309,31 @@ html.dark-mode .btn-leads-pill:hover, html.dark-mode .btn-leads-pill:focus-visib
 
 /* Charts Layout (Section 11) */
 .charts-grid {
-    display: grid; grid-template-columns: 2fr 1fr; gap: 18px; margin-bottom: 24px;
+    display: grid;
+    grid-template-columns: minmax(0, 1.85fr) minmax(0, 1.15fr);
+    gap: 18px;
+    margin-bottom: 24px;
+    width: 100%;
+    max-width: 100%;
 }
 .chart-card {
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 22px; box-shadow: var(--shadow);
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 22px;
+    box-shadow: var(--shadow);
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+}
+.chart-wrap-responsive {
+    position: relative;
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: 280px;
+    min-height: 280px;
 }
 
 /* Bottom Grid */
@@ -343,7 +363,10 @@ tr:hover td { background: #fafbfd; }
 @media (max-width: 1250px) {
     .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .filters-form { grid-template-columns: repeat(3, 1fr); }
-    .charts-grid, .bottom-grid { grid-template-columns: 1fr; }
+    .bottom-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 992px) {
+    .charts-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 1100px) {
     .stages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -610,7 +633,7 @@ tr:hover td { background: #fafbfd; }
             </a>
         </section>
 
-        <!-- 4. DYNAMIC PIPELINE STATUSES SUMMARY (4 Canonical Statuses) -->
+        <!-- 4. DYNAMIC PIPELINE STATUSES SUMMARY -->
         <section class="stages-panel">
             <div class="panel-head">
                 <div>
@@ -619,7 +642,7 @@ tr:hover td { background: #fafbfd; }
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:12px; padding:6px 12px;">
-                        {{ count($statusCards) }} {{ __('crm.active_statuses') }}
+                        {{ $pipelineStages->count() }} {{ __('crm.active_stages') }}
                     </span>
                     <a href="{{ route('v2.leads.kanban') }}" class="btn small soft" title="{{ __('crm.view_interactive_board') }}">
                         <i class="bi bi-kanban"></i> {{ __('crm.kanban') }}
@@ -628,20 +651,20 @@ tr:hover td { background: #fafbfd; }
             </div>
 
             <div class="stages-grid">
-                @foreach ($statusCards as $stCard)
-                    <a href="{{ route('v2.leads', ['status' => $stCard['code']]) }}" class="stage-summary-box" style="--stage-color: {{ $stCard['color'] }};">
+                @foreach ($pipelineStages as $stage)
+                    <a href="{{ route('v2.leads', ['stage' => $stage->id]) }}" class="stage-summary-box" style="--stage-color: {{ $stage->color ?: '#3478f6' }};">
                         <div class="stage-box-top">
                             <div class="stage-box-title">
-                                <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:{{ $stCard['color'] }}18; color:{{ $stCard['color'] }}; font-size:13px;">
-                                    <i class="bi {{ $stCard['icon'] }}"></i>
+                                <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:{{ $stage->color ?: '#3478f6' }}18; color:{{ $stage->color ?: '#3478f6' }}; font-size:13px;">
+                                    <i class="bi {{ $stage->icon ? (str_starts_with($stage->icon, 'bi-') ? $stage->icon : 'bi-' . $stage->icon) : 'bi-app-indicator' }}"></i>
                                 </span>
-                                <span>{{ $stCard['name'] }}</span>
+                                <span>{{ $stage->localizedName() }}</span>
                             </div>
-                            <span class="stage-box-count">{{ number_format($stCard['count']) }}</span>
+                            <span class="stage-box-count">{{ number_format($stage->leads_count) }}</span>
                         </div>
 
                         <span class="stage-box-percentage">
-                            {{ $stCard['percentage'] }}% {{ __('crm.of_total_leads') }}
+                            {{ $stage->percentage }}% {{ __('crm.of_total_leads') }}
                         </span>
                     </a>
                 @endforeach
@@ -658,7 +681,7 @@ tr:hover td { background: #fafbfd; }
                         <p>{{ __('crm.activity_trend_desc') }}</p>
                     </div>
                 </div>
-                <div style="position:relative; width:100%; height:280px;">
+                <div class="chart-wrap-responsive">
                     <canvas id="activityTrendChart" role="img" aria-label="{{ __('crm.activity_trend_title') }}"></canvas>
                 </div>
             </article>
@@ -671,7 +694,7 @@ tr:hover td { background: #fafbfd; }
                         <p>{{ __('crm.stage_distribution_desc') }}</p>
                     </div>
                 </div>
-                <div style="position:relative; width:100%; height:280px; display:flex; align-items:center; justify-content:center;">
+                <div class="chart-wrap-responsive">
                     <canvas id="stageDonutChart" role="img" aria-label="{{ __('crm.stage_distribution_title') }}"></canvas>
                 </div>
             </article>
@@ -876,8 +899,9 @@ document.addEventListener('DOMContentLoaded', function() {
                             color: '#64748b',
                             usePointStyle: true,
                             pointStyle: 'circle',
-                            padding: 14,
-                            font: { size: 12, weight: '700' }
+                            padding: 10,
+                            boxWidth: 8,
+                            font: { size: 11, weight: '700' }
                         }
                     },
                     tooltip: {
