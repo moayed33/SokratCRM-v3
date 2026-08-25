@@ -4,6 +4,7 @@
 @endphp
 
 <input type="hidden" name="is_system" value="{{ $isSystem ? '1' : '0' }}">
+<input type="hidden" name="entity" value="{{ old('entity', $field->entity ?? 'leads') }}">
 
 <div class="form-grid">
     <div class="field">
@@ -39,6 +40,78 @@
             <textarea id="optionsInput" name="options_input" rows="5" dir="ltr" style="text-align:start" placeholder="{{ __('crm.lf_options_placeholder') }}">{{ old('options_input', $optionsInput ?? '') }}</textarea>
             <div class="hint">{{ __('crm.lf_options_hint') }}</div>
         </div>
+    @endunless
+
+    @unless ($isSystem)
+        @php
+            $conditionParents = collect($conditionCandidates ?? []);
+            $currentConditionField = old('condition_field', $field->condition_field);
+        @endphp
+        <div class="field">
+            <label for="conditionField">{{ __('crm.lf_condition_field') }}</label>
+            <select id="conditionField" name="condition_field">
+                <option value="">{{ __('crm.lf_condition_always') }}</option>
+                @foreach ($conditionParents as $parent)
+                    <option value="{{ $parent->key }}" data-type="{{ $parent->type }}" @selected($currentConditionField === $parent->key)>
+                        {{ $parent->label() }} ({{ __('crm.lf_type_'.$parent->type) }})
+                    </option>
+                @endforeach
+            </select>
+            <div class="hint">{{ __('crm.lf_condition_hint') }}</div>
+        </div>
+        <div class="field">
+            <label for="conditionValue">{{ __('crm.lf_condition_value') }}</label>
+            <select id="conditionValue" name="condition_value" {{ empty($currentConditionField) ? 'disabled' : '' }}>
+                <option value="">{{ __('crm.lf_select_placeholder') }}</option>
+                @foreach ($conditionParents as $parent)
+                    @if (in_array($parent->type, [\App\Models\LeadFormField::TYPE_SELECT, \App\Models\LeadFormField::TYPE_MULTISELECT], true))
+                        @foreach ($parent->optionValues() as $optionValue)
+                            <option value="{{ $optionValue }}" data-parent="{{ $parent->key }}" @selected($field->condition_value === $optionValue && $currentConditionField === $parent->key)>
+                                {{ $optionValue }}
+                            </option>
+                        @endforeach
+                    @else
+                        <option value="1" data-parent="{{ $parent->key }}" @selected($field->condition_value === '1' && $currentConditionField === $parent->key)>{{ __('crm.yes') }}</option>
+                        <option value="0" data-parent="{{ $parent->key }}" @selected($field->condition_value === '0' && $currentConditionField === $parent->key)>{{ __('crm.no') }}</option>
+                    @endif
+                @endforeach
+            </select>
+        </div>
+
+        @push('scripts')
+        <script>
+        (() => {
+            const parentSelect = document.getElementById('conditionField');
+            const valueSelect = document.getElementById('conditionValue');
+            if (! parentSelect || ! valueSelect) return;
+
+            const syncValues = () => {
+                const parentKey = parentSelect.value;
+                const previous = valueSelect.value;
+                Array.from(valueSelect.options).forEach((option) => {
+                    if (! option.dataset.parent) return;
+                    option.style.display = option.dataset.parent === parentKey ? '' : 'none';
+                });
+                const stillVisible = previous
+                    && Array.from(valueSelect.options).some((option) => option.value === previous && option.style.display !== 'none' && option.dataset.parent);
+                valueSelect.value = stillVisible ? previous : '';
+                valueSelect.disabled = parentKey === '';
+            };
+            parentSelect.addEventListener('change', () => {
+                syncValues();
+                // prefer previously stored value when it matches the chosen parent
+                const stored = @json((string) ($field->condition_value ?? ''));
+                if (stored) {
+                    const match = Array.from(valueSelect.options).find(
+                        (option) => option.dataset.parent === parentSelect.value && option.value === stored,
+                    );
+                    if (match) valueSelect.value = match.value;
+                }
+            });
+            syncValues();
+        })();
+        </script>
+        @endpush
     @endunless
 
     <div class="field">

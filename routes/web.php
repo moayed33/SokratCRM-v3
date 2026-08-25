@@ -19,8 +19,9 @@ use App\Http\Controllers\Settings\BranchController;
 use App\Http\Controllers\Settings\GroupController;
 use App\Http\Controllers\Settings\LeadFieldController;
 use App\Http\Controllers\Settings\NotificationRuleController;
-use App\Http\Controllers\Settings\PipelineStageController;
+use App\Http\Controllers\Settings\OptionSetController;
 use App\Http\Controllers\Settings\PermissionController;
+use App\Http\Controllers\Settings\PipelineStageController;
 use App\Http\Controllers\Settings\SettingsController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\TaskStatusController;
@@ -353,7 +354,6 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             Route::get('/', [SettingsController::class, 'index'])
                 ->name('');
 
-
             Route::get('/lead-fields', [LeadFieldController::class, 'index'])
                 ->name('.fields.index');
             Route::get('/lead-fields/create', [LeadFieldController::class, 'create'])
@@ -375,6 +375,20 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             Route::delete('/lead-fields/{field}', [LeadFieldController::class, 'destroy'])
                 ->whereNumber('field')
                 ->name('.fields.destroy');
+
+            Route::get('/option-sets', [OptionSetController::class, 'index'])
+                ->name('.option-sets.index');
+            Route::get('/option-sets/{set}/edit', [OptionSetController::class, 'edit'])
+                ->where('set', '[a-z][a-z0-9_]*')
+                ->name('.option-sets.edit');
+            Route::put('/option-sets/{set}', [OptionSetController::class, 'update'])
+                ->where('set', '[a-z][a-z0-9_]*')
+                ->name('.option-sets.update');
+            Route::post('/option-sets', [OptionSetController::class, 'store'])
+                ->name('.option-sets.store');
+            Route::delete('/option-sets/{set}', [OptionSetController::class, 'destroy'])
+                ->where('set', '[a-z][a-z0-9_]*')
+                ->name('.option-sets.destroy');
 
             Route::get('/branches', [BranchController::class, 'index'])
                 ->middleware('can:branches.view')

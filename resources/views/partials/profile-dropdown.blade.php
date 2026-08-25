@@ -434,11 +434,11 @@
         data-crm-profile-trigger
     >
         <span class="crm-profile-avatar" aria-hidden="true">
-            {{ mb_substr((string) auth()->user()->name, 0, 1) }}
+            {{ mb_substr((string) (auth()->user()?->name ?? 'U'), 0, 1) }}
         </span>
         <span class="crm-profile-details">
-            <strong>{{ auth()->user()->name }}</strong>
-            <small>{{ auth()->user()->groups->pluck('name')->join(__('crm.list_separator')) }}</small>
+            <strong>{{ auth()->user()?->name ?? 'User' }}</strong>
+            <small>{{ auth()->user()?->groups?->pluck('name')->join(__('crm.list_separator')) ?? '' }}</small>
         </span>
         <i class="bi bi-chevron-down crm-profile-chevron" aria-hidden="true"></i>
     </button>
@@ -451,11 +451,11 @@
     >
         <div class="crm-profile-identity">
             <span class="crm-profile-avatar" aria-hidden="true">
-                {{ mb_substr((string) auth()->user()->name, 0, 1) }}
+                {{ mb_substr((string) (auth()->user()?->name ?? 'U'), 0, 1) }}
             </span>
             <div>
-                <strong>{{ auth()->user()->name }}</strong>
-                <small>{{ auth()->user()->groups->pluck('name')->join(__('crm.list_separator')) }}</small>
+                <strong>{{ auth()->user()?->name ?? 'User' }}</strong>
+                <small>{{ auth()->user()?->groups?->pluck('name')->join(__('crm.list_separator')) ?? '' }}</small>
             </div>
         </div>
 

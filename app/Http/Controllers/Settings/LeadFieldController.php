@@ -12,6 +12,7 @@ use App\Support\LeadFieldSchema;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -32,11 +33,17 @@ class LeadFieldController extends Controller
         'updated_at', 'deleted_at',
     ];
 
-    public function index(): View
+    public function index(Request $request): View
     {
         CrmDatabaseGuard::ensureConnected();
 
-        $fields = LeadFormField::query()->ordered()->get();
+        $entity = $this->resolveEntityKey($request);
+        $entities = $this->entityTabs();
+
+        $fields = LeadFormField::query()
+            ->forEntity($entity)
+            ->ordered()
+            ->get();
 
         $stats = [
             'total' => $fields->count(),
@@ -48,20 +55,27 @@ class LeadFieldController extends Controller
         return view('settings.lead-fields.index', [
             'fields' => $fields,
             'stats' => $stats,
+            'currentEntity' => $entity,
+            'entities' => $entities,
         ]);
     }
 
-    public function create(): View
+    public function create(Request $request): View
     {
         CrmDatabaseGuard::ensureConnected();
 
+        $entity = $this->resolveEntityKey($request);
+
         return view('settings.lead-fields.create', [
             'field' => new LeadFormField([
+                'entity' => $entity,
                 'type' => LeadFormField::TYPE_TEXT,
                 'section' => LeadFormField::SECTION_OTHER,
                 'is_active' => true,
             ]),
-            'maxPosition' => (int) (LeadFormField::query()->max('position') ?? 0),
+            'maxPosition' => (int) (LeadFormField::query()->forEntity($entity)->max('position') ?? 0),
+            'conditionCandidates' => $this->conditionCandidates($entity),
+            'entities' => $this->entityTabs(),
         ]);
     }
 
@@ -70,6 +84,7 @@ class LeadFieldController extends Controller
         CrmDatabaseGuard::ensureConnected();
 
         $validated = $this->validateCustomField($request, null);
+        $entityKey = (string) $validated['attributes']['entity'];
 
         $field = LeadFormField::query()->create([
             ...$validated['attributes'],
@@ -79,14 +94,14 @@ class LeadFieldController extends Controller
             'options' => $validated['options'],
             'position' => (int) (
                 $validated['attributes']['position']
-                ?? ((int) (LeadFormField::query()->max('position') ?? 0)) + 10
+                ?? ((int) (LeadFormField::query()->forEntity($entityKey)->max('position') ?? 0)) + 10
             ),
         ]);
 
-        LeadFieldSchema::flush();
+        LeadFieldSchema::flush($field->entity);
 
         return redirect()
-            ->route('v2.settings.fields.index')
+            ->route('v2.settings.fields.index', ['entity' => $field->entity])
             ->with('success', __('crm.lf_created_success'));
     }
 
@@ -97,7 +112,9 @@ class LeadFieldController extends Controller
         return view('settings.lead-fields.edit', [
             'field' => $field,
             'optionsInput' => $this->optionsToText($field),
-            'maxPosition' => (int) (LeadFormField::query()->max('position') ?? 0),
+            'maxPosition' => (int) (LeadFormField::query()->forEntity($field->entity)->max('position') ?? 0),
+            'conditionCandidates' => $this->conditionCandidates($field->entity, $field),
+            'entities' => $this->entityTabs(),
         ]);
     }
 
@@ -121,10 +138,10 @@ class LeadFieldController extends Controller
             ]);
         }
 
-        LeadFieldSchema::flush();
+        LeadFieldSchema::flush($field->entity);
 
         return redirect()
-            ->route('v2.settings.fields.index')
+            ->route('v2.settings.fields.index', ['entity' => $field->entity])
             ->with('success', __('crm.lf_updated_success'));
     }
 
@@ -140,7 +157,7 @@ class LeadFieldController extends Controller
 
         $field->update(['is_active' => ! $field->is_active]);
 
-        LeadFieldSchema::flush();
+        LeadFieldSchema::flush($field->entity);
 
         return redirect()
             ->back()
@@ -153,7 +170,11 @@ class LeadFieldController extends Controller
 
         $direction = $request->input('direction') === 'up' ? 'up' : 'down';
 
-        $siblings = LeadFormField::query()->ordered()->get(['id', 'position'])->values();
+        $siblings = LeadFormField::query()
+            ->forEntity($field->entity)
+            ->ordered()
+            ->get(['id', 'position'])
+            ->values();
         $currentIndex = $siblings->search(static fn (LeadFormField $item) => $item->id === $field->id);
 
         if ($currentIndex !== false) {
@@ -200,28 +221,35 @@ class LeadFieldController extends Controller
             }
         });
 
-        LeadFieldSchema::flush();
+        LeadFieldSchema::flush($field->entity);
 
         return redirect()
-            ->route('v2.settings.fields.index')
+            ->route('v2.settings.fields.index', ['entity' => $field->entity])
             ->with('success', __('crm.lf_deleted_success'));
     }
 
     private function validateCustomField(Request $request, ?LeadFormField $field): array
     {
+        $entity = $this->normalizeEntity((string) $request->input('entity', 'leads'));
+        $isLeadsEntity = $entity === 'leads';
+
         $keyRules = [
             'required',
             'string',
             'regex:/^[a-z][a-z0-9_]{0,49}$/',
             Rule::unique('lead_form_fields', 'key')->ignore($field?->id),
-            static function (string $attribute, mixed $value, \Closure $fail): void {
+        ];
+
+        if ($isLeadsEntity) {
+            $keyRules[] = static function (string $attribute, mixed $value, \Closure $fail): void {
                 if (in_array((string) $value, self::RESERVED_KEYS, true)) {
                     $fail(__('crm.lf_reserved_key'));
                 }
-            },
-        ];
+            };
+        }
 
         $validated = $request->validate([
+            'entity' => ['nullable', 'string', 'max:50', Rule::in($this->entityKeys())],
             'label_ar' => ['required', 'string', 'max:150'],
             'label_en' => ['nullable', 'string', 'max:150'],
             'key' => $keyRules,
@@ -235,6 +263,8 @@ class LeadFieldController extends Controller
             'position' => ['nullable', 'integer', 'min:0', 'max:9999'],
             'help_text_ar' => ['nullable', 'string', 'max:255'],
             'help_text_en' => ['nullable', 'string', 'max:255'],
+            'condition_field' => ['nullable', 'string', 'max:50'],
+            'condition_value' => ['nullable', 'string', 'max:150'],
             'is_required' => ['nullable', 'boolean'],
             'is_active' => ['nullable', 'boolean'],
             'show_in_create' => ['nullable', 'boolean'],
@@ -267,8 +297,46 @@ class LeadFieldController extends Controller
             }
         }
 
+        // Conditional display: the parent must be a choice-type field of the
+        // same entity, and the value must be one of its options.
+        $conditionField = trim((string) ($validated['condition_field'] ?? ''));
+        $conditionValue = trim((string) ($validated['condition_value'] ?? ''));
+
+        if ($conditionField !== '') {
+            $parent = LeadFormField::query()
+                ->forEntity($entity)
+                ->where('key', $conditionField)
+                ->whereIn('type', [LeadFormField::TYPE_SELECT, LeadFormField::TYPE_MULTISELECT, LeadFormField::TYPE_CHECKBOX])
+                ->first();
+
+            if ($parent === null || $parent->key === (string) $validated['key']) {
+                throw ValidationException::withMessages([
+                    'condition_field' => __('crm.lf_condition_invalid_parent'),
+                ]);
+            }
+
+            if ($conditionValue === '') {
+                throw ValidationException::withMessages([
+                    'condition_value' => __('crm.lf_condition_value_required'),
+                ]);
+            }
+
+            $allowedValues = in_array($parent->type, [LeadFormField::TYPE_SELECT, LeadFormField::TYPE_MULTISELECT], true)
+                ? $parent->optionValues()
+                : ['1', '0', 'true', 'false'];
+
+            if (! in_array($conditionValue, $allowedValues, true)) {
+                throw ValidationException::withMessages([
+                    'condition_value' => __('crm.lf_condition_value_invalid'),
+                ]);
+            }
+        } else {
+            $conditionValue = '';
+        }
+
         return [
             'attributes' => [
+                'entity' => $entity,
                 'key' => trim((string) $validated['key']),
                 'label_ar' => trim((string) $validated['label_ar']),
                 'label_en' => isset($validated['label_en']) && trim((string) $validated['label_en']) !== ''
@@ -285,6 +353,8 @@ class LeadFieldController extends Controller
                 'help_text_en' => isset($validated['help_text_en']) && trim((string) $validated['help_text_en']) !== ''
                     ? trim((string) $validated['help_text_en'])
                     : null,
+                'condition_field' => $conditionField !== '' ? $conditionField : null,
+                'condition_value' => $conditionValue !== '' ? $conditionValue : null,
                 'is_required' => $request->boolean('is_required'),
                 'is_active' => $request->boolean('is_active', true),
                 'show_in_create' => $request->boolean('show_in_create', true),
@@ -393,5 +463,60 @@ class LeadFieldController extends Controller
                 (string) ($option['label_en'] ?? ''),
             ], static fn (string $part) => $part !== '')))
             ->implode("\n");
+    }
+
+    /**
+     * Resolves the ?entity= query param against the known entity registry
+     * ("leads" + every active custom module). Falls back to leads.
+     */
+    private function resolveEntityKey(Request $request): string
+    {
+        $requested = mb_strtolower(trim((string) $request->query('entity', $request->input('entity', 'leads'))));
+
+        return in_array($requested, $this->entityKeys(), true) ? $requested : 'leads';
+    }
+
+    /**
+     * @return list<array{key:string,label:string,is_system:bool,icon:string}>
+     */
+    private function entityTabs(): array
+    {
+        return [
+            ['key' => 'leads', 'label' => __('crm.leads'), 'is_system' => true, 'icon' => 'bi-person-lines-fill'],
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function entityKeys(): array
+    {
+        return array_map(
+            static fn (array $tab): string => $tab['key'],
+            $this->entityTabs(),
+        );
+    }
+
+    private function normalizeEntity(string $entity): string
+    {
+        $normalized = mb_strtolower(trim($entity));
+
+        return in_array($normalized, $this->entityKeys(), true) ? $normalized : 'leads';
+    }
+
+    /**
+     * Choice-type fields of one entity that can act as a condition parent.
+     *
+     * @return Collection<int, LeadFormField>
+     */
+    private function conditionCandidates(string $entity, ?LeadFormField $self = null)
+    {
+        return LeadFormField::query()
+            ->forEntity($entity)
+            ->active()
+            ->whereIn('type', [LeadFormField::TYPE_SELECT, LeadFormField::TYPE_MULTISELECT, LeadFormField::TYPE_CHECKBOX])
+            ->when($self !== null, static fn ($query) => $query->where('id', '!=', $self->id))
+            ->orderBy('position')
+            ->get();
     }
 }

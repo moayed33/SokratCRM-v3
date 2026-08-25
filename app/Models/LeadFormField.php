@@ -58,6 +58,7 @@ class LeadFormField extends Model
     ];
 
     protected $fillable = [
+        'entity',
         'key',
         'label_ar',
         'label_en',
@@ -77,6 +78,8 @@ class LeadFormField extends Model
         'position',
         'help_text_ar',
         'help_text_en',
+        'condition_field',
+        'condition_value',
     ];
 
     protected function casts(): array
@@ -93,6 +96,11 @@ class LeadFormField extends Model
             'show_in_table' => 'boolean',
             'show_in_export' => 'boolean',
         ];
+    }
+
+    public function scopeForEntity($query, string $entity)
+    {
+        return $query->where('entity', mb_strtolower(trim($entity)));
     }
 
     public function scopeOrdered($query)

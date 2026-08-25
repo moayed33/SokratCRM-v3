@@ -685,12 +685,12 @@ class NotificationSystemTest extends TestCase
     private function leadFor(User $user, Carbon $dueAt): Lead
     {
         $stage = PipelineStage::query()->firstOrCreate(
-            ['code' => 'notifications-stage'],
-            ['name_ar' => 'مرحلة التنبيهات', 'position' => 1, 'color' => '#64748b', 'is_active' => true],
+            ['code' => 'new'],
+            ['name_ar' => 'جديد', 'position' => 1, 'color' => '#64748b', 'is_active' => true],
         );
         $status = LeadStatus::query()->firstOrCreate(
-            ['code' => 'notifications-status'],
-            ['pipeline_stage_id' => $stage->getKey(), 'name_ar' => 'حالة التنبيهات', 'position' => 1, 'color' => '#64748b', 'is_terminal' => false],
+            ['code' => 'new'],
+            ['pipeline_stage_id' => $stage->getKey(), 'name_ar' => 'جديد', 'position' => 1, 'color' => '#64748b', 'is_terminal' => false],
         );
 
         return Lead::query()->create([

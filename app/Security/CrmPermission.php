@@ -56,6 +56,7 @@ enum CrmPermission: string
     case BRANCHES_CREATE = 'branches.create';
     case BRANCHES_UPDATE = 'branches.update';
     case BRANCHES_DELETE = 'branches.delete';
+
     public function module(): string
     {
         return explode('.', $this->value, 2)[0];

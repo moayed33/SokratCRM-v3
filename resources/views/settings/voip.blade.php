@@ -38,6 +38,24 @@
     </div>
 @endif
 
+@if (session('success'))
+    <div class="flash" style="background:#dcfce7;color:#15803d;border:1px solid #bbf7d0">
+        {{ session('success') }}
+    </div>
+@endif
+@if (session('error'))
+    <div class="flash error">
+        {{ session('error') }}
+    </div>
+@endif
+@unless ($errors->isEmpty())
+    <div class="flash error">
+        @foreach ($errors->all() as $validationError)
+            <div>{{ $validationError }}</div>
+        @endforeach
+    </div>
+@endunless
+
 <section class="panel">
     <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
         <div>

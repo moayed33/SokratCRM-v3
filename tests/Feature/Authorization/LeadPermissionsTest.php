@@ -103,24 +103,27 @@ class LeadPermissionsTest extends TestCase
         $this->readOnlyUser = User::factory()->create(['is_active' => true]);
         $this->readOnlyUser->groups()->attach($readOnlyGroup);
 
-        // Create Pipeline Stage and Lead Status
-        $stage = PipelineStage::query()->create([
-            'code' => 'start',
-            'name_ar' => 'البداية',
-            'position' => 1,
-            'color' => '#3478f6',
-            'is_active' => true,
-        ]);
+        // Ensure Pipeline Stage and Lead Status exist
+        $stage = PipelineStage::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'color' => '#3478f6',
+                'is_active' => true,
+            ]
+        );
 
-        $status = LeadStatus::query()->create([
-            'code' => 'new',
-            'pipeline_stage_id' => $stage->id,
-            'name_ar' => 'جديد',
-            'position' => 1,
-            'color' => '#3478f6',
-            'is_terminal' => false,
-        ]);
-
+        $status = LeadStatus::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'pipeline_stage_id' => $stage->id,
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'color' => '#3478f6',
+                'is_terminal' => false,
+            ]
+        );
         $this->lead = Lead::query()->create([
             'lead_status_id' => $status->id,
             'name' => 'عميل تجريبي',

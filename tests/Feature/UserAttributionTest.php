@@ -36,21 +36,25 @@ class UserAttributionTest extends TestCase
         ]);
         $user->groups()->attach($group);
 
-        $stage = PipelineStage::query()->create([
-            'code' => 'initial',
-            'name_ar' => 'البداية',
-            'position' => 1,
-            'color' => '#64748b',
-            'is_active' => true,
-        ]);
-        $status = LeadStatus::query()->create([
-            'pipeline_stage_id' => $stage->id,
-            'code' => 'new',
-            'name_ar' => 'جديد',
-            'position' => 1,
-            'color' => '#64748b',
-            'is_terminal' => false,
-        ]);
+        $stage = PipelineStage::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'color' => '#64748b',
+                'is_active' => true,
+            ]
+        );
+        $status = LeadStatus::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'pipeline_stage_id' => $stage->id,
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'color' => '#64748b',
+                'is_terminal' => false,
+            ]
+        );
 
         $this->actingAs($user)
             ->post(route('v2.leads.store'), [

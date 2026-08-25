@@ -76,19 +76,23 @@ class LeadScopeAndAssignmentTest extends TestCase
             $this->blockedTargetGroup,
         );
 
-        $stage = PipelineStage::query()->create([
-            'code' => 'initial',
-            'name_ar' => 'أولي',
-            'position' => 1,
-            'is_active' => true,
-        ]);
-        $this->status = LeadStatus::query()->create([
-            'pipeline_stage_id' => $stage->id,
-            'code' => 'new',
-            'name_ar' => 'جديد',
-            'position' => 1,
-            'is_terminal' => false,
-        ]);
+        $stage = PipelineStage::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'is_active' => true,
+            ]
+        );
+        $this->status = LeadStatus::query()->firstOrCreate(
+            ['code' => 'new'],
+            [
+                'pipeline_stage_id' => $stage->id,
+                'name_ar' => 'جديد',
+                'position' => 1,
+                'is_terminal' => false,
+            ]
+        );
     }
 
     public function test_own_scope_applies_to_lead_pages_dashboard_tasks_and_export(): void

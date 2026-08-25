@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Branch;
 use App\Models\Campaign;
 use App\Models\Lead;
 use App\Models\LeadStatus;
@@ -394,7 +395,7 @@ class LeadTransferController extends Controller
                     $data['assigned_employee'] = $assignee->name;
                     $data['created_by_user_id'] = $actor->id;
                     $data['created_by'] = $actor->name;
-                    $data['branch_id'] = $assignee->branch_id ?? $actor->branch_id ?? \App\Models\Branch::value('id');
+                    $data['branch_id'] = $assignee->branch_id ?? $actor->branch_id ?? Branch::value('id');
                     $phone = $this
                         ->normalizePhone(
                             (string)
@@ -505,9 +506,7 @@ class LeadTransferController extends Controller
             'leads.export',
             [
                 'statuses' => $this->statuses(),
-                'stages' => PipelineStage::query()
-                    ->orderBy('position')
-                    ->get(),
+                'stages' => PipelineStage::activeOrdered(),
                 'sources' => $sources,
                 'employees' => $employees,
                 'columns' => $this->exportColumns(),
@@ -1540,7 +1539,6 @@ class LeadTransferController extends Controller
                     'الحالة غير مهتم بدون سبب؛ '
                     .'يمكن استكمال السبب لاحقًا.';
             }
-
 
             $normalizedPhone =
                 $this->normalizePhone(

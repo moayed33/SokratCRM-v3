@@ -30,10 +30,22 @@
             <h2>{{ __('crm.lf_list_title') }}</h2>
             <p>{{ __('crm.lf_list_desc') }}</p>
         </div>
-        <a class="btn primary" href="{{ route('v2.settings.fields.create') }}">
+        <a class="btn primary" href="{{ route('v2.settings.fields.create', ['entity' => $currentEntity]) }}">
             <i class="bi bi-plus-lg"></i> {{ __('crm.lf_new_field') }}
         </a>
     </div>
+
+    @if (count($entities) > 1)
+        <div class="settings-tabs" style="margin-bottom:14px">
+            @foreach ($entities as $entityTab)
+                <a class="{{ $currentEntity === $entityTab['key'] ? 'active' : '' }}"
+                   href="{{ route('v2.settings.fields.index', ['entity' => $entityTab['key']]) }}">
+                    <i class="bi {{ $entityTab['icon'] }}"></i>
+                    {{ $entityTab['label'] }}
+                </a>
+            @endforeach
+        </div>
+    @endif
 
     <div class="table-wrap" style="margin-top:6px">
         <table style="min-width:980px">

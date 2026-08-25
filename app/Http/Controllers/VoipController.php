@@ -74,10 +74,21 @@ class VoipController extends Controller
                 '20'
             );
 
+            Log::info('VoIP pairing attempt succeeded', [
+                'api_url' => $apiUrl,
+                'origin' => $origin,
+                'response_keys' => array_keys(is_array($result) ? $result : []),
+            ]);
+
             $clientId = $result['client_id'] ?? '';
             $clientSecret = $result['client_secret'] ?? '';
 
             if (empty($clientId) || empty($clientSecret)) {
+                Log::warning('VoIP pairing response missing credentials', [
+                    'api_url' => $apiUrl,
+                    'response' => is_array($result) ? array_diff_key($result, array_flip(['client_secret'])) : $result,
+                ]);
+
                 return back()->with('error', 'فشل الاقتران: لم يتم إرجاع بيانات الاعتماد.');
             }
 
@@ -89,9 +100,17 @@ class VoipController extends Controller
 
             return back()->with('success', 'تم الاقتران بنجاح مع خادم Sokrat VoIP!');
         } catch (Throwable $e) {
+            Log::error('VoIP pairing attempt failed', [
+                'api_url' => $apiUrl,
+                'origin' => $origin,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+            ]);
+
             return back()->with('error', 'خطأ في الاقتران: ' . $e->getMessage());
         }
     }
+
     public function disconnect(Request $request): RedirectResponse
     {
         $this->assertCrmDatabase();

@@ -53,6 +53,12 @@ class VoipService
             ]);
 
         if ($response->failed()) {
+            Log::warning('VoIP pairing rejected by server', [
+                'url' => "{$this->apiUrl}/pair",
+                'status' => $response->status(),
+                'body' => mb_substr($response->body(), 0, 500),
+            ]);
+
             throw new RuntimeException(
                 $response->json('error') ?? 'فشل الاتصال بسيرفر VoIP للاقتران.'
             );

@@ -273,7 +273,7 @@
    </div>
   </div>
 
-  <div>
+    <div>
    <button
     class="crm-toggle toggle {{ $crmSidebarQuotationsActive ? 'active' : '' }}"
     type="button"

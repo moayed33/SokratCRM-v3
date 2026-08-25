@@ -69,6 +69,7 @@
             <a class="{{ request()->routeIs('v2.settings') ? 'active' : '' }}" href="{{ route('v2.settings') }}">{{ __('crm.overview') }}</a>
             <a class="{{ request()->routeIs('v2.settings.stages.*') ? 'active' : '' }}" href="{{ route('v2.settings.stages.index') }}">{{ __('crm.custom_pipeline_stages') }}</a>
             <a class="{{ request()->routeIs('v2.settings.fields.*') ? 'active' : '' }}" href="{{ route('v2.settings.fields.index') }}">{{ __('crm.lead_fields') }}</a>
+            <a class="{{ request()->routeIs('v2.settings.option-sets.*') ? 'active' : '' }}" href="{{ route('v2.settings.option-sets.index') }}">{{ __('crm.option_sets') }}</a>
             @can('branches.view')
                 <a class="{{ request()->routeIs('v2.settings.branches.*') ? 'active' : '' }}" href="{{ route('v2.settings.branches.index') }}">{{ __('crm.branches') }}</a>
             @endcan

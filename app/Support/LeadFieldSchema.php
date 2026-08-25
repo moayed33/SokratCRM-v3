@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Support;
 
 use App\Models\LeadFormField;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 
 class LeadFieldSchema
@@ -60,11 +61,35 @@ class LeadFieldSchema
     ];
 
     /**
-     * @return \Illuminate\Support\Collection<int, LeadFormField>
+     * @return Collection<int, LeadFormField>
      */
-    public static function active()
+    public static function active(?string $entity = null)
     {
-        return Cache::rememberForever(self::CACHE_KEY, static fn () => LeadFormField::query()->active()->get());
+        $entityKey = self::normalizeEntity($entity);
+
+        // Plain arrays are cached (the database cache store disallows object
+        // deserialization) and rehydrated into models on every read.
+        // getAttributes() keeps raw values so hydrate() can cast once.
+        $fields = Cache::rememberForever(self::cacheKey($entityKey), static fn () => LeadFormField::query()
+            ->forEntity($entityKey)
+            ->active()
+            ->get()
+            ->map(static fn (LeadFormField $field) => $field->getAttributes())
+            ->all());
+
+        return LeadFormField::hydrate(is_array($fields) ? $fields : []);
+    }
+
+    public static function cacheKey(string $entity): string
+    {
+        return self::CACHE_KEY.'.'.self::normalizeEntity($entity);
+    }
+
+    private static function normalizeEntity(?string $entity): string
+    {
+        $normalized = mb_strtolower(trim((string) $entity));
+
+        return $normalized !== '' ? $normalized : 'leads';
     }
 
     public static function find(string $key): ?LeadFormField
@@ -82,11 +107,11 @@ class LeadFieldSchema
     /**
      * Active custom (non-system) fields.
      *
-     * @return \Illuminate\Support\Collection<int, LeadFormField>
+     * @return Collection<int, LeadFormField>
      */
-    public static function customFields(?string $section = null)
+    public static function customFields(?string $section = null, ?string $entity = null)
     {
-        return self::active()
+        return self::active($entity)
             ->where('is_system', false)
             ->when($section !== null, static fn ($fields) => $fields->where('section', $section))
             ->values();
@@ -114,7 +139,7 @@ class LeadFieldSchema
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, LeadFormField>
+     * @return Collection<int, LeadFormField>
      */
     public static function filterable()
     {
@@ -130,7 +155,7 @@ class LeadFieldSchema
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, LeadFormField>
+     * @return Collection<int, LeadFormField>
      */
     public static function tableColumns()
     {
@@ -138,7 +163,7 @@ class LeadFieldSchema
     }
 
     /**
-     * @return \Illuminate\Support\Collection<int, LeadFormField>
+     * @return Collection<int, LeadFormField>
      */
     public static function exportColumns()
     {
@@ -151,14 +176,28 @@ class LeadFieldSchema
     }
 
     /**
-     * Full validation rules: system rules + generated rules for the
-     * active custom fields.
+     * Full validation rules for leads: system rules + generated rules for
+     * the active custom fields.
      */
     public static function validationRules(): array
     {
-        $rules = self::SYSTEM_RULES;
+        return [
+            ...self::SYSTEM_RULES,
+            ...self::rulesForCustomFields('leads'),
+        ];
+    }
 
-        foreach (self::customFields() as $field) {
+    /**
+     * Validation rules generated only from the fields of one entity —
+     * used by the generic Module Builder CRUD.
+     *
+     * @return array<string, list<string>>
+     */
+    public static function rulesForCustomFields(?string $entity = null): array
+    {
+        $rules = [];
+
+        foreach (self::customFields(null, $entity) as $field) {
             foreach (self::rulesForField($field) as $name => $fieldRules) {
                 $rules[$name] = $fieldRules;
             }
@@ -170,11 +209,11 @@ class LeadFieldSchema
     /**
      * Friendly attribute names so validation errors show labels.
      */
-    public static function validationAttributes(): array
+    public static function validationAttributes(?string $entity = null): array
     {
         $attributes = [];
 
-        foreach (self::customFields() as $field) {
+        foreach (self::customFields(null, $entity) as $field) {
             $attributes['custom_fields.'.$field->key] = $field->label();
         }
 
@@ -300,11 +339,11 @@ class LeadFieldSchema
     /**
      * Builds the custom_fields payload for a create from raw input.
      */
-    public static function extractForStore(mixed $input): ?array
+    public static function extractForStore(mixed $input, ?string $entity = null): ?array
     {
         $payload = [];
 
-        foreach (self::customFields() as $field) {
+        foreach (self::customFields(null, $entity) as $field) {
             $raw = is_array($input) ? ($input[$field->key] ?? null) : null;
             $value = self::normalizeValue($field, $raw);
 
@@ -320,11 +359,11 @@ class LeadFieldSchema
      * Merges submitted values over an existing custom_fields payload on
      * update. Keys of deactivated fields are preserved untouched.
      */
-    public static function mergeForUpdate(mixed $current, mixed $input): ?array
+    public static function mergeForUpdate(mixed $current, mixed $input, ?string $entity = null): ?array
     {
         $payload = is_array($current) ? $current : [];
 
-        foreach (self::customFields() as $field) {
+        foreach (self::customFields(null, $entity) as $field) {
             $raw = is_array($input) ? ($input[$field->key] ?? null) : null;
             $value = self::normalizeValue($field, $raw);
 
@@ -408,8 +447,16 @@ class LeadFieldSchema
         return preg_match('/^[a-z][a-z0-9_]{0,49}$/', $key) === 1;
     }
 
-    public static function flush(): void
+    public static function flush(?string $entity = null): void
     {
+        if ($entity !== null) {
+            Cache::forget(self::cacheKey($entity));
+
+            return;
+        }
+
+        Cache::forget(self::cacheKey('leads'));
+
         Cache::forget(self::CACHE_KEY);
     }
 }
