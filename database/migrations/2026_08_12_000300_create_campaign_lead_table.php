@@ -10,17 +10,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('campaign_lead', function (Blueprint $table): void {
-            $table->foreignId('campaign_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('lead_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->timestamps();
+        if (! Schema::hasTable('campaign_lead')) {
+            Schema::create('campaign_lead', function (Blueprint $table): void {
+                $table->foreignId('campaign_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->foreignId('lead_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->timestamps();
 
-            $table->primary(['campaign_id', 'lead_id']);
-        });
+                $table->primary(['campaign_id', 'lead_id']);
+            });
+        }
     }
 
     public function down(): void

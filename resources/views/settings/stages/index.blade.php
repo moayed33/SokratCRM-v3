@@ -3,6 +3,43 @@
 @section('title', __('crm.stages_settings_title'))
 @section('heading', __('crm.stages_settings_heading'))
 @section('subheading', __('crm.stages_settings_subheading'))
+@push('head')
+<style>
+html.dark-mode #addStageModal > div,
+html.dark-mode #editStageModal > div,
+html.dark-mode #addTypeModal > div,
+html.dark-mode #addPurposeModal > div {
+    background: #18181b !important;
+    color: #f4f4f5 !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+}
+html.dark-mode .icon-picker-btn {
+    background: #18181b !important;
+    border-color: rgba(255,255,255,0.14) !important;
+    color: #f4f4f5 !important;
+}
+html.dark-mode .icon-picker-dropdown {
+    background: #18181b !important;
+    border-color: rgba(255,255,255,0.14) !important;
+    color: #f4f4f5 !important;
+    box-shadow: 0 14px 34px rgba(0,0,0,0.5) !important;
+}
+html.dark-mode .icon-picker-dropdown > div {
+    background: #18181b !important;
+    border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .icon-preview-box {
+    background: rgba(255,255,255,0.06) !important;
+    color: #f4f4f5 !important;
+}
+html.dark-mode .icon-option-item:hover {
+    background: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .icon-option-item span {
+    color: #e4e4e7 !important;
+}
+</style>
+@endpush
 
 @section('content')
 <section class="grid stats-grid" style="margin-bottom: 20px;">
@@ -92,7 +129,10 @@
                             @endif
                         </td>
                         <td>
-                            <div class="actions">
+                            <div class="actions" style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                                <a href="{{ route('v2.settings.stages.fields.index', $stage) }}" class="btn small soft" style="color:#4f46e5; border-color:#c7d2fe; background:#eef2ff;" title="{{ __('crm.manage_stage_fields') }}">
+                                    <i class="bi bi-ui-checks"></i> {{ __('crm.stage_fields_btn') }} <span class="badge" style="background:#6366f1; color:#fff; font-size:11px; padding:2px 6px; border-radius:10px; margin-inline-start:4px;">{{ (int) ($stage->fields_count ?? 0) }}</span>
+                                </a>
                                 <button type="button" class="btn small soft" onclick="openEditModal({{ json_encode($stage) }})">
                                     <i class="bi bi-pencil-square"></i> {{ __('crm.edit') }}
                                 </button>

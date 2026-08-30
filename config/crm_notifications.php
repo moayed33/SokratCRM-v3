@@ -5,6 +5,7 @@ declare(strict_types=1);
 return [
     'enabled' => env('NOTIFICATIONS_ENABLED', true),
     'poll_seconds' => (int) env('NOTIFICATIONS_POLL_SECONDS', 60),
+    'stream_interval_milliseconds' => max(500, (int) env('NOTIFICATIONS_STREAM_INTERVAL_MS', 2000)),
     'planner_lookback_hours' => (int) env('NOTIFICATIONS_LOOKBACK_HOURS', 24),
     'max_deliveries_per_user_per_hour' => (int) env('NOTIFICATIONS_RATE_LIMIT', 30),
 

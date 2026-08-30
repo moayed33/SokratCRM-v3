@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
 <style>
 :root{
  --red:#dc2637;
@@ -59,6 +59,8 @@ a{color:inherit}
 .btn.danger:hover{background:#fff1f2}
 .btn.soft{background:#f1f5f9;border-color:transparent}
 .btn.small{min-height:34px;padding:0 12px;font-size:12px}
+.topbar .btn{height:42px;min-height:42px;box-sizing:border-box}
+.topbar-left .btn.small,.topbar .btn.small{width:42px;height:42px;min-height:42px;padding:0;display:inline-grid;place-items:center;border-radius:10px}
 
 .form-card{
  background:var(--card);border:1px solid var(--line);border-radius:var(--radius);
@@ -99,6 +101,36 @@ textarea{resize:vertical;min-height:90px}
 .flash{border-radius:10px;padding:14px 16px;margin-bottom:20px;font-weight:700;font-size:13px}
 .flash.error{background:#fff1f2;color:#991b1b;border:1px solid #fecdd3}
 .flash.error ul{margin:6px 0 0;padding-inline-start:20px}
+.dynamic-edit-stage-fields{
+ grid-column:1/-1;
+ margin-top:10px;
+ background:var(--bg);
+ border:1px solid var(--line);
+ border-radius:12px;
+ padding:16px;
+ display:none;
+}
+.dynamic-edit-stage-fields h3{
+ font-size:14px;
+ margin:0 0 12px;
+ color:var(--dark);
+ display:flex;
+ align-items:center;
+ gap:8px;
+}
+.dynamic-edit-stage-fields h3 i{
+ color:#4f46e5;
+}
+html.dark-mode .dynamic-edit-stage-fields{
+ background:rgba(255,255,255,0.03)!important;
+ border-color:rgba(255,255,255,0.08)!important;
+}
+html.dark-mode .dynamic-edit-stage-fields h3{
+ color:#f4f4f5!important;
+}
+html.dark-mode .dynamic-edit-stage-fields h3 i{
+ color:#818cf8!important;
+}
 
 @media(max-width:1100px){
  .form-grid{grid-template-columns:repeat(2,1fr)}
@@ -129,13 +161,14 @@ textarea{resize:vertical;min-height:90px}
                     <p>{{ __('crm.edit_lead_subtitle') }}</p>
                 </div>
             </div>
-            <div style="display:flex;gap:8px">
+            <div class="top-actions">
                 <a href="{{ route('v2.leads.show', $lead) }}" class="btn soft">
                     <i class="bi bi-eye"></i> {{ __('crm.view_profile') }}
                 </a>
                 <a href="{{ route('v2.leads') }}" class="btn soft">
                     <i class="bi bi-x-lg"></i> {{ __('crm.cancel') }}
                 </a>
+                @include('partials.profile-dropdown')
             </div>
         </header>
 
@@ -218,60 +251,6 @@ textarea{resize:vertical;min-height:90px}
                 </div>
             </section>
 
-            <!-- SECTION 2: DONATION INFORMATION -->
-            <section class="form-card">
-                <div class="section-head">
-                    <div>
-                        <h2><i class="bi bi-cash-coin"></i> {{ __('crm.section_donation_info') }}</h2>
-                        <p>{{ __('crm.section_donation_info_desc') }}</p>
-                    </div>
-                </div>
-
-                <div class="form-grid four-cols">
-                    <div class="field">
-                        <label for="donationType">{{ __('crm.donation_type') }}</label>
-                        <select id="donationType" name="donation_type">
-                            <option value="">{{ __('crm.select_donation_type') }}</option>
-                            @foreach ($donationTypes as $dType)
-                                <option value="{{ $dType->name_ar }}" {{ old('donation_type', $lead->donation_type) === $dType->name_ar ? 'selected' : '' }}>
-                                    {{ (app()->getLocale() === 'en' && !empty($dType->name_en)) ? $dType->name_en : $dType->name_ar }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="field">
-                        <label for="donationCycle">{{ __('crm.donation_cycle_frequency') }}</label>
-                        <select id="donationCycle" name="donation_cycle">
-                            <option value="">{{ __('crm.select_donation_cycle') }}</option>
-                            @foreach ($donationCycles as $cKey => $cLabel)
-                                <option value="{{ $cKey }}" {{ old('donation_cycle', $lead->donation_cycle) === $cKey ? 'selected' : '' }}>
-                                    {{ __('crm.donation_cycle_' . $cKey) }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="field">
-                        <label for="donationValue">{{ __('crm.donation_value_currency') }}</label>
-                        <input type="number" id="donationValue" name="donation_value" value="{{ old('donation_value', $lead->donation_value) }}" min="0" step="0.01" placeholder="500.00" style="font-weight:700">
-                    </div>
-
-                    <div class="field">
-                        <label for="donationPurpose">{{ __('crm.donation_purpose_label') }}</label>
-                        <select id="donationPurpose" name="donation_purpose">
-                            <option value="">{{ __('crm.select_donation_purpose') }}</option>
-                            @foreach ($donationPurposes as $purpose)
-                                <option value="{{ $purpose->name_ar }}" {{ old('donation_purpose', $lead->donation_purpose) === $purpose->name_ar ? 'selected' : '' }}>
-                                    {{ (app()->getLocale() === 'en' && !empty($purpose->name_en)) ? $purpose->name_en : $purpose->name_ar }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    @include('partials.lead-custom-field-inputs', ['fields' => $customFields->where('section', 'donation_info')->values(), 'recordValues' => is_array($lead->custom_fields) ? $lead->custom_fields : []])
-                </div>
-            </section>
 
             <!-- SECTION 3: COMMUNICATION & FOLLOW-UP -->
             <section class="form-card">
@@ -283,19 +262,44 @@ textarea{resize:vertical;min-height:90px}
                 </div>
 
                 <div class="form-grid">
-                    <div class="field">
-                        <label for="pipelineStage">{{ __('crm.current_pipeline_stage') }} <span class="req">*</span></label>
-                        <select id="pipelineStage" name="pipeline_stage_id" required>
-                            @php
-                                $selectedStageId = old('pipeline_stage_id', $lead->status?->pipeline_stage_id ?? $stages->first()->id ?? '');
-                            @endphp
-                            @foreach ($stages as $stage)
-                                <option value="{{ $stage->id }}" {{ (string) $selectedStageId === (string) $stage->id ? 'selected' : '' }}>
-                                    {{ (app()->getLocale() === 'en' && !empty($stage->name_en)) ? $stage->name_en : $stage->name_ar }} {{ $stage->isPrimary() ? '(' . __('crm.stage_type_primary') . ')' : '(' . __('crm.stage_type_additional') . ')' }}
-                                </option>
-                            @endforeach
-                        </select>
+                    <div class="field full">
+                        <label>{{ __('crm.current_pipeline_stage') }}</label>
+                        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;min-height:48px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:var(--card);">
+                            <strong>
+                                {{ $lead->status?->stage?->localizedName() ?? $lead->status?->localizedName() ?? '—' }}
+                            </strong>
+                            @can('createFollowup', $lead)
+                                <a
+                                 class="btn soft small"
+                                 href="{{ route('v2.leads.followups.index', $lead) }}"
+                                 data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+                                 data-lead-name="{{ $lead->name }}"
+                                 data-transition-description="{{ __('crm.status_change_notice') }}"
+                                >
+                                    <i class="bi bi-diagram-3"></i>
+                                    {{ __('crm.log_followup_and_change_status') }}
+                                </a>
+                            @endcan
+                        </div>
                     </div>
+
+                    @if (!empty($stageFieldsMap))
+                        @foreach ($stageFieldsMap as $stageId => $fields)
+                            @if ($fields->isNotEmpty())
+                                <div class="dynamic-edit-stage-fields"
+                                     id="editStageFields_{{ $stageId }}"
+                                     data-stage-id="{{ $stageId }}">
+                                    <h3><i class="bi bi-ui-checks"></i> {{ __('crm.stage_fields_section_title') }}</h3>
+                                    @include('partials.stage-field-inputs', [
+                                        'fields' => $fields,
+                                        'recordValues' => $currentStageValues ?? [],
+                                        'prefix' => 'stage_fields',
+                                        'scope' => 'edit_lead_stage_' . $stageId,
+                                    ])
+                                </div>
+                            @endif
+                        @endforeach
+                    @endif
 
                     <div class="field">
                         <label for="assignedUser">{{ __('crm.responding_responsible_employee') }}</label>
@@ -308,7 +312,7 @@ textarea{resize:vertical;min-height:90px}
                                 @endforeach
                             </select>
                         @else
-                            <input type="text" value="{{ $assignedEmployee }}" disabled style="background:#f1f5f9">
+                            <input type="text" value="{{ $assignedEmployee }}" disabled>
                             <input type="hidden" name="assigned_user_id" value="{{ $lead->assigned_user_id }}">
                         @endif
                     </div>
@@ -337,7 +341,7 @@ textarea{resize:vertical;min-height:90px}
                 </div>
             </section>
 
-            @php $otherFields = $customFields->where('section', 'other')->values(); @endphp
+            @php $otherFields = $customFields->whereIn('section', ['other', 'donation_info'])->values(); @endphp
             @if ($otherFields->isNotEmpty())
                 <!-- SECTION 5: CONFIGURABLE ADDITIONAL FIELDS -->
                 <section class="form-card">
@@ -354,48 +358,6 @@ textarea{resize:vertical;min-height:90px}
                 </section>
             @endif
 
-            <!-- SECTION 4: RELATED PEOPLE -->
-            <section class="form-card">
-                <div class="section-head">
-                    <div>
-                        <h2><i class="bi bi-people"></i> {{ __('crm.section_related_people') }}</h2>
-                        <p>{{ __('crm.section_related_people_desc') }}</p>
-                    </div>
-                    <button type="button" class="btn small soft" id="addPersonBtn">
-                        <i class="bi bi-plus-lg"></i> {{ __('crm.add_related_person') }}
-                </div>
-
-                <div id="relatedPeopleContainer">
-                    @php
-                        $currentPeople = old('related_people') !== null
-                            ? old('related_people')
-                            : $lead->relatedPeople->map(fn($p) => [
-                                'name' => $p->name,
-                                'phone' => $p->phone,
-                                'relationship_type' => $p->relationship_type,
-                                'notes' => $p->notes,
-                            ])->toArray();
-                    @endphp
-                    @foreach ($currentPeople as $pIndex => $person)
-                        <div class="person-row">
-                            <input type="text" name="related_people[{{ $pIndex }}][name]" value="{{ $person['name'] ?? '' }}" placeholder="{{ __('crm.person_name_placeholder') }}" required>
-                            <input type="tel" name="related_people[{{ $pIndex }}][phone]" value="{{ $person['phone'] ?? '' }}" placeholder="{{ __('crm.person_phone_placeholder') }}" dir="ltr">
-                            <select name="related_people[{{ $pIndex }}[relationship_type]">
-                                @foreach (\App\Support\CrmOptions::get('relation_type') as $relationType)
-                                    <option value="{{ $relationType['value'] }}" @selected(($person['relationship_type'] ?? '') === $relationType['value'])>{{ \App\Support\CrmOptions::labelOf($relationType) }}</option>
-                                @endforeach
-                            </select>
-                            <input type="text" name="related_people[{{ $pIndex }}][notes]" value="{{ $person['notes'] ?? '' }}" placeholder="{{ __('crm.note_optional_placeholder') }}">
-                            <button type="button" class="btn small danger btn-remove" onclick="this.closest('.person-row').remove()" title="{{ __('crm.delete') }}">
-                                <i class="bi bi-trash"></i>
-                        </div>
-                    @endforeach
-                </div>
-                <div id="noPeopleNotice" style="{{ count($currentPeople) > 0 ? 'display:none;' : '' }} text-align:center; padding:20px; color:var(--muted); background:var(--bg); border:1px dashed var(--line); border-radius:10px;">
-                    <i class="bi bi-person-plus" style="font-size:24px; display:block; margin-bottom:6px;"></i>
-                    <span>{{ __('crm.no_related_people_yet') }}</span>
-                </div>
-            </section>
 
             <!-- SUBMIT BAR -->
             <div style="display:flex; justify-content:flex-end; gap:12px; margin-top:20px;">
@@ -437,38 +399,18 @@ textarea{resize:vertical;min-height:90px}
         row.querySelector('input').focus();
     });
 
-    let personCounter = {{ count($currentPeople) }};
-    const personContainer = document.getElementById('relatedPeopleContainer');
-    const addPersonBtn = document.getElementById('addPersonBtn');
-    const noPeopleNotice = document.getElementById('noPeopleNotice');
 
-    addPersonBtn?.addEventListener('click', () => {
-        personCounter++;
-        if (noPeopleNotice) noPeopleNotice.style.display = 'none';
-
-        const row = document.createElement('div');
-        row.className = 'person-row';
-        row.innerHTML = `
-            <input type="text" name="related_people[${personCounter}][name]" placeholder="@json(__('crm.person_name_placeholder'))" required autofocus>
-            <input type="tel" name="related_people[${personCounter}][phone]" placeholder="@json(__('crm.person_phone_placeholder'))" dir="ltr">
-            <select name="related_people[${personCounter}][relationship_type]">
-                ${RELATION_TYPES.map((opt, i) => `<option value="${escapeAttr(opt.value)}" ${i === 0 ? 'selected' : ''}>${escapeHtml(optionLabel(opt))}</option>`).join('')}
-            </select>
-            <input type="text" name="related_people[${personCounter}][notes]" placeholder="@json(__('crm.note_optional_placeholder'))">
-            <button type="button" class="btn small danger btn-remove" onclick="removePersonRow(this)" title="@json(__('crm.delete'))">
-                <i class="bi bi-trash"></i>
-            </button>
-        `;
-        personContainer.appendChild(row);
+    const currentStageId = @json((int) ($lead->status?->pipeline_stage_id ?? 0));
+    document.querySelectorAll('.dynamic-edit-stage-fields').forEach(block => {
+        const isCurrentStage = String(block.getAttribute('data-stage-id')) === String(currentStageId);
+        block.style.display = isCurrentStage ? 'block' : 'none';
+        block.querySelectorAll('input:not([type="hidden"]), select, textarea').forEach(input => {
+            input.disabled = !isCurrentStage;
+        });
     });
-    window.removePersonRow = (btn) => {
-        btn.closest('.person-row').remove();
-        if (personContainer.children.length === 0 && noPeopleNotice) {
-            noPeopleNotice.style.display = 'block';
-        }
-    };
 })();
 </script>
-<script src="{{ asset('quotation-generator/crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}"></script>
+@include('partials.transition-popup')
 </body>
 </html>

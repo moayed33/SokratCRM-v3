@@ -11,7 +11,9 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('campaigns', function (Blueprint $table): void {
-            $table->string('image_path')->nullable()->after('name');
+            if (! Schema::hasColumn('campaigns', 'image_path')) {
+                $table->string('image_path')->nullable()->after('name');
+            }
         });
     }
 

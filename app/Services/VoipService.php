@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services;
 
+use App\Support\VoipCredentials;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -12,7 +13,9 @@ use RuntimeException;
 class VoipService
 {
     private string $apiUrl;
+
     private string $clientSecret;
+
     private int $timeout;
 
     public function __construct(
@@ -20,8 +23,9 @@ class VoipService
         ?string $clientSecret = null,
         ?int $timeout = null
     ) {
-        $this->apiUrl = rtrim($apiUrl ?? (string) config('voip.api_url'), '/');
-        $this->clientSecret = $clientSecret ?? (string) config('voip.client_secret');
+        $credentials = VoipCredentials::all();
+        $this->apiUrl = rtrim($apiUrl ?? ($credentials['api_url'] ?? (string) config('voip.api_url')), '/');
+        $this->clientSecret = $clientSecret ?? ($credentials['client_secret'] ?? (string) config('voip.client_secret'));
         $this->timeout = $timeout ?? (int) config('voip.timeout', 10);
     }
 
@@ -30,12 +34,43 @@ class VoipService
         return ! empty($this->apiUrl) && ! empty($this->clientSecret);
     }
 
+    public function isConnected(): bool
+    {
+        if (! $this->isConfigured()) {
+            return false;
+        }
+
+        return (bool) \Illuminate\Support\Facades\Cache::remember('voip.server.connected', 30, function (): bool {
+            try {
+                $response = Http::withToken($this->clientSecret)
+                    ->timeout(min($this->timeout, 3))
+                    ->get("{$this->apiUrl}/health");
+
+                if (! $response->successful()) {
+                    return false;
+                }
+
+                $json = $response->json();
+                $status = strtolower((string) ($json['status'] ?? ''));
+
+                return $status === 'ok' || $status === 'healthy' || ($json['success'] ?? false) === true;
+            } catch (\Throwable) {
+                return false;
+            }
+        });
+    }
+
     public function health(): array
     {
-        $response = Http::timeout($this->timeout)
-            ->get("{$this->apiUrl}/health");
+        try {
+            $response = Http::withToken($this->clientSecret)
+                ->timeout(min($this->timeout, 3))
+                ->get("{$this->apiUrl}/health");
 
-        return $response->successful() ? $response->json() : ['status' => 'error'];
+            return $response->successful() ? ($response->json() ?? ['status' => 'ok']) : ['status' => 'error'];
+        } catch (\Throwable) {
+            return ['status' => 'error'];
+        }
     }
 
     public function pair(
@@ -79,6 +114,10 @@ class VoipService
 
     public function getCustomerCallHistory(string $phone, array $filters = []): array
     {
+        if (isset($filters['limit']) && ! isset($filters['per_page'])) {
+            $filters['per_page'] = $filters['limit'];
+            unset($filters['limit']);
+        }
         $query = array_merge(['phone' => $phone], $filters);
 
         return $this->request('get', '/calls', $query);
@@ -108,11 +147,14 @@ class VoipService
         return $this->request('post', '/embed-tickets', $payload);
     }
 
-    public function streamRecording(string $mediaId): Response
+    public function streamRecording(string $mediaId, ?string $range = null): Response
     {
-        return Http::withToken($this->clientSecret)
-            ->timeout(30)
-            ->get("{$this->apiUrl}/recordings/{$mediaId}");
+        $request = Http::withToken($this->clientSecret)->timeout(30);
+        if ($range !== null && preg_match('/^bytes=\d*-\d*$/', $range) === 1) {
+            $request = $request->withHeaders(['Range' => $range]);
+        }
+
+        return $request->get("{$this->apiUrl}/recordings/{$mediaId}");
     }
 
     private function request(string $method, string $path, array $data = []): array
@@ -121,7 +163,7 @@ class VoipService
             throw new RuntimeException('خدمة VoIP غير مهيأة بعد.');
         }
 
-        $url = "{$this->apiUrl}" . $path;
+        $url = "{$this->apiUrl}".$path;
         $http = Http::withToken($this->clientSecret)->timeout($this->timeout);
 
         $response = $method === 'get'

@@ -75,11 +75,22 @@ class CalendarController extends Controller
             $assignableUsers = collect([$user]);
         }
 
+        $managedStaff = $user->canViewEmployeeStats()
+            ? $user->managedEmployeesQuery()->orderBy('name')->get(['id', 'name', 'username'])
+            : collect([$user]);
+
+        $iCalFeedUrl = route('v2.calendar.feed', [
+            'user' => $user->id,
+            'token' => hash_hmac('sha256', (string) $user->id, config('app.key')),
+        ]);
+
         return view('calendar.index', [
             'leads' => $leads,
             'assignableUsers' => $assignableUsers,
+            'managedStaff' => $managedStaff,
             'branches' => $branches,
             'currentBranchId' => $currentBranchId,
+            'iCalFeedUrl' => $iCalFeedUrl,
         ]);
     }
 
@@ -202,7 +213,7 @@ class CalendarController extends Controller
                 return [
                     'id' => 'lead_followup_' . $lead->id,
                     'raw_id' => $lead->id,
-                    'title' => '📌 ' . $donorName . ($donationValue ? " ({$donationValue})" : ''),
+                    'title' => $donorName . ($donationValue ? " ({$donationValue})" : ''),
                     'description' => $lead->response_details ?? $lead->notes ?? '',
                     'start' => $followUpTime->toIso8601String(),
                     'end' => $followUpTime->copy()->addMinutes(30)->toIso8601String(),
@@ -252,7 +263,7 @@ class CalendarController extends Controller
                 return [
                     'id' => 'lead_contact_' . $lead->id,
                     'raw_id' => $lead->id,
-                    'title' => '📞 ' . $donorName,
+                    'title' => $donorName,
                     'description' => $lead->response_details ?? $lead->notes ?? '',
                     'start' => $contactTime->toIso8601String(),
                     'end' => $contactTime->copy()->addMinutes(30)->toIso8601String(),
@@ -282,6 +293,59 @@ class CalendarController extends Controller
 
             $formattedLeadEvents = $formattedFollowups->concat($formattedContacts);
         }
+        // 3. Fetch Scheduled Collection Cases if type is empty/all/collection/task
+        $includeCollections = empty($typeFilter) || in_array($typeFilter, ['all', 'collection', 'task'], true);
+        $formattedCollectionEvents = collect();
+
+        if ($includeCollections) {
+            $collectionCases = $this->repository->getScheduledCollectionCasesForUser(
+                $user,
+                is_string($start) ? $start : null,
+                is_string($end) ? $end : null,
+                $filters
+            );
+
+            $formattedCollectionEvents = $collectionCases->map(function (\App\Models\CollectionCase $case): array {
+                $dueTime = $case->due_at;
+                $isPast = $dueTime ? $dueTime->isPast() : false;
+                $isCompleted = $case->status === 'completed';
+                $color = $isCompleted ? '#16a34a' : ($isPast ? '#dc2626' : '#8b5cf6');
+                $donorName = $case->lead?->name ?: __('crm.unnamed_lead');
+                $donorPhone = $case->lead?->phone ?: '—';
+                $collectorName = $case->assignedCollector?->name ?: __('crm.unassigned');
+
+                return [
+                    'id' => 'collection_case_' . $case->id,
+                    'raw_id' => $case->id,
+                    'title' => '[' . __('crm.collection') . '] ' . number_format((float) $case->expected_amount) . ' EGP — ' . $donorName,
+                    'description' => $case->notes ?: ($case->collection_address ? __('crm.address') . ': ' . $case->collection_address : ''),
+                    'start' => $case->due_at->toIso8601String(),
+                    'end' => $case->due_at->copy()->addMinutes(45)->toIso8601String(),
+                    'type' => 'collection',
+                    'event_source' => 'collection',
+                    'status' => $case->status,
+                    'user_id' => $case->assigned_collector_user_id,
+                    'user_name' => $collectorName,
+                    'lead_id' => $case->lead_id,
+                    'lead_name' => $donorName,
+                    'lead_company' => $case->lead?->company_name,
+                    'lead_phone' => $donorPhone,
+                    'lead_url' => $case->lead_id ? route('v2.leads.show', $case->lead_id) : null,
+                    'collection_case_id' => $case->id,
+                    'collection_url' => route('v2.collections.show', $case),
+                    'collection_address' => $case->collection_address,
+                    'expected_amount' => number_format((float) $case->expected_amount, 2),
+                    'branch_id' => $case->branch_id,
+                    'branch_name' => $case->branch?->name_ar ?? null,
+                    'donation_type' => $case->donation_type,
+                    'color' => $color,
+                    'borderColor' => $color,
+                    'allDay' => false,
+                    'is_lead_followup' => false,
+                    'is_collection' => true,
+                ];
+            });
+        }
 
         // Apply status filter to lead events if specified
         $statusFilter = $filters['status'] ?? '';
@@ -301,12 +365,14 @@ class CalendarController extends Controller
         }
 
         // If filtering strictly for non-followup types, only return manual events
-        if (! empty($typeFilter) && ! in_array($typeFilter, ['all', 'lead_followup', 'call', 'task'], true)) {
+        if (! empty($typeFilter) && ! in_array($typeFilter, ['all', 'lead_followup', 'call', 'task', 'collection'], true)) {
             $combined = $formattedManualEvents;
         } elseif ($typeFilter === 'lead_followup') {
             $combined = $formattedLeadEvents;
+        } elseif ($typeFilter === 'collection') {
+            $combined = $formattedCollectionEvents;
         } else {
-            $combined = $formattedManualEvents->concat($formattedLeadEvents);
+            $combined = $formattedManualEvents->concat($formattedLeadEvents)->concat($formattedCollectionEvents);
         }
 
         $sortedEvents = $combined->sortBy('start')->values()->all();
@@ -415,15 +481,24 @@ class CalendarController extends Controller
 
         $event = $this->repository->create($validated);
 
+        $conflict = $this->repository->findConflictingEvent((int) $validated['user_id'], $validated['start_time'], $validated['end_time'], $event->id);
+
         if ($request->wantsJson() || $request->ajax()) {
             return response()->json([
                 'success' => true,
                 'message' => 'تم إنشاء التكليف / الحدث بنجاح.',
+                'has_conflict' => $conflict !== null,
+                'conflict_warning' => $conflict ? "تنبيه: يوجد حدث متداخل ({$conflict->title})" : null,
                 'data' => $event,
             ], 201);
         }
 
-        return redirect()->route('v2.calendar.index')->with('success', 'تم إنشاء التكليف / الحدث بنجاح.');
+        $notice = 'تم إنشاء التكليف / الحدث بنجاح.';
+        if ($conflict) {
+            $notice .= " (تنبيه تعارض مواعيد: يتداخل مع {$conflict->title})";
+        }
+
+        return redirect()->route('v2.calendar.index')->with('success', $notice);
     }
 
     public function update(Request $request, CalendarEvent $event): JsonResponse|RedirectResponse
@@ -625,6 +700,106 @@ class CalendarController extends Controller
         }
 
         return redirect()->route('v2.calendar.index')->with('success', 'تم حذف الحدث بنجاح.');
+    }
+    public function checkConflict(Request $request): JsonResponse
+    {
+        $this->assertCrmDatabase();
+        Gate::authorize('viewAny', CalendarEvent::class);
+
+        $validated = $request->validate([
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'start_time' => ['required', 'date'],
+            'end_time' => ['required', 'date', 'after_or_equal:start_time'],
+            'ignore_id' => ['nullable', 'integer'],
+        ]);
+
+        $conflict = $this->repository->findConflictingEvent(
+            (int) $validated['user_id'],
+            $validated['start_time'],
+            $validated['end_time'],
+            ! empty($validated['ignore_id']) ? (int) $validated['ignore_id'] : null
+        );
+
+        return response()->json([
+            'has_conflict' => $conflict !== null,
+            'conflicting_event' => $conflict ? [
+                'id' => $conflict->id,
+                'title' => $conflict->title,
+                'type' => $conflict->type,
+                'start_time' => $conflict->start_time?->format('Y-m-d H:i'),
+                'end_time' => $conflict->end_time?->format('Y-m-d H:i'),
+            ] : null,
+        ]);
+    }
+
+    public function feed(Request $request, User $user): \Illuminate\Http\Response
+    {
+        $this->assertCrmDatabase();
+
+        $token = (string) $request->query('token', '');
+        $expectedToken = hash_hmac('sha256', (string) $user->id, (string) config('app.key'));
+        abort_unless(hash_equals($expectedToken, $token), 403, 'Invalid or expired calendar feed token.');
+
+        $start = now()->subMonths(1)->toDateTimeString();
+        $end = now()->addMonths(3)->toDateTimeString();
+
+        $events = $this->repository->getEventsForUser($user, $start, $end);
+        $followups = $this->repository->getLeadFollowupsForUser($user, $start, $end);
+        $collections = $this->repository->getScheduledCollectionCasesForUser($user, $start, $end);
+
+        $lines = [
+            'BEGIN:VCALENDAR',
+            'VERSION:2.0',
+            'PRODID:-//SokratCRM//Calendar Feed//EN',
+            'CALSCALE:GREGORIAN',
+            'METHOD:PUBLISH',
+            'X-WR-CALNAME:SokratCRM - ' . $user->name,
+            'X-WR-TIMEZONE:' . config('app.timezone', 'Africa/Cairo'),
+        ];
+
+        foreach ($events as $e) {
+            $lines[] = 'BEGIN:VEVENT';
+            $lines[] = 'UID:event-' . $e->id . '@sokratcrm';
+            $lines[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
+            $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $e->start_time->timestamp);
+            $lines[] = 'DTEND:' . gmdate('Ymd\THis\Z', $e->end_time->timestamp);
+            $lines[] = 'SUMMARY:' . addcslashes($e->title, ",;\\");
+            $lines[] = 'DESCRIPTION:' . addcslashes((string) ($e->description ?? ''), ",;\\");
+            $lines[] = 'STATUS:' . ($e->status === 'canceled' ? 'CANCELLED' : 'CONFIRMED');
+            $lines[] = 'END:VEVENT';
+        }
+
+        foreach ($followups as $l) {
+            if (! $l->next_follow_up_at) continue;
+            $lines[] = 'BEGIN:VEVENT';
+            $lines[] = 'UID:lead-followup-' . $l->id . '@sokratcrm';
+            $lines[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
+            $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $l->next_follow_up_at->timestamp);
+            $lines[] = 'DTEND:' . gmdate('Ymd\THis\Z', $l->next_follow_up_at->copy()->addMinutes(30)->timestamp);
+            $lines[] = 'SUMMARY:' . addcslashes('Follow-up: ' . $l->name, ",;\\");
+            $lines[] = 'DESCRIPTION:' . addcslashes('Phone: ' . ($l->phone ?? '') . ' | Notes: ' . ($l->notes ?? ''), ",;\\");
+            $lines[] = 'END:VEVENT';
+        }
+
+        foreach ($collections as $c) {
+            if (! $c->due_at) continue;
+            $lines[] = 'BEGIN:VEVENT';
+            $lines[] = 'UID:collection-case-' . $c->id . '@sokratcrm';
+            $lines[] = 'DTSTAMP:' . gmdate('Ymd\THis\Z');
+            $lines[] = 'DTSTART:' . gmdate('Ymd\THis\Z', $c->due_at->timestamp);
+            $lines[] = 'DTEND:' . gmdate('Ymd\THis\Z', $c->due_at->copy()->addMinutes(45)->timestamp);
+            $lines[] = 'SUMMARY:' . addcslashes('Collection: ' . number_format((float) $c->expected_amount) . ' EGP - ' . ($c->lead?->name ?? ''), ",;\\");
+            $lines[] = 'DESCRIPTION:' . addcslashes('Address: ' . $c->collection_address . ' | Phone: ' . ($c->lead?->phone ?? ''), ",;\\");
+            $lines[] = 'END:VEVENT';
+        }
+
+        $lines[] = 'END:VCALENDAR';
+
+        return response(implode("\r\n", $lines), 200, [
+            'Content-Type' => 'text/calendar; charset=utf-8',
+            'Content-Disposition' => 'inline; filename="sokrat-crm-calendar.ics"',
+            'Cache-Control' => 'private, no-cache, must-revalidate',
+        ]);
     }
 
     private function assertCrmDatabase(): void

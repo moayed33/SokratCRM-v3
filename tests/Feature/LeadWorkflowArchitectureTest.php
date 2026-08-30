@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Branch;
+use App\Models\Donation;
+use App\Models\DonationType;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
@@ -15,13 +17,15 @@ use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Services\LeadTransitionService;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 class LeadWorkflowArchitectureTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
     private PipelineStage $stageNew;
@@ -251,6 +255,194 @@ class LeadWorkflowArchitectureTest extends TestCase
         $this->assertNotNull($result['followup']);
         $this->assertSame('meeting', $result['followup']->communication_type);
         $this->assertSame('تم إتمام التبرع في المقابلة', $result['followup']->outcome);
+        $this->assertNotNull($result['donation']);
+        $this->assertSame('5000.00', (string) $result['donation']->amount);
+    }
+
+    public function test_donor_popup_shows_basic_data_and_donation_fields(): void
+    {
+        $donationType = DonationType::query()->create([
+            'name_ar' => 'صدقة',
+            'is_active' => true,
+            'position' => 1,
+        ]);
+        $lead = Lead::query()->create([
+            'name' => 'عميل للتحويل إلى متبرع',
+            'phone' => '01012345678',
+            'address' => 'القاهرة، مصر الجديدة',
+            'branch_id' => $this->branch->id,
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.followups.index', [
+            'lead' => $lead,
+            'kanban_popup' => 1,
+            'target_status_id' => $this->statusDonor->id,
+        ]));
+
+        $response->assertOk()
+            ->assertSee($lead->name)
+            ->assertSee($lead->phone)
+            ->assertSee($lead->address)
+            ->assertSee($donationType->name_ar)
+            ->assertSee('name="donation_type_id"', false)
+            ->assertSee('name="donation_value"', false)
+            ->assertSee('name="donation_cycle"', false);
+    }
+
+    public function test_new_lead_form_does_not_ask_for_donation_data(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.create'));
+
+        $response->assertOk()
+            ->assertDontSee('name="donation_type"', false)
+            ->assertDontSee('name="donation_type_id"', false)
+            ->assertDontSee('name="donation_value"', false)
+            ->assertDontSee('name="donation_cycle"', false)
+            ->assertDontSee('name="donation_purpose"', false);
+    }
+
+    public function test_donor_followup_requires_donation_and_schedules_the_next_cycle(): void
+    {
+        $donationType = DonationType::query()->create([
+            'name_ar' => 'زكاة مال',
+            'is_active' => true,
+            'position' => 1,
+        ]);
+        $lead = Lead::query()->create([
+            'name' => 'عميل بتبرع شهري',
+            'phone' => '01087654321',
+            'branch_id' => $this->branch->id,
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $missingDonation = $this->actingAs($this->admin)->post(
+            route('v2.leads.followups.store', $lead),
+            [
+                'lead_status_id' => $this->statusDonor->id,
+                'communication_type' => 'call',
+                'outcome' => 'تم تأكيد التبرع',
+            ]
+        );
+        $missingDonation->assertSessionHasErrors([
+            'donation_type_id',
+            'donation_value',
+            'donation_cycle',
+        ]);
+        $this->assertSame($this->statusNew->id, $lead->fresh()->lead_status_id);
+
+        $donationAt = now()->setDate(2026, 8, 25)->setTime(10, 30, 0);
+        $this->travelTo($donationAt);
+
+        $response = $this->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'تم استلام أول تبرع',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 1250.50,
+            'donation_cycle' => 'monthly',
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $lead->refresh();
+        $this->assertSame($this->statusDonor->id, $lead->lead_status_id);
+        $this->assertSame($donationType->id, $lead->donation_type_id);
+        $this->assertSame($donationType->name_ar, $lead->donation_type);
+        $this->assertSame('1250.50', (string) $lead->donation_value);
+        $this->assertSame('monthly', $lead->donation_cycle);
+        $this->assertSame('2026-09-25 10:30', $lead->next_follow_up_at?->format('Y-m-d H:i'));
+
+        $followup = LeadFollowup::query()->where('lead_id', $lead->id)->latest('id')->firstOrFail();
+        $this->assertSame('2026-09-25 10:30', $followup->next_follow_up_at?->format('Y-m-d H:i'));
+
+        $this->travelBack();
+    }
+
+    public function test_donor_followups_only_append_real_donations_and_keep_receipts_private(): void
+    {
+        Storage::fake('local');
+
+        $donationType = DonationType::query()->create([
+            'name_ar' => 'صدقة جارية',
+            'name_en' => 'Ongoing Charity',
+            'is_active' => true,
+            'position' => 1,
+        ]);
+        $lead = Lead::query()->create([
+            'name' => 'عميل بسجل تبرعات',
+            'phone' => '01087650000',
+            'branch_id' => $this->branch->id,
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $conversion = $this->actingAs($this->admin)->post(
+            route('v2.leads.followups.store', $lead),
+            [
+                'lead_status_id' => $this->statusDonor->id,
+                'communication_type' => 'meeting',
+                'outcome' => 'تم استلام أول تبرع',
+                'donation_type_id' => $donationType->id,
+                'donation_value' => 600,
+                'donation_cycle' => 'one_time',
+                'donation_receipt' => UploadedFile::fake()->image('first-receipt.jpg'),
+            ],
+        );
+
+        $conversion->assertSessionHasNoErrors();
+        $firstDonation = Donation::query()->whereBelongsTo($lead)->sole();
+        $this->assertSame('600.00', (string) $firstDonation->amount);
+        $this->assertSame($this->admin->id, $firstDonation->recorded_by_user_id);
+        $this->assertNotNull($firstDonation->lead_followup_id);
+        Storage::disk('local')->assertExists($firstDonation->receipt_path);
+
+        $routineFollowup = $this->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'متابعة دورية بدون تبرع جديد',
+        ]);
+
+        $routineFollowup->assertSessionHasNoErrors();
+        $this->assertSame(1, Donation::query()->whereBelongsTo($lead)->count());
+
+        $newDonation = $this->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'تم استلام تبرع جديد',
+            'record_donation' => true,
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 900,
+            'donation_cycle' => 'monthly',
+        ]);
+
+        $newDonation->assertSessionHasNoErrors();
+        $this->assertSame(2, Donation::query()->whereBelongsTo($lead)->count());
+        $this->assertSame('900.00', (string) $lead->fresh()->donation_value);
+
+        $this->get(route('v2.leads.donations.receipt.preview', [$lead, $firstDonation]))
+            ->assertOk()
+            ->assertHeader('Cache-Control', 'max-age=0, no-store, private');
+
+        $otherLead = Lead::query()->create([
+            'name' => 'عميل آخر',
+            'phone' => '01087650001',
+            'branch_id' => $this->branch->id,
+            'lead_status_id' => $this->statusNew->id,
+        ]);
+        $this->get(route('v2.leads.donations.receipt.preview', [$otherLead, $firstDonation]))
+            ->assertNotFound();
+
+        $this->get(route('v2.leads.show', $lead))
+            ->assertOk()
+            ->assertSee('600.00')
+            ->assertSee('900.00')
+            ->assertSee($this->admin->name)
+            ->assertSee(__('crm.preview_receipt'));
     }
 
     public function test_no_answer_rule_is_enforced_across_endpoints(): void
@@ -279,6 +471,30 @@ class LeadWorkflowArchitectureTest extends TestCase
                 'next_follow_up_at' => null,
             ]
         );
+    }
+
+    public function test_canonical_followup_cannot_bypass_required_donor_donation(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل تحويل سريع',
+            'phone' => '01000003339',
+            'branch_id' => $this->branch->id,
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(
+            route('v2.leads.followups.store', $lead),
+            [
+                'communication_type' => 'call',
+                'outcome' => 'محاولة تحويل بدون بيانات تبرع',
+                'lead_status_id' => $this->statusDonor->id,
+            ],
+        );
+
+        $response->assertSessionHasErrors('donation_value');
+        $this->assertSame($this->statusNew->id, $lead->fresh()->lead_status_id);
+        $this->assertSame(0, Donation::query()->whereBelongsTo($lead)->count());
     }
 
     public function test_no_answer_succeeds_with_callback_date(): void
@@ -346,7 +562,7 @@ class LeadWorkflowArchitectureTest extends TestCase
         $this->assertNull($result['lead']->next_follow_up_at);
     }
 
-    public function test_lead_edit_uses_transition_service_and_creates_history(): void
+    public function test_profile_edit_preserves_status_and_creates_no_transition_history(): void
     {
         $this->actingAs($this->admin);
 
@@ -359,11 +575,11 @@ class LeadWorkflowArchitectureTest extends TestCase
             'created_by_user_id' => $this->admin->id,
         ]);
 
-        // 1. Edit with status change
         $response = $this->patch(route('v2.leads.update', $lead), [
             'name' => 'عميل تعديل بيانات محدث',
             'phone' => '01000006666',
             'lead_status_id' => $this->statusDonor->id,
+            'pipeline_stage_id' => $this->stageDonor->id,
             'donation_value' => 2500,
         ]);
 
@@ -371,28 +587,11 @@ class LeadWorkflowArchitectureTest extends TestCase
 
         $lead->refresh();
         $this->assertSame('عميل تعديل بيانات محدث', $lead->name);
-        $this->assertSame($this->statusDonor->id, $lead->lead_status_id);
-
-        $historyCount = LeadStatusHistory::query()->where('lead_id', $lead->id)->count();
-        $this->assertSame(1, $historyCount);
-
-        $history = LeadStatusHistory::query()->where('lead_id', $lead->id)->first();
-        $this->assertSame($this->statusNew->id, $history->from_status_id);
-        $this->assertSame($this->statusDonor->id, $history->to_status_id);
-
-        // 2. Non-status Lead edit (name only) should NOT create false status history
-        $this->patch(route('v2.leads.update', $lead), [
-            'name' => 'عميل تعديل الاسم فقط',
-            'phone' => '01000006666',
-            'lead_status_id' => $this->statusDonor->id, // unchanged
-        ]);
-
-        $lead->refresh();
-        $this->assertSame('عميل تعديل الاسم فقط', $lead->name);
-        $this->assertSame(1, LeadStatusHistory::query()->where('lead_id', $lead->id)->count());
+        $this->assertSame($this->statusNew->id, $lead->lead_status_id);
+        $this->assertSame(0, LeadStatusHistory::query()->where('lead_id', $lead->id)->count());
     }
 
-    public function test_quick_followup_uses_transition_service_and_creates_history(): void
+    public function test_canonical_followup_endpoint_uses_transition_service_and_creates_history(): void
     {
         $this->actingAs($this->admin);
 
@@ -407,7 +606,7 @@ class LeadWorkflowArchitectureTest extends TestCase
 
         $callbackDate = now()->addDays(3)->format('Y-m-d H:i:s');
 
-        $response = $this->post(route('v2.tasks.quick_followup', $lead), [
+        $response = $this->post(route('v2.leads.followups.store', $lead), [
             'communication_type' => 'call',
             'outcome' => 'مكالمة سريعة للمتابعة لاحقاً',
             'lead_status_id' => $this->statusNoAnswer->id,

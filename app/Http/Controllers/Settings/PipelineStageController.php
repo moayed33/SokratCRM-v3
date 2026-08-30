@@ -30,6 +30,7 @@ class PipelineStageController extends Controller
             ])
             ->withCount([
                 'statuses as statuses_count',
+                'fields as fields_count',
             ])
             ->orderBy('position')
             ->orderBy('id')

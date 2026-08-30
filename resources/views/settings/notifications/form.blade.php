@@ -65,7 +65,7 @@
    <section class="rule-section">
     <header class="rule-section-head"><span class="rule-step">4</span><div><h2>{{ __('crm.notification_rule_conditions') }}</h2><p>{{ __('crm.notification_rule_conditions_description') }}</p></div></header>
     <div class="form-grid">
-     <div class="field"><label for="ruleStatuses">{{ __('crm.lead_statuses') }}</label><select id="ruleStatuses" name="lead_status_ids[]" multiple size="5">@foreach($leadStatuses as $status)<option value="{{ $status->id }}" @selected(in_array($status->id, $selectedStatuses, true))>{{ $status->name_ar }}</option>@endforeach</select></div>
+     <div class="field"><label for="ruleStatuses">{{ __('crm.lead_statuses') }}</label><select id="ruleStatuses" name="lead_status_ids[]" multiple size="5">@foreach($leadStatuses as $status)<option value="{{ $status->id }}" @selected(in_array($status->id, $selectedStatuses, true))>{{ $status->localizedName() }}</option>@endforeach</select></div>
      <div class="field"><label for="ruleCalendarTypes">{{ __('crm.calendar_event_types') }}</label><select id="ruleCalendarTypes" name="calendar_types[]" multiple size="5">@foreach(['meeting','call','task','reminder'] as $type)<option value="{{ $type }}" @selected(in_array($type, $selectedCalendarTypes, true))>{{ __('crm.calendar_type_'.$type) }}</option>@endforeach</select></div>
     </div>
    </section>

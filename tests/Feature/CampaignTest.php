@@ -11,14 +11,14 @@ use App\Models\LeadStatus;
 use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class CampaignTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_super_admin_can_open_campaign_form_and_create_campaign(): void
     {

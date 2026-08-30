@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class LeadFollowup extends Model
 {
@@ -68,6 +69,16 @@ class LeadFollowup extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function donation(): HasOne
+    {
+        return $this->hasOne(Donation::class);
+    }
+
+    public function collectionCase(): HasOne
+    {
+        return $this->hasOne(CollectionCase::class, 'source_followup_id');
     }
 
     public function fromStatus(): BelongsTo

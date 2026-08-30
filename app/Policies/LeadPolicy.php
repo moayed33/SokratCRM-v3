@@ -59,10 +59,4 @@ class LeadPolicy
         return $user->hasPermission(CrmPermission::LEADS_FOLLOWUPS_CREATE)
             && $lead->isAccessibleTo($user);
     }
-
-    public function viewQuotation(User $user, Lead $lead): bool
-    {
-        return $user->hasPermission(CrmPermission::QUOTATIONS_VIEW)
-            && $lead->isAccessibleTo($user);
-    }
 }

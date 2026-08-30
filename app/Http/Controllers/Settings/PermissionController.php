@@ -5,32 +5,22 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Settings\Concerns\BuildsAccessPage;
 use App\Http\Requests\Settings\UpdatePermissionMatrixRequest;
 use App\Models\Group;
 use App\Models\Permission;
-use App\Security\CrmPermission;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PermissionController extends Controller
 {
-    public function index(): View
-    {
-        $permissions = Permission::query()
-            ->orderBy('module')
-            ->orderBy('code')
-            ->get();
+    use BuildsAccessPage;
 
-        return view('settings.permissions.index', [
-            'groups' => Group::query()
-                ->with('permissions:id,code')
-                ->orderByDesc('is_system')
-                ->orderBy('name')
-                ->get(),
-            'permissionsByModule' => $permissions->groupBy('module'),
-            'moduleLabels' => CrmPermission::moduleLabels(),
-        ]);
+    public function index(Request $request): View
+    {
+        return $this->buildAccessPage($request, 'permissions');
     }
 
     public function update(

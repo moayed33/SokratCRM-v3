@@ -281,6 +281,170 @@
         border-color: rgba(239, 68, 68, 0.3) !important;
         color: #f87171 !important;
     }
+
+    /* Profile trigger standardized height */
+    .crm-profile-trigger {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 8px !important;
+        min-inline-size: 160px !important;
+        height: 42px !important;
+        min-height: 42px !important;
+        max-height: 42px !important;
+        padding: 0 12px !important;
+        border: 1px solid var(--line, #e7e9ef) !important;
+        border-radius: 12px !important;
+        background: var(--card, #fff) !important;
+        color: var(--dark, #182033) !important;
+        cursor: pointer;
+        font: inherit;
+        text-align: start;
+        box-sizing: border-box !important;
+        transition: background .2s ease, border-color .2s ease, transform .2s ease;
+    }
+
+    .crm-profile-trigger .crm-profile-avatar {
+        display: grid;
+        place-items: center;
+        flex: 0 0 28px !important;
+        width: 28px !important;
+        height: 28px !important;
+        inline-size: 28px !important;
+        block-size: 28px !important;
+        border-radius: 8px !important;
+        background: #fff0f1;
+        color: var(--red, #dc2637);
+        font-weight: 900;
+        font-size: 13px !important;
+    }
+
+    .crm-profile-trigger .crm-profile-details strong {
+        font-size: 12px !important;
+        line-height: 1.2 !important;
+        font-weight: 800;
+    }
+
+    .crm-profile-trigger .crm-profile-details small {
+        font-size: 10px !important;
+        line-height: 1 !important;
+        margin-top: 1px;
+        color: var(--muted, #8b94a5);
+    }
+
+    /* Call Profile Navigation Link */
+    .crm-profile-call-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        inline-size: 100%;
+        min-block-size: 38px;
+        height: 38px;
+        border: 1px solid var(--line, #e2e8f0);
+        border-radius: 10px;
+        background: var(--bg, #f8fafc);
+        color: var(--dark, #334155);
+        font: inherit;
+        font-weight: 800;
+        font-size: 13px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all .15s ease;
+        box-sizing: border-box;
+        margin-bottom: 6px;
+    }
+
+    .crm-profile-call-link:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: var(--red, #dc2637);
+    }
+
+    html.dark-mode .crm-profile-call-link {
+        background: var(--bg-input, #27272a) !important;
+        border-color: var(--line, rgba(255, 255, 255, 0.12)) !important;
+        color: var(--text-primary, #f4f4f5) !important;
+    }
+
+    html.dark-mode .crm-profile-call-link:hover {
+        background: rgba(255, 255, 255, 0.12) !important;
+        border-color: rgba(255, 255, 255, 0.22) !important;
+        color: #ffffff !important;
+    }
+
+    html.crm-monochrome .crm-profile-call-link {
+        border-radius: 4px;
+        border-color: #d4d4d4;
+        background: #f5f5f5;
+        color: #171717;
+    }
+
+    html.crm-monochrome .crm-profile-call-link:hover {
+        background: #ededed;
+    }
+
+    html.crm-monochrome.dark-mode .crm-profile-call-link {
+        background: #292929 !important;
+        border-color: #525252 !important;
+        color: #f5f5f5 !important;
+    }
+
+    /* Profile Logout Button */
+    .crm-profile-logout {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        inline-size: 100%;
+        min-block-size: 38px;
+        height: 38px;
+        border: 1px solid #f1bbc1;
+        border-radius: 10px;
+        background: #fff0f1;
+        color: #b42332;
+        font: inherit;
+        font-weight: 800;
+        font-size: 13px;
+        cursor: pointer;
+        transition: all .15s ease;
+        box-sizing: border-box;
+    }
+
+    .crm-profile-logout:hover {
+        background: #ffe4e7;
+        border-color: #fca5a5;
+        color: #9f1239;
+    }
+
+    html.dark-mode .crm-profile-logout {
+        background: rgba(220, 38, 55, 0.14) !important;
+        border-color: rgba(220, 38, 55, 0.35) !important;
+        color: #fca5a5 !important;
+    }
+
+    html.dark-mode .crm-profile-logout:hover {
+        background: rgba(220, 38, 55, 0.25) !important;
+        border-color: rgba(220, 38, 55, 0.55) !important;
+        color: #ffffff !important;
+    }
+
+    html.crm-monochrome .crm-profile-logout {
+        border-radius: 4px;
+        border-color: #d4d4d4;
+        background: #f5f5f5;
+        color: #171717;
+    }
+
+    html.crm-monochrome .crm-profile-logout:hover {
+        background: #ededed;
+    }
+
+    html.crm-monochrome.dark-mode .crm-profile-logout {
+        background: #292929 !important;
+        border-color: #525252 !important;
+        color: #f5f5f5 !important;
+    }
+
     /* Keep the profile menu anchored to its trigger and above page content. */
     .crm-profile,
     .crm-profile:has([data-crm-profile-dropdown]) {
@@ -334,6 +498,70 @@
     body.crm-notification-open .crm-profile,
     body.crm-notification-open .crm-topbar-user {
         z-index: 0 !important;
+    }
+
+    html.crm-monochrome .crm-topbar-notification-btn,
+    html.crm-monochrome .crm-branch-pill-trigger,
+    html.crm-monochrome .crm-branch-pill-static {
+        border-radius: 4px;
+        box-shadow: none;
+    }
+
+    html.crm-monochrome .crm-topbar-notification-btn:hover,
+    html.crm-monochrome .crm-topbar-notification-btn:focus-visible,
+    html.crm-monochrome .crm-branch-pill-trigger:hover,
+    html.crm-monochrome .crm-branch-pill-trigger:focus-visible {
+        background: #f5f5f5 !important;
+        border-color: #a3a3a3 !important;
+        color: #171717 !important;
+        box-shadow: none !important;
+        transform: none;
+    }
+
+    html.crm-monochrome .crm-topbar-notification-btn .crm-notification-badge {
+        background: #171717 !important;
+        box-shadow: 0 0 0 2px var(--card, #fff);
+    }
+
+    html.crm-monochrome .crm-branch-pill-icon {
+        border-radius: 3px;
+        background: #ededed;
+        color: #404040;
+    }
+
+    html.crm-monochrome .crm-branch-pill-dropdown {
+        border-radius: 5px !important;
+        box-shadow: 0 12px 30px rgba(0, 0, 0, .08) !important;
+    }
+
+    html.crm-monochrome .crm-branch-pill-option { border-radius: 3px; }
+    html.crm-monochrome .crm-branch-pill-option:hover,
+    html.crm-monochrome .crm-branch-pill-option.is-active {
+        background: #ededed !important;
+        color: #171717 !important;
+    }
+    html.crm-monochrome .crm-branch-pill-check { color: #171717; }
+    html.crm-monochrome .crm-branch-pill-static {
+        background: #f5f5f5;
+        border-color: #d4d4d4;
+        color: #404040;
+    }
+
+    html.crm-monochrome.dark-mode .crm-topbar-notification-btn:hover,
+    html.crm-monochrome.dark-mode .crm-topbar-notification-btn:focus-visible,
+    html.crm-monochrome.dark-mode .crm-branch-pill-trigger:hover,
+    html.crm-monochrome.dark-mode .crm-branch-pill-trigger:focus-visible,
+    html.crm-monochrome.dark-mode .crm-branch-pill-option:hover,
+    html.crm-monochrome.dark-mode .crm-branch-pill-option.is-active,
+    html.crm-monochrome.dark-mode .crm-branch-pill-static {
+        background: #292929 !important;
+        border-color: #525252 !important;
+        color: #f5f5f5 !important;
+    }
+
+    html.crm-monochrome.dark-mode .crm-branch-pill-icon {
+        background: #333;
+        color: #f5f5f5;
     }
 </style>
 @endonce
@@ -437,7 +665,7 @@
             {{ mb_substr((string) (auth()->user()?->name ?? 'U'), 0, 1) }}
         </span>
         <span class="crm-profile-details">
-            <strong>{{ auth()->user()?->name ?? 'User' }}</strong>
+            <strong>{{ auth()->user()?->name ?? __('crm.user') }}</strong>
             <small>{{ auth()->user()?->groups?->pluck('name')->join(__('crm.list_separator')) ?? '' }}</small>
         </span>
         <i class="bi bi-chevron-down crm-profile-chevron" aria-hidden="true"></i>
@@ -454,7 +682,7 @@
                 {{ mb_substr((string) (auth()->user()?->name ?? 'U'), 0, 1) }}
             </span>
             <div>
-                <strong>{{ auth()->user()?->name ?? 'User' }}</strong>
+                <strong>{{ auth()->user()?->name ?? __('crm.user') }}</strong>
                 <small>{{ auth()->user()?->groups?->pluck('name')->join(__('crm.list_separator')) ?? '' }}</small>
             </div>
         </div>
@@ -490,20 +718,31 @@
                 {{ __('crm.theme') }}
             </span>
             <div class="crm-profile-themes" role="group" aria-label="{{ __('crm.theme') }}">
-                <button type="button" class="crm-profile-theme" data-profile-theme="light">
-                    <i class="bi bi-sun" aria-hidden="true"></i>
-                    <span>{{ __('crm.light_mode') }}</span>
+                <button type="button" class="crm-profile-theme" data-profile-theme="color-light">
+                    <i class="bi bi-palette" aria-hidden="true"></i>
+                    <span>{{ __('crm.colorful_light_mode') }}</span>
                 </button>
-                <button type="button" class="crm-profile-theme" data-profile-theme="dark">
+                <button type="button" class="crm-profile-theme" data-profile-theme="color-dark">
                     <i class="bi bi-moon-stars" aria-hidden="true"></i>
-                    <span>{{ __('crm.dark_mode') }}</span>
+                    <span>{{ __('crm.colorful_dark_mode') }}</span>
                 </button>
-                <button type="button" class="crm-profile-theme" data-profile-theme="system">
-                    <i class="bi bi-display" aria-hidden="true"></i>
-                    <span>{{ __('crm.system_mode') }}</span>
+                <button type="button" class="crm-profile-theme" data-profile-theme="mono-light">
+                    <i class="bi bi-circle" aria-hidden="true"></i>
+                    <span>{{ __('crm.monotone_light_mode') }}</span>
+                </button>
+                <button type="button" class="crm-profile-theme" data-profile-theme="mono-dark">
+                    <i class="bi bi-circle-half" aria-hidden="true"></i>
+                    <span>{{ __('crm.monotone_dark_mode') }}</span>
                 </button>
             </div>
         </div>
+
+        @can('voip.view')
+            <a href="{{ route('v2.voip.profile') }}" class="crm-profile-call-link">
+                <i class="bi bi-telephone-inbound" aria-hidden="true"></i>
+                <span>{{ __('crm.my_call_profile') }}</span>
+            </a>
+        @endcan
 
         <form method="POST" action="{{ route('logout') }}" class="crm-profile-logout-form">
             @csrf
@@ -522,33 +761,44 @@
         const root = document.documentElement;
         const storageKey = 'sokrat.crm.theme';
         const systemTheme = window.matchMedia('(prefers-color-scheme: dark)');
+        const themes = ['color-light', 'color-dark', 'mono-light', 'mono-dark'];
 
         const readTheme = () => {
             try {
-                return ['light', 'dark', 'system'].includes(localStorage.getItem(storageKey))
-                    ? localStorage.getItem(storageKey)
-                    : 'system';
+                const saved = localStorage.getItem(storageKey);
+                if (themes.includes(saved)) return saved;
+                if (saved === 'light') return 'color-light';
+                if (saved === 'dark') return 'color-dark';
+                return systemTheme.matches ? 'color-dark' : 'color-light';
             } catch (error) {
-                return 'system';
+                return systemTheme.matches ? 'color-dark' : 'color-light';
             }
         };
 
         const applyTheme = (theme, persist = false) => {
-            const isDark = theme === 'dark' || (theme === 'system' && systemTheme.matches);
+            const selectedTheme = themes.includes(theme) ? theme : 'color-light';
+            const isDark = selectedTheme.endsWith('-dark');
+            const isMonochrome = selectedTheme.startsWith('mono-');
             root.classList.toggle('dark-mode', isDark);
-            root.dataset.theme = theme;
+            root.classList.toggle('crm-monochrome', isMonochrome);
+            root.dataset.theme = selectedTheme;
+            root.dataset.palette = isMonochrome ? 'monochrome' : 'colorful';
 
             document.querySelectorAll('[data-profile-theme]').forEach((button) => {
-                const selected = button.dataset.profileTheme === theme;
+                const selected = button.dataset.profileTheme === selectedTheme;
                 button.classList.toggle('active', selected);
                 button.setAttribute('aria-pressed', selected ? 'true' : 'false');
             });
 
             if (persist) {
                 try {
-                    localStorage.setItem(storageKey, theme);
+                    localStorage.setItem(storageKey, selectedTheme);
                 } catch (error) {}
             }
+
+            window.dispatchEvent(new CustomEvent('crm:theme-changed', {
+                detail: { theme: selectedTheme, isDark, isMonochrome },
+            }));
         };
 
         const closeMenus = () => {
@@ -612,9 +862,6 @@
             applyTheme(readTheme());
         };
         applyTheme(readTheme());
-        systemTheme.addEventListener('change', () => {
-            if (readTheme() === 'system') applyTheme('system');
-        });
 
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', bindProfiles, { once: true });

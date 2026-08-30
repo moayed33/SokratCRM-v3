@@ -3,8 +3,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>{{ __('crm.live_pbx_title') }}</title>
+    <title>{{ __('crm.live_pbx_title') }} — SokratCRM</title>
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
+    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
     <style>
         :root {
             --red: #dc2637;
@@ -12,88 +15,181 @@
             --blue: #2563eb;
             --amber: #d97706;
             --dark: #182033;
-            --muted: #7e899b;
-            --line: #e4e8ef;
-            --bg: #f4f6f9;
+            --muted: #64748b;
+            --line: #e2e8f0;
+            --bg: #f8fafc;
             --card: #fff;
+            --font-primary: 'Tajawal', system-ui, -apple-system, sans-serif;
         }
         * { box-sizing: border-box; }
-        body { margin: 0; background: var(--bg); color: var(--dark); font-family: var(--font-primary, system-ui, -apple-system, sans-serif); }
-        .crm-app { min-height: 100vh; display: flex; }
-        .crm-main { flex: 1; min-width: 0; display: flex; flex-direction: column; height: 100vh; overflow-y: auto; text-align: start; }
-        .top-bar { background: #fff; border-bottom: 1px solid var(--line); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; text-align: start; }
-        .top-bar-info { display: flex; align-items: center; gap: 12px; text-align: start; }
-        .top-bar h1 { font-size: 20px; margin: 0; display: flex; align-items: center; gap: 10px; text-align: start; }
-        .top-bar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; text-align: start; }
-        .live-dot { width: 10px; height: 10px; border-radius: 50%; background: #dc2637; display: inline-block; box-shadow: 0 0 0 3px rgba(220,38,55,0.2); flex-shrink: 0; }
-        .top-bar-actions { display: flex; align-items: center; gap: 12px; margin-inline-start: auto; }
-        .role-badge { background: #e0e7ff; color: #3730a3; padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
-        .role-badge-dot { width: 6px; height: 6px; border-radius: 50%; background: #4f46e5; }
-        .btn-back { background: #fff; border: 1px solid var(--line); padding: 8px 14px; border-radius: 10px; text-decoration: none; color: var(--dark); font-weight: bold; font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+        body { margin: 0; min-width: 320px; background: var(--bg); color: var(--dark); font-family: var(--font-primary); }
+        .crm-app { display: flex; min-height: 100vh; }
+        .crm-main { flex: 1; min-width: 0; padding: 24px 32px 60px; text-align: start; }
+        
+        .topbar { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin-bottom: 24px; flex-wrap: wrap; }
+        .topbar-left { display: flex; align-items: center; gap: 14px; }
+        .topbar h1 { margin: 0; font-size: 24px; font-weight: 900; color: var(--dark); display: flex; align-items: center; gap: 10px; }
+        .topbar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
+        .top-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-inline-start: auto; }
 
-        .monitor-container { padding: 24px; display: flex; flex-direction: column; gap: 24px; max-width: 1400px; margin: 0 auto; width: 100%; text-align: start; }
+        .live-pulse-dot { width: 12px; height: 12px; border-radius: 50%; background: #dc2637; display: inline-block; box-shadow: 0 0 0 4px rgba(220,38,55,0.25); flex-shrink: 0; animation: pbxPulse 1.8s infinite; }
+        @keyframes pbxPulse {
+            0% { transform: scale(0.95); box-shadow: 0 0 0 2px rgba(220,38,55,0.4); }
+            50% { transform: scale(1.1); box-shadow: 0 0 0 6px rgba(220,38,55,0.1); }
+            100% { transform: scale(0.95); box-shadow: 0 0 0 2px rgba(220,38,55,0.4); }
+        }
 
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-        .stat-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; align-items: center; gap: 16px; text-align: start; }
-        .stat-icon { width: 48px; height: 48px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 22px; flex-shrink: 0; }
+        .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 38px; padding: 0 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); color: var(--dark); font-weight: 800; text-decoration: none; cursor: pointer; font-family: inherit; font-size: 13px; transition: all .15s ease; }
+        .topbar .btn, .top-actions .btn { height: 42px; min-height: 42px; box-sizing: border-box; }
+        .btn:hover { background: var(--bg); transform: translateY(-1px); }
+        .btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+        .btn.primary:hover { background: #b81829; border-color: #b81829; color: #fff; }
+        .btn.soft { background: var(--bg); border-color: var(--line); color: var(--dark); }
+
+        .panel { background: transparent !important; border: 0 !important; border-radius: 16px; margin-bottom: 24px; box-shadow: none !important; }
+        .panel-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 16px; background: transparent !important; border: 0 !important; }
+
+        /* PBX Metrics Strip */
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+        .stat-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; align-items: center; gap: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
+        .stat-icon { width: 50px; height: 50px; border-radius: 14px; display: grid; place-items: center; font-size: 22px; flex-shrink: 0; }
         .stat-icon.total { background: #eff6ff; color: #2563eb; }
         .stat-icon.online { background: #f0fdf4; color: #16a34a; }
         .stat-icon.calls { background: #fff1f2; color: #dc2637; }
-        .stat-details { display: flex; flex-direction: column; gap: 4px; text-align: start; }
-        .stat-label { color: var(--muted); font-size: 13px; font-weight: 500; text-align: start; }
-        .stat-value { font-size: 24px; font-weight: 700; color: var(--dark); text-align: start; }
+        .stat-icon.offline { background: #f1f5f9; color: #64748b; }
+        .stat-details { display: flex; flex-direction: column; gap: 4px; }
+        .stat-label { color: var(--muted); font-size: 12px; font-weight: 800; }
+        .stat-value { font-size: 26px; font-weight: 900; color: var(--dark); font-variant-numeric: tabular-nums; }
 
-        .filter-search-bar { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 16px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; text-align: start; }
-        .filter-buttons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; text-align: start; }
-        .filter-btn { background: #f8fafc; border: 1px solid var(--line); padding: 8px 16px; border-radius: 8px; font-size: 13px; font-weight: 600; color: #475569; cursor: pointer; transition: all 0.2s ease; text-align: center; }
-        .filter-btn:hover { background: #f1f5f9; color: var(--dark); }
+        /* Filter & Search Bar */
+        .filter-search-bar { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 24px; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
+        .filter-buttons { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .filter-btn { background: var(--bg); border: 1px solid var(--line); padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 800; color: var(--muted); cursor: pointer; transition: all 0.2s ease; text-align: center; }
+        .filter-btn:hover { background: #e2e8f0; color: var(--dark); }
         .filter-btn.active { background: var(--dark); color: #fff; border-color: var(--dark); }
 
-        .search-box { position: relative; flex: 1; max-width: 360px; min-width: 240px; }
-        .search-input { width: 100%; padding: 9px 14px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; outline: none; transition: border-color 0.2s ease; text-align: start; }
-        .search-input:focus { border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+        .search-box { position: relative; flex: 1 1 280px; max-width: 380px; }
+        .search-box i { position: absolute; top: 50%; transform: translateY(-50%); color: var(--muted); font-size: 15px; }
+        [dir="rtl"] .search-box i { right: 14px; }
+        [dir="ltr"] .search-box i { left: 14px; }
+        .search-input { width: 100%; height: 42px; border: 1px solid var(--line); border-radius: 10px; font-size: 13px; outline: none; transition: border-color 0.2s ease; background: var(--card); color: var(--dark); font: inherit; }
+        [dir="rtl"] .search-input { padding: 0 38px 0 14px; }
+        [dir="ltr"] .search-input { padding: 0 14px 0 38px; }
+        .search-input:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(220,38,55,0.12); }
 
-        .extensions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; text-align: start; }
-        .ext-card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; display: flex; flex-direction: column; gap: 16px; transition: box-shadow 0.2s ease, border-color 0.2s ease; text-align: start; }
-        .ext-card:hover { border-color: #cbd5e1; box-shadow: 0 4px 12px rgba(0,0,0,0.04); }
-        .ext-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; text-align: start; }
-        .ext-user-info { display: flex; align-items: center; gap: 12px; text-align: start; }
-        .ext-avatar { width: 42px; height: 42px; border-radius: 50%; background: #e2e8f0; color: #475569; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px; flex-shrink: 0; }
-        .ext-meta { display: flex; flex-direction: column; gap: 2px; text-align: start; }
-        .ext-name { font-weight: 700; font-size: 15px; color: var(--dark); text-align: start; }
-        .ext-number { font-size: 13px; color: var(--muted); text-align: start; }
+        /* PBX Extensions Cards Grid */
+        .extensions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 18px; }
+        .ext-card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 20px; display: flex; flex-direction: column; justify-content: space-between; gap: 16px; transition: transform .18s, box-shadow .18s, border-color .18s; box-shadow: 0 4px 16px rgba(0,0,0,0.03); }
+        .ext-card:hover { transform: translateY(-2px); border-color: #cbd5e1; box-shadow: 0 8px 24px rgba(0,0,0,0.06); }
+        
+        .ext-header { display: grid; grid-template-columns: minmax(0, 1fr) max-content; align-items: start; gap: 12px; }
+        .ext-user-info { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .ext-avatar { width: 44px; height: 44px; border-radius: 14px; background: #e0e7ff; color: #3730a3; display: grid; place-items: center; font-weight: 900; font-size: 16px; flex-shrink: 0; }
+        .ext-meta { min-width: 0; flex: 1; overflow: hidden; }
+        .ext-name { display: block; min-width: 0; width: 100%; font-weight: 900; font-size: 15px; color: var(--dark); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .ext-number { display: block; min-width: 0; font-size: 12px; color: var(--muted); font-weight: 700; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-        .status-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-inline-start: auto; }
-        .status-badge.online { background: #f0fdf4; color: #16a34a; }
-        .status-badge.incall { background: #fff1f2; color: #dc2637; }
-        .status-badge.offline { background: #f8fafc; color: #94a3b8; }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .status-badge { position: static; display: inline-flex; align-items: center; gap: 6px; max-width: 100%; padding: 5px 12px; border-radius: 999px; font-size: 11px; font-weight: 900; line-height: 1.2; white-space: nowrap; justify-self: end; flex-shrink: 0; }
+        .status-badge.online { background: #f0fdf4; color: #16a34a; border: 1px solid #bbf7d0; }
+        .status-badge.incall { background: #fef2f2; color: #dc2637; border: 1px solid #fecdd3; animation: callPulse 1.6s infinite; }
+        .status-badge.offline { background: var(--bg); color: var(--muted); border: 1px solid var(--line); }
+        .status-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
         .status-badge.online .status-dot { background: #16a34a; }
-        .status-badge.incall .status-dot { background: #dc2637; animation: pulse 1.5s infinite; }
+        .status-badge.incall .status-dot { background: #dc2637; }
         .status-badge.offline .status-dot { background: #94a3b8; }
-
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.4; }
-            100% { opacity: 1; }
+        @keyframes callPulse {
+            0% { box-shadow: 0 0 0 0 rgba(220,38,55,0.4); }
+            70% { box-shadow: 0 0 0 6px rgba(220,38,55,0); }
+            100% { box-shadow: 0 0 0 0 rgba(220,38,55,0); }
         }
 
-        .ext-details { display: flex; flex-direction: column; gap: 8px; background: #f8fafc; padding: 12px; border-radius: 10px; font-size: 13px; text-align: start; }
-        .detail-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); text-align: start; }
-        .detail-row strong { color: var(--dark); }
+        .ext-details { display: flex; flex-direction: column; gap: 8px; background: var(--bg); padding: 12px 14px; border-radius: 12px; font-size: 13px; }
+        .detail-row { display: flex; justify-content: space-between; align-items: center; color: var(--muted); }
+        .detail-row strong { color: var(--dark); font-weight: 800; font-size: 12px; }
 
-        .call-actions-wrap { border-top: 1px solid var(--line); padding-top: 14px; margin-top: 4px; display: flex; flex-direction: column; gap: 10px; text-align: start; }
-        .call-actions-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin: 0; text-align: start; }
-        .call-actions-btns { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
-        .action-btn { padding: 7px 10px; border-radius: 8px; font-size: 12px; font-weight: 600; border: 1px solid var(--line); background: #fff; color: var(--dark); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; transition: all 0.15s ease; text-align: center; }
-        .action-btn:hover { background: #f1f5f9; }
-        .action-btn.hangup { background: #fff1f2; color: #dc2637; border-color: #fecdd3; }
-        .action-btn.hangup:hover { background: #ffe4e6; }
 
-        .iframe-wrap { flex: 1; width: 100%; height: 100%; background: #f8fafc; border: 0; }
-        iframe { width: 100%; height: 100%; border: 0; }
-        .error-card { margin: 40px auto; max-width: 500px; background: #fff; border: 1px solid var(--line); border-radius: 16px; padding: 30px; text-align: center; }
-        .error-card h2 { color: var(--red); margin-top: 0; }
+        .banner-box { padding: 16px 20px; border-radius: 14px; margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
+        .banner-box.error { background: rgba(220,38,55,0.08); border: 1px solid rgba(220,38,55,0.25); color: var(--dark); }
+
+        /* Dark Mode */
+        html.dark-mode {
+            --bg: #09090b;
+            --card: #18181b;
+            --dark: #f4f4f5;
+            --muted: #a1a1aa;
+            --line: rgba(255,255,255,0.08);
+        }
+        html.dark-mode body { background: #09090b !important; color: #f4f4f5 !important; }
+        html.dark-mode .stat-card,
+        html.dark-mode .filter-search-bar,
+        html.dark-mode .ext-card {
+            background: #18181b !important;
+            border-color: rgba(255,255,255,0.08) !important;
+            color: #f4f4f5 !important;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+        }
+        html.dark-mode .stat-icon.total { background: rgba(37,99,235,0.18) !important; color: #60a5fa !important; }
+        html.dark-mode .stat-icon.online { background: rgba(22,163,74,0.18) !important; color: #4ade80 !important; }
+        html.dark-mode .stat-icon.calls { background: rgba(220,38,55,0.18) !important; color: #f87171 !important; }
+        html.dark-mode .stat-icon.offline { background: rgba(255,255,255,0.05) !important; color: #a1a1aa !important; }
+        html.dark-mode .ext-details,
+        html.dark-mode .filter-btn,
+        html.dark-mode .btn {
+            background: #27272a !important;
+            border-color: rgba(255,255,255,0.1) !important;
+            color: #f4f4f5 !important;
+        }
+        html.dark-mode .filter-btn.active {
+            background: #dc2637 !important;
+            border-color: #dc2637 !important;
+            color: #fff !important;
+        }
+        html.dark-mode .search-input {
+            background: #18181b !important;
+            border-color: rgba(255,255,255,0.12) !important;
+            color: #f4f4f5 !important;
+        }
+        html.dark-mode .ext-avatar {
+            background: #27272a !important;
+            color: #f4f4f5 !important;
+        }
+        html.dark-mode .status-badge.online {
+            background: rgba(34,197,94,0.16) !important;
+            border-color: rgba(34,197,94,0.35) !important;
+            color: #4ade80 !important;
+        }
+        html.dark-mode .status-badge.incall {
+            background: rgba(220,38,55,0.18) !important;
+            border-color: rgba(220,38,55,0.4) !important;
+            color: #f87171 !important;
+        }
+        html.dark-mode .status-badge.offline {
+            background: #27272a !important;
+            border-color: rgba(255,255,255,0.08) !important;
+            color: #a1a1aa !important;
+        }
+
+        /* Monochrome Mode */
+        html.crm-monochrome:not(.dark-mode) .stat-card,
+        html.crm-monochrome:not(.dark-mode) .filter-search-bar,
+        html.crm-monochrome:not(.dark-mode) .ext-card {
+            background: #fff !important;
+            border-color: #e5e5e5 !important;
+            box-shadow: none !important;
+        }
+        html.crm-monochrome.dark-mode .stat-card,
+        html.crm-monochrome.dark-mode .filter-search-bar,
+        html.crm-monochrome.dark-mode .ext-card {
+            background: #1c1c1c !important;
+            border-color: #333 !important;
+            box-shadow: none !important;
+        }
+
+        @media(max-width: 768px) {
+            .crm-main { padding: 16px; }
+            .filter-search-bar { flex-direction: column; align-items: stretch; }
+            .search-box { max-width: none; }
+        }
     </style>
 </head>
 <body>
@@ -102,170 +198,206 @@
     @include('partials.crm-sidebar')
 
     <main class="crm-main">
-        <header class="top-bar">
-            <div class="top-bar-info">
-                <h1>
-                    <span class="live-dot"></span>
-                    <span>{{ __('لوحة المراقبة المباشرة للسنترال') }}</span>
-                </h1>
-                <p>{{ __('مراقبة فورية للتحويلات والمكالمات في السنترال') }}</p>
+        <header class="topbar">
+            <div class="topbar-left">
+                <span class="live-pulse-dot"></span>
+                <div>
+                    <h1>{{ app()->getLocale() === 'en' ? 'Live PBX Monitor' : 'لوحة المراقبة المباشرة للسنترال' }}</h1>
+                    <p>{{ app()->getLocale() === 'en' ? 'Real-time VoIP PBX extensions and live telephony status' : 'مراقبة فورية لحالة تحويلات السنترال والخطوط والمكالمات الجارية' }}</p>
+                </div>
             </div>
-            <div class="top-bar-actions">
-                <span class="role-badge">
-                    <span class="role-badge-dot"></span>
-                    {{ __('مدير النظام') }}
+            <div class="top-actions">
+                @can('reports.view')
+                    @can('voip.view')
+                        <a href="{{ route('v2.reports.voip') }}" class="btn soft">
+                            <i class="bi bi-bar-chart-line"></i>
+                            {{ __('crm.voip_team_report') }}
+                        </a>
+                    @endcan
+                @endcan
+                <span class="btn soft" style="cursor: default;">
+                    <i class="bi bi-person-badge"></i>
+                    {{ app()->getLocale() === 'en' ? 'System Admin' : 'مدير النظام' }}
                 </span>
-                <a href="{{ route('dashboard') }}" class="btn-back">
+                <a href="{{ route('dashboard') }}" class="btn soft">
                     {{ __('crm.back_to_dashboard') }}
                 </a>
                 @include('partials.profile-dropdown')
             </div>
         </header>
 
-        @php
-            $currentLocale = app()->getLocale();
-            $localizedEmbedUrl = !empty($embedUrl) ? preg_replace('/([?&])lang=[^&]*/', '$1lang=' . $currentLocale, $embedUrl) : null;
-        @endphp
-
-        @if(!empty($localizedEmbedUrl))
-            <div class="iframe-wrap">
-                <iframe src="{{ $localizedEmbedUrl }}" allow="microphone; autoplay" title="{{ __('لوحة المراقبة المباشرة للسنترال') }}"></iframe>
-            </div>
-        @else
-            <div class="monitor-container">
-                <!-- Stat Cards -->
-                <div class="stats-grid">
-                    <div class="stat-card">
-                        <div class="stat-icon total">📞</div>
-                        <div class="stat-details">
-                            <span class="stat-label">{{ __('إجمالي التحويلات') }}</span>
-                            <span class="stat-value">12</span>
+        <div class="monitor-container">
+            @if(empty($isConfigured))
+                <div class="banner-box error">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-telephone-x-fill" style="font-size: 24px; color: var(--red);"></i>
+                        <div>
+                            <strong style="display: block; font-size: 14px;">{{ app()->getLocale() === 'en' ? 'VoIP PBX Server Disconnected' : 'سيرفر السنترال غير متصل' }}</strong>
+                            <small style="color: var(--muted); font-size: 12px;">{{ app()->getLocale() === 'en' ? 'Showing local extension mappings. Pair with PBX server in settings for live call streaming.' : 'يتم عرض التحويلات المسجلة محلياً. يرجى ربط السنترال لمتابعة المكالمات الحية.' }}</small>
                         </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-icon online">🟢</div>
-                        <div class="stat-details">
-                            <span class="stat-label">{{ __('الخطوط المتصلة') }}</span>
-                            <span class="stat-value">8</span>
-                        </div>
-                    </div>
-                    <div class="stat-card">
-                        <div class="stat-icon calls">🔴</div>
-                        <div class="stat-details">
-                            <span class="stat-label">{{ __('المكالمات الجارية') }}</span>
-                            <span class="stat-value">3</span>
-                        </div>
+                    @can('voip.settings')
+                        <a href="{{ route('v2.settings.voip') }}" class="btn primary">
+                            <i class="bi bi-gear-fill"></i>
+                            {{ app()->getLocale() === 'en' ? 'VoIP Settings' : 'إعدادات السنترال' }}
+                        </a>
+                    @endcan
+                </div>
+            @elseif(!empty($errorMessage))
+                <div class="banner-box error">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <i class="bi bi-exclamation-triangle-fill" style="font-size: 22px; color: var(--red);"></i>
+                        <span>{{ $errorMessage }}</span>
                     </div>
                 </div>
+            @endif
 
-                <!-- Filters & Search -->
-                <div class="filter-search-bar">
-                    <div class="filter-buttons">
-                        <button type="button" class="filter-btn active">{{ __('الكل') }}</button>
-                        <button type="button" class="filter-btn">{{ __('متصل') }}</button>
-                        <button type="button" class="filter-btn">{{ __('في مكالمة') }}</button>
-                        <button type="button" class="filter-btn">{{ __('غير متصل') }}</button>
-                    </div>
-                    <div class="search-box">
-                        <input type="text" class="search-input" placeholder="{{ __('بحث بالاسم أو رقم التحويلة...') }}">
+            <!-- 4-Stat Metric Strip -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-icon total"><i class="bi bi-telephone"></i></div>
+                    <div class="stat-details">
+                        <span class="stat-label">{{ app()->getLocale() === 'en' ? 'Total Extensions' : 'إجمالي التحويلات' }}</span>
+                        <span class="stat-value" id="countTotal">{{ $counts['total'] ?? $extensions->count() }}</span>
                     </div>
                 </div>
-
-                <!-- Extensions Cards Grid -->
-                <div class="extensions-grid">
-                    <!-- Extension Card 1: Active Call -->
-                    <div class="ext-card">
-                        <div class="ext-header">
-                            <div class="ext-user-info">
-                                <div class="ext-avatar">أحمد</div>
-                                <div class="ext-meta">
-                                    <span class="ext-name">أحمد محمود</span>
-                                    <span class="ext-number">{{ __('التحويلة :') }} 101</span>
-                                </div>
-                            </div>
-                            <span class="status-badge incall">
-                                <span class="status-dot"></span>
-                                {{ __('في مكالمة') }}
-                            </span>
-                        </div>
-                        <div class="ext-details">
-                            <div class="detail-row">
-                                <span>{{ __('مدة المكالمة') }}:</span>
-                                <strong>02:45</strong>
-                            </div>
-                            <div class="detail-row">
-                                <span>{{ __('الطرف الآخر') }}:</span>
-                                <strong dir="ltr">+201012345678</strong>
-                            </div>
-                        </div>
-                        <div class="call-actions-wrap">
-                            <h4 class="call-actions-title">{{ __('إجراءات المكالمة') }}</h4>
-                            <div class="call-actions-btns">
-                                <button type="button" class="action-btn">🎧 {{ __('استماع') }}</button>
-                                <button type="button" class="action-btn">💬 {{ __('همس') }}</button>
-                                <button type="button" class="action-btn">📢 {{ __('تدخل') }}</button>
-                                <button type="button" class="action-btn hangup">⏹ {{ __('إنهاء المكالمة') }}</button>
-                            </div>
-                        </div>
+                <div class="stat-card">
+                    <div class="stat-icon online"><i class="bi bi-check-circle-fill"></i></div>
+                    <div class="stat-details">
+                        <span class="stat-label">{{ app()->getLocale() === 'en' ? 'Online Lines' : 'الخطوط المتصلة' }}</span>
+                        <span class="stat-value" id="countOnline">{{ $counts['online'] ?? $extensions->where('online', true)->count() }}</span>
                     </div>
-
-                    <!-- Extension Card 2: Online -->
-                    <div class="ext-card">
-                        <div class="ext-header">
-                            <div class="ext-user-info">
-                                <div class="ext-avatar">سارة</div>
-                                <div class="ext-meta">
-                                    <span class="ext-name">سارة علي</span>
-                                    <span class="ext-number">{{ __('التحويلة :') }} 102</span>
-                                </div>
-                            </div>
-                            <span class="status-badge online">
-                                <span class="status-dot"></span>
-                                {{ __('متصل') }}
-                            </span>
-                        </div>
-                        <div class="ext-details">
-                            <div class="detail-row">
-                                <span>{{ __('حالة الخط') }}:</span>
-                                <strong>{{ __('جاهز لاستقبال المكالمات') }}</strong>
-                            </div>
-                        </div>
-                        <div class="call-actions-wrap">
-                            <h4 class="call-actions-title">{{ __('إجراءات المكالمة') }}</h4>
-                            <div class="call-actions-btns">
-                                <button type="button" class="action-btn" disabled style="opacity:0.5;cursor:not-allowed">🎧 {{ __('استماع') }}</button>
-                                <button type="button" class="action-btn" disabled style="opacity:0.5;cursor:not-allowed">💬 {{ __('همس') }}</button>
-                            </div>
-                        </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon calls"><i class="bi bi-telephone-outbound-fill"></i></div>
+                    <div class="stat-details">
+                        <span class="stat-label">{{ app()->getLocale() === 'en' ? 'Active Calls' : 'المكالمات الجارية' }}</span>
+                        <span class="stat-value" id="countInCall">{{ $counts['in_call'] ?? $extensions->where('in_call', true)->count() }}</span>
                     </div>
-
-                    <!-- Extension Card 3: Offline -->
-                    <div class="ext-card">
-                        <div class="ext-header">
-                            <div class="ext-user-info">
-                                <div class="ext-avatar">محمد</div>
-                                <div class="ext-meta">
-                                    <span class="ext-name">محمد حسن</span>
-                                    <span class="ext-number">{{ __('التحويلة :') }} 103</span>
-                                </div>
-                            </div>
-                            <span class="status-badge offline">
-                                <span class="status-dot"></span>
-                                {{ __('غير متصل') }}
-                            </span>
-                        </div>
-                        <div class="ext-details">
-                            <div class="detail-row">
-                                <span>{{ __('حالة الخط') }}:</span>
-                                <strong>{{ __('غير متصل بالسيرفر') }}</strong>
-                            </div>
-                        </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon offline"><i class="bi bi-telephone-x"></i></div>
+                    <div class="stat-details">
+                        <span class="stat-label">{{ app()->getLocale() === 'en' ? 'Offline' : 'غير متصل' }}</span>
+                        <span class="stat-value" id="countOffline">{{ $counts['offline'] ?? $extensions->where('online', false)->where('in_call', false)->count() }}</span>
                     </div>
                 </div>
             </div>
-        @endif
+
+            <!-- Filter & Search Toolbar -->
+            <div class="filter-search-bar">
+                <div class="filter-buttons" id="liveFilterButtons">
+                    <button type="button" class="filter-btn active" data-filter="all">
+                        {{ app()->getLocale() === 'en' ? 'All' : 'الكل' }} (<span id="filterCountAll">{{ $counts['total'] ?? $extensions->count() }}</span>)
+                    </button>
+                    <button type="button" class="filter-btn" data-filter="online">
+                        {{ app()->getLocale() === 'en' ? 'Online' : 'متصل' }} (<span id="filterCountOnline">{{ $counts['online'] ?? $extensions->where('online', true)->count() }}</span>)
+                    </button>
+                    <button type="button" class="filter-btn" data-filter="incall">
+                        {{ app()->getLocale() === 'en' ? 'In Call' : 'في مكالمة' }} (<span id="filterCountInCall">{{ $counts['in_call'] ?? $extensions->where('in_call', true)->count() }}</span>)
+                    </button>
+                    <button type="button" class="filter-btn" data-filter="offline">
+                        {{ app()->getLocale() === 'en' ? 'Offline' : 'غير متصل' }} (<span id="filterCountOffline">{{ $counts['offline'] ?? $extensions->where('online', false)->where('in_call', false)->count() }}</span>)
+                    </button>
+                </div>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" id="liveSearchInput" class="search-input" placeholder="{{ app()->getLocale() === 'en' ? 'Search by name or extension number...' : 'بحث بالاسم أو رقم التحويلة...' }}">
+                </div>
+            </div>
+
+            <!-- Extensions Cards Grid -->
+            <div class="extensions-grid" id="liveExtensionsGrid">
+                @include('voip.partials.extension-grid', ['extensions' => $extensions])
+            </div>
+        </div>
+
+        <script>
+            (() => {
+                const searchInput = document.getElementById('liveSearchInput');
+                const filterButtons = document.querySelectorAll('#liveFilterButtons .filter-btn');
+                const grid = document.getElementById('liveExtensionsGrid');
+
+                let activeFilter = 'all';
+                let searchQuery = '';
+
+                const filterCards = () => {
+                    if (!grid) return;
+                    const cards = grid.querySelectorAll('.ext-card');
+                    cards.forEach((card) => {
+                        const state = card.dataset.state;
+                        const text = (card.dataset.search || '').toLowerCase();
+                        const matchesFilter = activeFilter === 'all' || state === activeFilter;
+                        const matchesSearch = !searchQuery || text.includes(searchQuery);
+
+                        card.style.display = (matchesFilter && matchesSearch) ? 'flex' : 'none';
+                    });
+                };
+
+                filterButtons.forEach((btn) => {
+                    btn.addEventListener('click', () => {
+                        filterButtons.forEach((b) => b.classList.remove('active'));
+                        btn.classList.add('active');
+                        activeFilter = btn.dataset.filter || 'all';
+                        filterCards();
+                    });
+                });
+
+                searchInput?.addEventListener('input', (e) => {
+                    searchQuery = (e.target.value || '').trim().toLowerCase();
+                    filterCards();
+                });
+
+                const updateMetrics = (counts) => {
+                    if (!counts) return;
+                    const countTotal = document.getElementById('countTotal');
+                    const countOnline = document.getElementById('countOnline');
+                    const countInCall = document.getElementById('countInCall');
+                    const countOffline = document.getElementById('countOffline');
+                    const filterCountAll = document.getElementById('filterCountAll');
+                    const filterCountOnline = document.getElementById('filterCountOnline');
+                    const filterCountInCall = document.getElementById('filterCountInCall');
+                    const filterCountOffline = document.getElementById('filterCountOffline');
+
+                    if (countTotal) countTotal.textContent = counts.total;
+                    if (countOnline) countOnline.textContent = counts.online;
+                    if (countInCall) countInCall.textContent = counts.in_call;
+                    if (countOffline) countOffline.textContent = counts.offline;
+                    if (filterCountAll) filterCountAll.textContent = counts.total;
+                    if (filterCountOnline) filterCountOnline.textContent = counts.online;
+                    if (filterCountInCall) filterCountInCall.textContent = counts.in_call;
+                    if (filterCountOffline) filterCountOffline.textContent = counts.offline;
+                };
+
+                let isPolling = false;
+                const pollLive = async () => {
+                    if (document.hidden || isPolling || !grid) return;
+                    isPolling = true;
+                    try {
+                        const res = await fetch('{{ route('v2.voip.live.data') }}', {
+                            headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+                        });
+                        if (res.ok) {
+                            const data = await res.json();
+                            if (data.success && typeof data.html === 'string') {
+                                grid.innerHTML = data.html;
+                                updateMetrics(data.counts);
+                                filterCards();
+                            }
+                        }
+                    } catch (e) {
+                        // Silently retry on next tick
+                    } finally {
+                        isPolling = false;
+                    }
+                };
+
+                const pollInterval = setInterval(pollLive, 3500);
+                window.addEventListener('beforeunload', () => clearInterval(pollInterval));
+            })();
+        </script>
     </main>
 </div>
-<script src="{{ asset('quotation-generator/crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}"></script>
 </body>
 </html>

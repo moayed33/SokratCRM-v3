@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\CollectionCase;
+use App\Models\Donation;
 use App\Models\DonationPurpose;
 use App\Models\DonationType;
 use App\Models\Lead;
@@ -11,6 +13,7 @@ use App\Models\LeadFollowup;
 use App\Models\LeadStatus;
 use App\Models\PipelineStage;
 use App\Models\User;
+use App\Security\CrmPermission;
 use App\Services\VoipService;
 use App\Support\BranchContext;
 use App\Support\CrmDatabaseGuard;
@@ -26,6 +29,7 @@ class DashboardController extends Controller
         'quarterly' => 'ربع سنوي',
         'semi_annual' => 'نصف سنوي',
         'annual' => 'سنوي',
+        'other' => 'أخرى',
     ];
 
     private const COMMUNICATION_LABELS = [
@@ -141,10 +145,41 @@ class DashboardController extends Controller
             : 0.0;
 
         // 5. KPI 2: Total Donation Value (Section 6)
-        $totalDonationValue = (float) ((clone $leadBase)
+        $donationLeadFilters = array_replace($filters, [
+            'donation_type' => '',
+            'donation_cycle' => '',
+            'from_date' => null,
+            'to_date' => null,
+        ]);
+        $recordedDonations = Donation::query()
+            ->whereHas('lead', function (Builder $query) use ($donationLeadFilters, $user): void {
+                $query->accessibleTo($user);
+                $this->applyLeadFilters($query, $donationLeadFilters);
+            });
+
+        if ($filters['donation_type'] !== '') {
+            $recordedDonations->where(function (Builder $query) use ($filters): void {
+                $query->where('donation_type', $filters['donation_type'])
+                    ->orWhere('donation_type_id', $filters['donation_type']);
+            });
+        }
+        if ($filters['donation_cycle'] !== '') {
+            $recordedDonations->where('cycle', $filters['donation_cycle']);
+        }
+        if ($filters['from_date'] instanceof Carbon) {
+            $recordedDonations->where('donated_at', '>=', $filters['from_date']);
+        }
+        if ($filters['to_date'] instanceof Carbon) {
+            $recordedDonations->where('donated_at', '<=', $filters['to_date']);
+        }
+
+        $recordedDonationValue = (float) $recordedDonations->sum('amount');
+        $legacyDonationValue = (float) ((clone $leadBase)
+            ->whereDoesntHave('donations')
             ->whereNotNull('donation_value')
             ->where('donation_value', '>', 0)
             ->sum('donation_value') ?? 0.0);
+        $totalDonationValue = $recordedDonationValue + $legacyDonationValue;
 
         // 6. KPI 3: Follow-up Counts (Section 6)
         $todayStart = now()->startOfDay();
@@ -178,18 +213,14 @@ class DashboardController extends Controller
         ];
         // 8. Chart 2 — Customer / Donation Activity Over Time (Section 11)
         $monthsTrend = [];
-        $arabicMonths = [
-            1 => 'يناير', 2 => 'فبراير', 3 => 'مارس', 4 => 'أبريل',
-            5 => 'مايو', 6 => 'يونيو', 7 => 'يوليو', 8 => 'أغسطس',
-            9 => 'سبتمبر', 10 => 'أكتوبر', 11 => 'نوفمبر', 12 => 'ديسمبر',
-        ];
-
         for ($i = 5; $i >= 0; $i--) {
             $monthDate = now()->subMonths($i);
             $mStart = (clone $monthDate)->startOfMonth();
             $mEnd = (clone $monthDate)->endOfMonth();
 
-            $monthLabel = ($arabicMonths[$monthDate->month] ?? $monthDate->format('M')).' '.$monthDate->format('Y');
+            $monthLabel = $monthDate
+                ->locale(app()->getLocale())
+                ->translatedFormat('F Y');
 
             $mNewCount = Lead::query()
                 ->accessibleTo($user)
@@ -202,8 +233,13 @@ class DashboardController extends Controller
                 ->whereBetween('created_at', [$mStart, $mEnd])
                 ->count();
 
-            $mDonationVal = (float) (Lead::query()
+            $mDonationVal = (float) Donation::query()
+                ->whereHas('lead', static fn (Builder $query) => $query->accessibleTo($user))
+                ->whereBetween('donated_at', [$mStart, $mEnd])
+                ->sum('amount');
+            $mDonationVal += (float) (Lead::query()
                 ->accessibleTo($user)
+                ->whereDoesntHave('donations')
                 ->whereBetween('created_at', [$mStart, $mEnd])
                 ->whereNotNull('donation_value')
                 ->sum('donation_value') ?? 0.0);
@@ -273,6 +309,61 @@ class DashboardController extends Controller
             }
         }
 
+        $collectionSummary = null;
+        $collectionStatusDistribution = null;
+        $collectorPerformance = collect();
+        if ($user->hasPermission(CrmPermission::COLLECTIONS_VIEW)) {
+            $collectionBase = CollectionCase::query()->accessibleTo($user);
+            $collectionSummary = [
+                'open' => (clone $collectionBase)->open()->count(),
+                'overdue' => (clone $collectionBase)->open()->where('due_at', '<', now())->count(),
+                'expected_open' => (float) (clone $collectionBase)->open()->sum('expected_amount'),
+                'received' => (float) Donation::query()
+                    ->whereHas('collectionCase', static fn (Builder $query) => $query->accessibleTo($user))
+                    ->sum('amount'),
+            ];
+
+            if ($user->isSuperAdmin()) {
+                $collectionStatuses = [
+                    'pending',
+                    'assigned',
+                    'scheduled',
+                    'failed',
+                    'collected',
+                    'cancelled',
+                ];
+                $collectionStatusCounts = (clone $collectionBase)
+                    ->selectRaw('status, count(*) as total')
+                    ->groupBy('status')
+                    ->pluck('total', 'status');
+                $collectionStatusDistribution = [
+                    'labels' => collect($collectionStatuses)
+                        ->map(static fn (string $status): string => __('crm.collection_status_'.$status))
+                        ->all(),
+                    'data' => collect($collectionStatuses)
+                        ->map(static fn (string $status): int => (int) ($collectionStatusCounts[$status] ?? 0))
+                        ->all(),
+                ];
+
+                $collectorPerformance = (clone $collectionBase)
+                    ->whereNotNull('assigned_collector_user_id')
+                    ->with('assignedCollector:id,name')
+                    ->get()
+                    ->groupBy('assigned_collector_user_id')
+                    ->map(static function ($cases): array {
+                        return [
+                            'name' => $cases->first()?->assignedCollector?->name ?? __('crm.unassigned'),
+                            'total' => $cases->count(),
+                            'collected' => $cases->where('status', CollectionCase::STATUS_COLLECTED)->count(),
+                            'open_value' => (float) $cases->whereIn('status', CollectionCase::OPEN_STATUSES)->sum('expected_amount'),
+                        ];
+                    })
+                    ->sortByDesc('collected')
+                    ->take(8)
+                    ->values();
+            }
+        }
+
         return view('dashboard', [
             'stages' => $stages,
             'pipelineStages' => $pipelineStages,
@@ -290,12 +381,19 @@ class DashboardController extends Controller
             'stageDistribution' => $stageDistribution,
             'monthsTrend' => $monthsTrend,
             'latestFollowups' => $latestFollowups,
-            'communicationLabels' => self::COMMUNICATION_LABELS,
+            'communicationLabels' => collect(array_keys(self::COMMUNICATION_LABELS))
+                ->mapWithKeys(static fn (string $type): array => [
+                    $type => __('crm.communication_'.$type),
+                ])
+                ->all(),
             'employees' => $employees,
             'donationTypes' => $donationTypes,
             'donationCycles' => self::DONATION_CYCLES,
             'filters' => $filters,
             'voipStatus' => $voipStatus,
+            'collectionSummary' => $collectionSummary,
+            'collectionStatusDistribution' => $collectionStatusDistribution,
+            'collectorPerformance' => $collectorPerformance,
         ]);
     }
 
@@ -386,9 +484,14 @@ class DashboardController extends Controller
                 'overdue_leads' => $overdueLeads,
                 'upcoming_leads' => $upcomingLeads,
                 'no_date_leads' => $noDateLeads,
+                'position' => $stage->position,
                 'has_destination_status' => $destinationStatusId !== null,
             ];
         }
+        $employees = User::query()
+            ->select(['id', 'name'])
+            ->orderBy('name')
+            ->get();
 
         return view('kanban', [
             'kanbanColumns' => $kanbanColumns,
@@ -396,8 +499,8 @@ class DashboardController extends Controller
             'totalLeads' => $totalLeads,
             'totalStagesCount' => count($kanbanColumns),
             'statuses' => $pipelineStages,
+            'employees' => $employees,
         ]);
-
     }
 
     private function resolveFilters(Request $request): array

@@ -9,7 +9,6 @@ use App\Models\DonationType;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadPhone;
-use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
 use App\Models\LeadStatusHistory;
 use App\Models\User;
@@ -327,25 +326,6 @@ class DemoDataSeeder extends Seeder
                 );
             }
 
-            // Add related person for some leads
-            if ($i % 4 === 0) {
-                $relFirst = $firstNames[($i + 5) % count($firstNames)];
-                $relType = $relationshipTypes[$i % count($relationshipTypes)];
-                $relPhoneDigits = sprintf('%08d', 30000000 + ($i * 987654) % 69999999);
-                $relPhone = '012' . $relPhoneDigits;
-
-                LeadRelatedPerson::query()->updateOrCreate(
-                    [
-                        'lead_id' => $lead->id,
-                        'name' => "{$relFirst} {$lastName}",
-                    ],
-                    [
-                        'phone' => $relPhone,
-                        'relationship_type' => $relType,
-                        'notes' => 'جهة اتصال مرتبطة للتنسيق والمتابعة',
-                    ]
-                );
-            }
 
             // Initial status history
             LeadStatusHistory::query()->firstOrCreate(

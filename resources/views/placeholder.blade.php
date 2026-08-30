@@ -2,181 +2,105 @@
 <html lang="{{ app()->getLocale() }}" dir="{{ app()->getLocale() === 'ar' ? 'rtl' : 'ltr' }}">
 <head>
     <meta charset="utf-8">
-    <title>SokratCRM</title>
+    <title>SokratCRM — {{ $title ?? __('crm.app_name') }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
-    @once
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-    @endonce
+    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
     <style>
-        * { box-sizing: border-box; }
-        body {
-            margin: 0;
-            font-family: var(--font-primary);
-            background: #f3f6fb;
-            color: #111827;
+        *{box-sizing:border-box}
+        body{
+            margin:0;
+            min-width:320px;
+            background:var(--bg,#f8f9fa);
+            color:var(--text-main,#111827);
+            font-family:var(--font-primary)
         }
-        .layout {
-            display: flex;
-            min-height: 100vh;
-            flex-direction: row-reverse;
+        a{color:inherit}
+        .placeholder-main{
+            flex:1;
+            min-width:0;
+            padding:24px clamp(20px,2.4vw,32px) 56px;
+            animation:v2FadeSlideIn .55s ease-out both
         }
-        .sidebar {
-            width: 260px;
-            min-width: 260px;
-            background: #fff;
-            border-inline-end: 1px solid #e5e7eb;
-            padding: 24px 18px;
+        .placeholder-topbar{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:16px;
+            margin-bottom:24px;
+            flex-wrap:wrap
         }
-        .brand { text-align: center; margin-bottom: 28px; }
-        .brand h1 { color: #e11d2e; font-size: 30px; font-weight: 900; margin: 0; }
-        .brand span { color: #7b8794; font-size: 13px; }
-        .main {
-            flex: 1;
-            padding: 28px;
-            animation: v2FadeSlideIn .55s ease-out both;
+        .placeholder-topbar h1{margin:0;font-size:24px;font-weight:900;color:var(--dark,var(--text-main))}
+        .placeholder-topbar p{margin:4px 0 0;color:var(--muted);font-size:13px}
+        .top-card,.empty-card{
+            background:var(--card,#fff);
+            border:1px solid var(--border-color,#e5e7eb);
+            border-radius:14px;
+            box-shadow:var(--shadow-card,0 12px 28px rgba(15,23,42,.05));
+            padding:28px;
+            margin-bottom:20px;
+            animation:v2FadeSlideIn .62s ease-out both
         }
-        .top-card, .empty-card {
-            background: #fff;
-            border: 1px solid #e5e7eb;
-            border-radius: 14px;
-            box-shadow: 0 12px 28px rgba(15,23,42,.05);
-            padding: 28px;
-            margin-bottom: 20px;
-            animation: v2FadeSlideIn .62s ease-out both;
+        .top-card h2{margin:0 0 8px;font-size:30px;color:var(--dark,var(--text-main))}
+        .top-card p{margin:0;color:var(--muted)}
+        .btn{
+            display:inline-flex;
+            align-items:center;
+            gap:8px;
+            min-height:46px;
+            padding:0 18px;
+            border-radius:11px;
+            border:1px solid var(--border-color,#e5e7eb);
+            background:var(--bg-input,#fff);
+            color:var(--text-main,#111827);
+            text-decoration:none;
+            font-weight:800
         }
-        .top-card h2 { margin: 0 0 8px; font-size: 30px; }
-        .top-card p { margin: 0; color: #64748b; }
-        .btn {
-            display: inline-flex;
-            align-items: center;
-            min-height: 46px;
-            padding: 0 18px;
-            border-radius: 11px;
-            border: 1px solid #e5e7eb;
-            background: #fff;
-            color: #111827;
-            text-decoration: none;
-            font-weight: 800;
+        .empty-card{
+            min-height:260px;
+            display:flex;
+            flex-direction:column;
+            align-items:center;
+            justify-content:center;
+            gap:12px;
+            color:var(--muted);
+            font-weight:800
         }
-        .empty-card {
-            min-height: 260px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: #64748b;
-            font-weight: 800;
-        }
-        @keyframes v2FadeSlideIn {
-            from { opacity: 0; transform: translateY(14px); }
-            to { opacity: 1; transform: translateY(0); }
+        .empty-card i{font-size:44px;color:var(--red,#dc2637);opacity:.5}
+        @keyframes v2FadeSlideIn{
+            from{opacity:0;transform:translateY(14px)}
+            to{opacity:1;transform:translateY(0)}
         }
     </style>
 </head>
 <body>
 @include('partials.page-loader')
-<div class="layout">
-    <aside class="sidebar">
-        <div class="brand">
-            <h1>SokratCRM</h1>
-            <span>{{ __('crm.dashboard') }}</span>
-        </div>
-        <a class="btn" href="{{ route('dashboard') }}">{{ __('crm.back_to_dashboard') }}</a>
-    </aside>
-    <main class="main">
-        <section class="top-card">
-            <h2>{{ $title ?? 'SokratCRM' }}</h2>
-            <p>{{ __('crm.placeholder_version_notice') }}</p>
-        </section>
+<div class="app">
+    @include('partials.crm-sidebar')
+
+    <main class="placeholder-main">
+        <header class="placeholder-topbar">
+            <div class="topbar-left">
+                <div>
+                    <h1>{{ $title ?? 'SokratCRM' }}</h1>
+                    <p>{{ __('crm.placeholder_version_notice') }}</p>
+                </div>
+            </div>
+            <div class="top-actions">
+                @include('partials.profile-dropdown')
+            </div>
+        </header>
+
         <section class="empty-card">
-            {{ __('crm.placeholder_future_build_notice') }}
+            <i class="bi bi-hourglass-split" aria-hidden="true"></i>
+            <span>{{ __('crm.placeholder_future_build_notice') }}</span>
         </section>
     </main>
 </div>
 
-<!-- CODEX V2 SIDEBAR ICON RIGHT TEXT CENTER NUMBER LEFT START -->
-<style>
-/* Force sidebar item layout:
-   icon on right, text in middle, number/badge on left */
-aside.sidebar .side-link,
-aside.sidebar .side-toggle,
-aside.sidebar .side-submenu a,
-.sidebar .side-link,
-.sidebar .side-toggle,
-.sidebar .side-submenu a {
-    position: relative !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    text-align: center !important;
-    !important;
-    min-height: 54px !important;
-    padding-inline-start: 58px !important;
-    padding-inline-end: 70px !important;
-    gap: 0 !important;
-}
-
-aside.sidebar .side-icon,
-aside.sidebar .mini-icon,
-.sidebar .side-icon,
-.sidebar .mini-icon {
-    position: absolute !important;
-    right: 14px !important;
-    left: auto !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    margin: 0 !important;
-    order: 0 !important;
-    flex: 0 0 34px !important;
-}
-
-aside.sidebar .side-link > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow),
-aside.sidebar .side-toggle > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow),
-aside.sidebar .side-submenu a > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow),
-.sidebar .side-link > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow),
-.sidebar .side-toggle > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow),
-.sidebar .side-submenu a > span:not(.side-icon):not(.mini-icon):not(.badge):not(.side-arrow):not(.arrow):not(.chevron):not(.dropdown-arrow) {
-    display: block !important;
-    width: 100% !important;
-    text-align: center !important;
-    margin: 0 auto !important;
-}
-
-aside.sidebar .badge,
-.sidebar .badge {
-    position: absolute !important;
-    left: 42px !important;
-    right: auto !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    margin: 0 !important;
-}
-
-aside.sidebar .side-arrow,
-aside.sidebar .arrow,
-aside.sidebar .chevron,
-aside.sidebar .dropdown-arrow,
-.sidebar .side-arrow,
-.sidebar .arrow,
-.sidebar .chevron,
-.sidebar .dropdown-arrow {
-    position: absolute !important;
-    left: 16px !important;
-    right: auto !important;
-    top: 50% !important;
-    transform: translateY(-50%) !important;
-    margin: 0 !important;
-}
-
-/* Submenu keeps same rhythm but slightly smaller */
-aside.sidebar .side-submenu a,
-.sidebar .side-submenu a {
-    min-height: 48px !important;
-    padding-inline-start: 54px !important;
-    padding-inline-end: 28px !important;
-}
-</style>
-<!-- CODEX V2 SIDEBAR ICON RIGHT TEXT CENTER NUMBER LEFT END -->
-
+<script src="{{ asset('crm-sidebar.js') }}"></script>
 </body>
 </html>

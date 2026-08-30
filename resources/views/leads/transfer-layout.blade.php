@@ -673,9 +673,13 @@
     display:none
    }
 
-   .card-body,
-   .transfer-hero{
+   .card-body{
     padding:16px
+   }
+   .transfer-hero,
+   .hero,
+   .form-hero{
+    display:none!important
    }
   }
  
@@ -1000,19 +1004,12 @@
 
   <main class="transfer-main">
    <header class="transfer-topbar relative z-50">
-    <button
-     class="transfer-menu"
-     id="transferMenuButton"
-     type="button"
-     aria-label="{{ __('crm.open_menu') }}"
-    >
-     ☰
-    </button>
-
-    <div class="transfer-page-title">
-     <h1 data-ar-label="@yield('page-title-ar')">@yield('page-title')</h1>
-     <p>@yield('page-description')</p>
-    </div>
+     <div class="transfer-page-title">
+      <h1 data-ar-label="@yield('page-title-ar')">@yield('page-title')</h1>
+      @hasSection('page-description')
+      <p>@yield('page-description')</p>
+      @endif
+     </div>
 
     <div class="transfer-top-actions">
      @yield('top-actions')
@@ -1158,6 +1155,9 @@
   })();
  </script>
 
+ @include('partials.transition-popup')
+
  @stack('scripts')
+ <script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 </body>
 </html>

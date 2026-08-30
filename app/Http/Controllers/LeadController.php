@@ -6,20 +6,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Campaign;
+use App\Models\Donation;
 use App\Models\DonationPurpose;
 use App\Models\DonationType;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
 use App\Models\LeadFormField;
 use App\Models\LeadPhone;
-use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
 use App\Models\LeadStatusHistory;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Security\LeadAssignment;
-use App\Services\LeadTransitionService;
 use App\Support\CrmDatabaseGuard;
 use App\Support\LeadFieldSchema;
 use Carbon\Carbon;
@@ -40,6 +39,7 @@ class LeadController extends Controller
         'quarterly' => 'ربع سنوي',
         'semi_annual' => 'نصف سنوي',
         'annual' => 'سنوي',
+        'other' => 'أخرى',
     ];
 
     public function index(Request $request): View|RedirectResponse
@@ -57,6 +57,7 @@ class LeadController extends Controller
             ->with([
                 'stage:id,name_ar,color',
             ])
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->withCount([
                 'leads as leads_count' => static fn ($query) => $query
                     ->accessibleTo($user),
@@ -68,6 +69,7 @@ class LeadController extends Controller
         foreach ($stages as $stage) {
             $stage->setAttribute('scoped_leads_count', (int) ($stageCounts[$stage->id] ?? 0));
         }
+
         $donationTypes = DonationType::query()
             ->where('is_active', true)
             ->orderBy('position')
@@ -78,12 +80,17 @@ class LeadController extends Controller
             ->orderBy('position')
             ->get();
 
+        $rawMin = $request->query('donation_min');
+        $rawMax = $request->query('donation_max');
+
         $filters = [
             'q' => mb_substr(trim((string) $request->query('q', '')), 0, 150),
             'stage' => mb_substr(trim((string) $request->query('stage', '')), 0, 50),
             'status' => mb_substr(trim((string) $request->query('status', '')), 0, 50),
             'donation_type' => mb_substr(trim((string) $request->query('donation_type', '')), 0, 100),
             'donation_cycle' => mb_substr(trim((string) $request->query('donation_cycle', '')), 0, 50),
+            'donation_min' => is_numeric($rawMin) ? (string) (float) $rawMin : '',
+            'donation_max' => is_numeric($rawMax) ? (string) (float) $rawMax : '',
             'employee' => mb_substr(trim((string) $request->query('employee', '')), 0, 150),
             'source' => mb_substr(trim((string) $request->query('source', '')), 0, 100),
             'follow_up' => mb_substr(trim((string) $request->query('follow_up', '')), 0, 20),
@@ -196,7 +203,6 @@ class LeadController extends Controller
                 'assignedUser:id,name',
                 'respondingUser:id,name',
                 'phones:id,lead_id,phone,label,is_primary',
-                'relatedPeople:id,lead_id,name,phone,relationship_type',
                 'donationTypeRel:id,name_ar',
                 'donationPurposeRel:id,name_ar',
             ]);
@@ -219,8 +225,7 @@ class LeadController extends Controller
                     ->orWhere('donation_type', 'like', $search)
                     ->orWhere('donation_purpose', 'like', $search)
                     ->orWhere('response_details', 'like', $search)
-                    ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', $search))
-                    ->orWhereHas('relatedPeople', static fn ($rq) => $rq->where('name', 'like', $search)->orWhere('phone', 'like', $search));
+                    ->orWhereHas('phones', static fn ($pq) => $pq->where('phone', 'like', $search));
 
                 foreach ($searchableCustomFields as $customField) {
                     $searchQuery->orWhereRaw(
@@ -266,6 +271,14 @@ class LeadController extends Controller
         // Filter: Donation Cycle
         if ($filters['donation_cycle'] !== '') {
             $query->where('donation_cycle', $filters['donation_cycle']);
+        }
+
+        // Filter: Donation Value Min / Max
+        if ($filters['donation_min'] !== '') {
+            $query->where('donation_value', '>=', (float) $filters['donation_min']);
+        }
+        if ($filters['donation_max'] !== '') {
+            $query->where('donation_value', '<=', (float) $filters['donation_max']);
         }
 
         // Filter: Employee
@@ -400,16 +413,7 @@ class LeadController extends Controller
 
         $statuses = LeadStatus::query()
             ->with('stage')
-            ->orderBy('position')
-            ->get();
-
-        $donationTypes = DonationType::query()
-            ->where('is_active', true)
-            ->orderBy('position')
-            ->get();
-
-        $donationPurposes = DonationPurpose::query()
-            ->where('is_active', true)
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->orderBy('position')
             ->get();
 
@@ -429,9 +433,6 @@ class LeadController extends Controller
             'stages' => $stages,
             'statuses' => $statuses,
             'defaultStageId' => $defaultStageId,
-            'donationTypes' => $donationTypes,
-            'donationPurposes' => $donationPurposes,
-            'donationCycles' => self::DONATION_CYCLES,
             'sources' => $sources,
             'assignedEmployee' => $assignedEmployee,
             'canAssignLead' => $canAssignLead,
@@ -500,6 +501,15 @@ class LeadController extends Controller
         }
 
         abort_if($status === null, 422, 'No valid lead status found.');
+
+        if (
+            $status->code === 'donor'
+            && (! is_numeric($validated['donation_value'] ?? null) || (float) $validated['donation_value'] <= 0)
+        ) {
+            return redirect()->back()->withInput()->withErrors([
+                'donation_value' => 'يجب تسجيل قيمة التبرع عند إضافة العميل كمتبرع.',
+            ]);
+        }
 
         // Assignee resolution
         $assignee = $actor;
@@ -623,21 +633,6 @@ class LeadController extends Controller
                 }
             }
 
-            // 3. Related people
-            if (! empty($validated['related_people']) && is_array($validated['related_people'])) {
-                foreach ($validated['related_people'] as $personRow) {
-                    $pName = trim((string) ($personRow['name'] ?? ''));
-                    if ($pName !== '') {
-                        LeadRelatedPerson::query()->create([
-                            'lead_id' => $lead->id,
-                            'name' => $pName,
-                            'phone' => trim((string) ($personRow['phone'] ?? '')) ?: null,
-                            'relationship_type' => trim((string) ($personRow['relationship_type'] ?? 'أخرى')) ?: 'أخرى',
-                            'notes' => trim((string) ($personRow['notes'] ?? '')) ?: null,
-                        ]);
-                    }
-                }
-            }
 
             // 4. Attach campaign
             $campaign?->leads()->attach($lead->id);
@@ -653,19 +648,34 @@ class LeadController extends Controller
                 'changed_at' => now(),
             ]);
 
-            // 6. Initial followup if response details or contact date provided
-            if (! empty($lead->response_details) || $lead->contact_date !== null || $lead->next_follow_up_at !== null) {
-                LeadFollowup::query()->create([
-                    'branch_id' => $lead->branch_id,
+            // 6. Always create an initial follow-up record so the lead
+            //    has a complete audit trail from birth — regardless of
+            //    whether response_details or dates were provided.
+            $initialFollowup = LeadFollowup::query()->create([
+                'branch_id' => $lead->branch_id,
+                'lead_id' => $lead->id,
+                'from_status_id' => null,
+                'to_status_id' => $status->id,
+                'employee_name' => $assignedEmployee,
+                'user_id' => $assignee->id,
+                'communication_type' => 'other',
+                'outcome' => ! empty($lead->response_details)
+                    ? 'إنشاء العميل: '.$lead->response_details
+                    : 'تم إنشاء العميل',
+                'next_follow_up_at' => $lead->next_follow_up_at,
+                'followed_up_at' => $lead->contact_date ?? now(),
+            ]);
+
+            if ($status->code === 'donor') {
+                Donation::query()->create([
                     'lead_id' => $lead->id,
-                    'from_status_id' => null,
-                    'to_status_id' => $status->id,
-                    'employee_name' => $assignedEmployee,
-                    'user_id' => $assignee->id,
-                    'communication_type' => 'مكالمة هاتفية',
-                    'outcome' => $lead->response_details ?? 'تم إنشاء العميل',
-                    'next_follow_up_at' => $lead->next_follow_up_at,
-                    'followed_up_at' => $lead->contact_date ?? now(),
+                    'lead_followup_id' => $initialFollowup?->id,
+                    'donation_type_id' => $lead->donation_type_id,
+                    'donation_type' => trim((string) $lead->donation_type) ?: 'تبرع غير مصنف',
+                    'amount' => $lead->donation_value,
+                    'cycle' => trim((string) $lead->donation_cycle) ?: 'one_time',
+                    'donated_at' => $lead->contact_date ?? now(),
+                    'recorded_by_user_id' => $actor->id,
                 ]);
             }
 
@@ -698,15 +708,23 @@ class LeadController extends Controller
                 'respondingUser:id,name,username',
                 'creator:id,name',
                 'phones',
-                'relatedPeople',
                 'donationTypeRel:id,name_ar',
                 'donationPurposeRel:id,name_ar',
+                'donations.donationType:id,name_ar,name_en',
+                'donations.recordedBy:id,name',
+                'donations.followup:id,lead_id,user_id,employee_name,followed_up_at',
+                'collectionCases.assignedCollector:id,name',
+                'collectionCases.completedBy:id,name',
                 'statusHistory.changedByUser:id,name',
                 'statusHistory.fromStatus.stage',
                 'statusHistory.toStatus.stage',
+                'statusHistory.stageFieldValues.field',
                 'followups.user:id,name',
                 'followups.fromStatus.stage',
                 'followups.toStatus.stage',
+                'stageFieldValues.field',
+                'stageFieldValues.stage',
+                'stageFieldValues.createdByUser:id,name',
             ])
             ->findOrFail((int) $lead);
 
@@ -730,11 +748,25 @@ class LeadController extends Controller
         }
 
         foreach ($leadRecord->statusHistory as $history) {
+            $stageValuesForHistory = $history->stageFieldValues
+                ->filter(static fn ($v) => $v->field === null || $v->field->show_in_history)
+                ->map(static fn ($v) => [
+                    'label' => $v->field ? $v->field->localizedLabel() : $v->field_key,
+                    'value' => $v->formattedValue(),
+                ])
+                ->all();
+
             // Check if there's already a matching followup at approximately the same minute
-            $alreadyIncluded = $timelineEvents->contains(function ($item) use ($history) {
-                return $item['type'] === 'followup'
-                    && abs(($item['timestamp']?->timestamp ?? 0) - ($history->changed_at?->timestamp ?? 0)) < 60;
-            });
+            $alreadyIncluded = false;
+            foreach ($timelineEvents as $key => $item) {
+                if ($item['type'] === 'followup' && abs(($item['timestamp']?->timestamp ?? 0) - ($history->changed_at?->timestamp ?? 0)) < 60) {
+                    $alreadyIncluded = true;
+                    if (! empty($stageValuesForHistory)) {
+                        $timelineEvents[$key]['stage_values'] = $stageValuesForHistory;
+                    }
+                    break;
+                }
+            }
 
             if (! $alreadyIncluded) {
                 $timelineEvents->push([
@@ -747,9 +779,27 @@ class LeadController extends Controller
                     'details' => $history->note,
                     'next_follow_up' => null,
                     'field_changes' => null,
+                    'stage_values' => $stageValuesForHistory,
                 ]);
             }
         }
+
+        $stageHistoryGroups = $leadRecord->stageFieldValues
+            ->filter(static fn ($val) => $val->field === null || $val->field->show_in_history)
+            ->groupBy(static fn ($val) => ($val->pipeline_stage_id ?? 0) . '_' . ($val->lead_status_history_id ?? $val->created_at->format('Y-m-d_H:i')))
+            ->map(static function ($group) {
+                $first = $group->first();
+                return [
+                    'stage' => $first->stage,
+                    'actor' => $first->createdByUser?->name ?? 'النظام',
+                    'date' => $first->created_at,
+                    'values' => $group->map(static fn ($v) => [
+                        'label' => $v->field ? $v->field->localizedLabel() : $v->field_key,
+                        'value' => $v->formattedValue(),
+                    ]),
+                ];
+            })
+            ->values();
 
         $timelineEvents = $timelineEvents->sortByDesc('timestamp')->values();
 
@@ -796,6 +846,7 @@ class LeadController extends Controller
         return view('leads.show', [
             'lead' => $leadRecord,
             'timelineEvents' => $timelineEvents,
+            'stageHistoryGroups' => $stageHistoryGroups,
             'statusColor' => $statusColor,
             'callPhone' => $callPhone,
             'whatsappPhone' => $whatsappPhone,
@@ -814,7 +865,6 @@ class LeadController extends Controller
                 'assignedUser:id,name,username',
                 'respondingUser:id,name,username',
                 'phones',
-                'relatedPeople',
                 'status.stage',
             ])
             ->findOrFail((int) $lead);
@@ -839,6 +889,7 @@ class LeadController extends Controller
 
         $statuses = LeadStatus::query()
             ->with('stage')
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->orderBy('position')
             ->get();
 
@@ -860,6 +911,17 @@ class LeadController extends Controller
             ->orderBy('source')
             ->pluck('source');
 
+        $stageFieldsMap = PipelineStage::query()
+            ->with(['activeFields'])
+            ->get()
+            ->keyBy('id')
+            ->map(static fn ($st) => $st->activeFields);
+
+        $currentStageValues = $leadRecord->stageFieldValues
+            ->keyBy('field_key')
+            ->map(static fn ($v) => $v->getTypedValue())
+            ->all();
+
         return view('leads.edit', [
             'lead' => $leadRecord,
             'branches' => Branch::query()->orderBy('name_ar')->get(),
@@ -873,6 +935,8 @@ class LeadController extends Controller
             'assignableUsers' => $assignableUsers,
             'assignedEmployee' => $leadRecord->assignedUser?->name ?? $leadRecord->assigned_employee ?: 'غير مسند',
             'customFields' => LeadFieldSchema::customFields(),
+            'stageFieldsMap' => $stageFieldsMap,
+            'currentStageValues' => $currentStageValues,
         ]);
     }
 
@@ -881,7 +945,7 @@ class LeadController extends Controller
         $this->assertCrmV2Database();
 
         $leadRecord = Lead::query()
-            ->with(['status.stage', 'phones', 'relatedPeople'])
+            ->with(['status.stage', 'phones'])
             ->findOrFail((int) $lead);
 
         Gate::authorize('update', $leadRecord);
@@ -917,19 +981,9 @@ class LeadController extends Controller
             $lastName = $leadRecord->last_name;
         }
 
-        // Status resolution
-        $oldStatusId = (int) $leadRecord->lead_status_id;
-        $newStatusId = $oldStatusId;
-
-        if (! empty($validated['lead_status_id'])) {
-            $newStatusId = (int) $validated['lead_status_id'];
-        } elseif (! empty($validated['pipeline_stage_id'])) {
-            $stage = PipelineStage::query()->find((int) $validated['pipeline_stage_id']);
-            $firstStatus = $stage?->statuses()->first();
-            if ($firstStatus) {
-                $newStatusId = (int) $firstStatus->id;
-            }
-        }
+        // Pipeline transitions are recorded only through the canonical
+        // follow-up workflow. Generic profile edits preserve the status.
+        $statusId = (int) $leadRecord->lead_status_id;
 
         // Assignee resolution
         $assignmentChanged = false;
@@ -978,8 +1032,7 @@ class LeadController extends Controller
                 : null;
         }
 
-        $targetStatus = LeadStatus::query()->find($newStatusId);
-        if ($targetStatus && $targetStatus->code === 'not_interested') {
+        if ($leadRecord->status?->code === 'not_interested') {
             $nextFollowUpAt = null;
         }
         $leadData = [
@@ -988,7 +1041,7 @@ class LeadController extends Controller
             'last_name' => $lastName,
             'phone' => trim((string) $validated['phone']),
             'source' => trim((string) ($validated['source'] ?? $leadRecord->source)),
-            'lead_status_id' => $newStatusId,
+            'lead_status_id' => $statusId,
             'donation_type' => $donationTypeStr,
             'donation_type_id' => ! empty($validated['donation_type_id']) ? (int) $validated['donation_type_id'] : $leadRecord->donation_type_id,
             'donation_cycle' => $validated['donation_cycle'] ?? $leadRecord->donation_cycle,
@@ -1016,21 +1069,77 @@ class LeadController extends Controller
             $leadData['assigned_employee'] = $assignedEmployee;
         }
 
-        DB::transaction(function () use ($leadRecord, $leadData, $validated, $oldStatusId, $newStatusId, $actor, $nextFollowUpAt): void {
-            if ($oldStatusId !== $newStatusId) {
-                $targetStatus = LeadStatus::query()->findOrFail($newStatusId);
-                app(LeadTransitionService::class)->transition(
+        $stageFieldsInput = (array) $request->input('stage_fields', []);
+        $stageFieldsCustom = (array) $request->input('stage_fields_custom', []);
+
+        DB::transaction(function () use ($leadRecord, $leadData, $validated, $actor, $stageFieldsInput, $stageFieldsCustom, $assignmentChanged, $assignee): void {
+            // Capture field-level changes before the update
+            $auditFields = [
+                'name' => 'الاسم',
+                'phone' => 'الهاتف',
+                'source' => 'المصدر',
+                'governorate' => 'المحافظة',
+                'address' => 'العنوان',
+                'donation_type' => 'نوع التبرع',
+                'donation_value' => 'قيمة التبرع',
+                'donation_cycle' => 'دورة التبرع',
+            ];
+
+            $fieldChanges = [];
+            foreach ($auditFields as $field => $label) {
+                $oldVal = (string) ($leadRecord->getOriginal($field) ?? '');
+                $newVal = (string) ($leadData[$field] ?? '');
+                if ($oldVal !== $newVal) {
+                    $fieldChanges[] = [
+                        'field' => $field,
+                        'label' => $label,
+                        'old' => $oldVal !== '' ? $oldVal : '----',
+                        'new' => $newVal !== '' ? $newVal : '----',
+                    ];
+                }
+            }
+
+            if ($assignmentChanged && $assignee !== null) {
+                $oldAssigneeName = $leadRecord->assignedUser?->name
+                    ?? $leadRecord->assigned_employee
+                    ?? '----';
+                $fieldChanges[] = [
+                    'field' => 'assigned_user_id',
+                    'label' => 'الموظف المسؤول',
+                    'old' => $oldAssigneeName,
+                    'new' => $assignee->name,
+                ];
+            }
+
+            $leadRecord->update($leadData);
+
+            // Record an audit follow-up when any tracked field changed
+            if ($fieldChanges !== []) {
+                LeadFollowup::query()->create([
+                    'lead_id' => $leadRecord->id,
+                    'from_status_id' => $leadRecord->lead_status_id,
+                    'to_status_id' => $leadRecord->lead_status_id,
+                    'employee_name' => trim((string) $actor->name) ?: 'System',
+                    'user_id' => $actor->id,
+                    'communication_type' => 'other',
+                    'outcome' => 'تعديل بيانات الملف الشخصي',
+                    'field_changes' => $fieldChanges,
+                    'followed_up_at' => now(),
+                ]);
+            }
+            if (! empty($stageFieldsInput) && $leadRecord->status?->stage) {
+                foreach ($stageFieldsInput as $k => $v) {
+                    if (in_array(strtolower(trim((string) $v)), ['other', 'custom', 'أخرى'], true) && ! empty($stageFieldsCustom[$k])) {
+                        $stageFieldsInput[$k] = $stageFieldsCustom[$k];
+                    }
+                }
+                \App\Support\StageFieldSchema::persistValues(
                     $leadRecord,
-                    $targetStatus,
-                    $actor,
-                    [
-                        'lead_attributes' => $leadData,
-                        'next_follow_up_at' => $nextFollowUpAt,
-                        'history_note' => 'تحديث الحالة من شاشة تعديل العميل',
-                    ]
+                    $leadRecord->status->stage,
+                    $stageFieldsInput,
+                    null,
+                    $actor
                 );
-            } else {
-                $leadRecord->update($leadData);
             }
 
             // 1. Sync primary phone
@@ -1060,25 +1169,6 @@ class LeadController extends Controller
                 }
             }
 
-            // 3. Sync related people
-            if (isset($validated['related_people']) && is_array($validated['related_people'])) {
-                LeadRelatedPerson::query()
-                    ->where('lead_id', $leadRecord->id)
-                    ->delete();
-
-                foreach ($validated['related_people'] as $personRow) {
-                    $pName = trim((string) ($personRow['name'] ?? ''));
-                    if ($pName !== '') {
-                        LeadRelatedPerson::query()->create([
-                            'lead_id' => $leadRecord->id,
-                            'name' => $pName,
-                            'phone' => trim((string) ($personRow['phone'] ?? '')) ?: null,
-                            'relationship_type' => trim((string) ($personRow['relationship_type'] ?? 'أخرى')) ?: 'أخرى',
-                            'notes' => trim((string) ($personRow['notes'] ?? '')) ?: null,
-                        ]);
-                    }
-                }
-            }
         });
 
         return redirect()
@@ -1093,9 +1183,17 @@ class LeadController extends Controller
         $leadRecord = Lead::query()->findOrFail((int) $lead);
         Gate::authorize('delete', $leadRecord);
 
+        $receiptPaths = $leadRecord->donations()
+            ->whereNotNull('receipt_path')
+            ->pluck('receipt_path')
+            ->filter()
+            ->all();
+
         DB::transaction(static function () use ($leadRecord): void {
             $leadRecord->delete();
         });
+
+        Storage::disk('local')->delete($receiptPaths);
 
         return redirect()
             ->route('v2.leads')
@@ -1185,20 +1283,6 @@ class LeadController extends Controller
         };
 
         return response()->stream($callback, 200, $headers);
-    }
-
-    public function quotationPreview(string $lead): BinaryFileResponse|RedirectResponse
-    {
-        $this->assertCrmV2Database();
-        $leadRecord = Lead::query()->findOrFail((int) $lead);
-        Gate::authorize('viewQuotation', $leadRecord);
-
-        $path = trim((string) $leadRecord->quotation_file_path);
-        if ($path === '' || ! Storage::disk('local')->exists($path)) {
-            abort(404, 'Quotation file not found.');
-        }
-
-        return response()->download(Storage::disk('local')->path($path));
     }
 
     /**

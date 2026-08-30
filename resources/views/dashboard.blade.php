@@ -7,7 +7,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
 <style>
 :root {
     --red: #dc2637;
@@ -18,8 +18,8 @@
     --line: #e2e8f0;
     --bg: #f8fafc;
     --card: #ffffff;
-    --shadow: 0 10px 30px rgba(15, 23, 42, 0.05);
-    --radius: 16px;
+    --shadow: 0 6px 18px rgba(15, 23, 42, 0.035);
+    --radius: 14px;
 }
 html.dark-mode {
     --dark: #f1f5f9;
@@ -28,7 +28,28 @@ html.dark-mode {
     --line: #334155;
     --bg: #0f172a;
     --card: #1e293b;
-    --shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    --shadow: 0 8px 22px rgba(0, 0, 0, 0.18);
+}
+html.crm-monochrome {
+    --red: #171717;
+    --red-hover: #000000;
+    --dark: #171717;
+    --text: #525252;
+    --muted: #737373;
+    --line: #e5e5e5;
+    --bg: #fafafa;
+    --card: #ffffff;
+    --shadow: none;
+    --radius: 5px;
+}
+html.crm-monochrome.dark-mode {
+    --dark: #f5f5f5;
+    --text: #d4d4d4;
+    --muted: #a3a3a3;
+    --line: #404040;
+    --bg: #111111;
+    --card: #1c1c1c;
+    --shadow: none;
 }
 * { box-sizing: border-box; }
 body {
@@ -42,26 +63,39 @@ body {
 button, input, select { font: inherit; }
 a { color: inherit; }
 .app { display: flex; min-height: 100vh; }
-.main { flex: 1; min-width: 0; padding: 24px 32px 60px; }
+.main { flex: 1; min-width: 0; padding: 22px 32px 56px; }
 
 /* Topbar */
-.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+.topbar { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; flex-wrap: wrap; }
 .topbar-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.topbar h1 { margin: 0; font-size: 24px; font-weight: 900; }
+.topbar h1 { margin: 0; font-size: 23px; font-weight: 800; letter-spacing: -.015em; }
 .topbar p { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
 .topbar-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dashboard-search {
+    flex: 1 1 260px; max-width: 360px; min-width: 200px; position: relative;
+}
+.dashboard-search i {
+    position: absolute; inset-inline-start: 11px; top: 50%; transform: translateY(-50%);
+    color: #a3a3a3; font-size: 13px; pointer-events: none;
+}
+.dashboard-search input {
+    width: 100%; height: 42px; padding: 0 34px; border: 1px solid var(--line); border-radius: 4px;
+    background: #fff; color: var(--dark); outline: none; font-size: 12px;
+}
+.dashboard-search input:focus { border-color: #737373; box-shadow: 0 0 0 2px rgba(23, 23, 23, .08); }
+html.dark-mode .dashboard-search input { background: var(--card); color: var(--dark); }
 .btn-leads-pill {
     display: inline-flex; align-items: center; gap: 8px; height: 42px; padding: 0 16px;
-    border-radius: 999px; border: 1px solid var(--line); background: var(--card);
-    color: var(--dark); font-size: 13px; font-weight: 800; text-decoration: none;
-    cursor: pointer; transition: all .2s cubic-bezier(.4, 0, .2, 1);
-    box-shadow: 0 2px 8px rgba(15, 23, 42, 0.04);
+    border-radius: 4px; border: 1px solid var(--line); background: var(--card);
+    color: var(--dark); font-size: 13px; font-weight: 700; text-decoration: none;
+    cursor: pointer; transition: border-color .15s ease, background .15s ease, color .15s ease;
 }
 .btn-leads-pill i { font-size: 15px; color: var(--red); }
 .btn-leads-pill:hover, .btn-leads-pill:focus-visible {
     background: #fff5f6; border-color: rgba(220, 38, 55, 0.4); color: var(--red);
-    transform: translateY(-1px); box-shadow: 0 4px 14px rgba(220, 38, 55, 0.12);
 }
+html.crm-monochrome .btn-leads-pill:hover,
+html.crm-monochrome .btn-leads-pill:focus-visible { background: #f5f5f5; border-color: #a3a3a3; color: #171717; }
 html.dark-mode .btn-leads-pill {
     background: var(--bg-card, rgba(24, 24, 27, .75)) !important;
     border-color: var(--line, rgba(255, 255, 255, .1)) !important;
@@ -73,232 +107,108 @@ html.dark-mode .btn-leads-pill:hover, html.dark-mode .btn-leads-pill:focus-visib
     border-color: rgba(239, 68, 68, .45) !important;
     color: #f87171 !important;
 }
+html.crm-monochrome.dark-mode .btn-leads-pill:hover,
+html.crm-monochrome.dark-mode .btn-leads-pill:focus-visible { background: #292929 !important; border-color: #737373 !important; color: #f5f5f5 !important; }
 @media (max-width: 768px) {
     .topbar { flex-direction: column; align-items: stretch; gap: 14px; }
+    .dashboard-search { max-width: none; min-width: 0; flex-basis: auto; }
     .topbar-actions { width: 100%; justify-content: flex-start; gap: 8px; }
 }
 .btn {
     display: inline-flex; align-items: center; justify-content: center; gap: 7px;
-    min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 10px;
+    min-height: 40px; padding: 0 16px; border: 1px solid var(--line); border-radius: 4px;
     background: var(--card); color: var(--dark); font-weight: 700; cursor: pointer; text-decoration: none;
-    transition: .15s; font-size: 13px;
+    transition: background .15s ease, border-color .15s ease, color .15s ease; font-size: 13px;
 }
+.topbar .btn { min-height: 42px; }
 .btn:hover { border-color: #cbd5e1; background: #f1f5f9; }
-.btn.primary { background: var(--red); border-color: var(--red); color: #fff; box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); }
+.btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
 .btn.primary:hover { background: var(--red-hover); border-color: var(--red-hover); }
 .btn.soft { background: #f1f5f9; border-color: transparent; }
 .btn.small { min-height: 32px; padding: 0 10px; font-size: 12px; }
 
-/* Hero Banner & Animated Journey */
-.hero {
-    position: relative;
-    overflow: hidden;
-    min-height: 180px;
-    padding: 28px 32px;
-    border-radius: 20px;
-    background: linear-gradient(125deg, #131a29 0%, #1e283d 50%, #26334d 100%);
-    color: #fff;
-    box-shadow: 0 20px 48px rgba(19, 26, 41, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 24px;
-}
-.hero-bg-ambient {
-    position: absolute; inset: 0; pointer-events: none; overflow: hidden; z-index: 1;
-}
-.hero-glow-orb {
-    position: absolute; border-radius: 50%; filter: blur(50px); opacity: 0.18; pointer-events: none;
-}
-.hero-glow-red {
-    width: 220px; height: 220px; top: -60px; inset-inline-start: -40px;
-    background: radial-gradient(circle, #dc2637 0%, transparent 70%);
-}
-.hero-glow-green {
-    width: 260px; height: 260px; bottom: -80px; inset-inline-end: 60px;
-    background: radial-gradient(circle, #22c55e 0%, transparent 70%);
-}
-.hero-main-content { position: relative; z-index: 10; max-width: 520px; }
-.hero-subheading { display: block; color: #94a3b8; font-size: 13px; font-weight: 700; margin-bottom: 6px; }
-.hero-heading { margin: 0 0 18px; font-size: 24px; font-weight: 900; line-height: 1.3; }
-.hero-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-
-.hero-cta-btn {
-    animation: ctaReadyGlow 8s ease-in-out infinite;
-}
-@keyframes ctaReadyGlow {
-    0%, 75%, 100% { box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); transform: translateY(0); }
-    85% { box-shadow: 0 0 22px rgba(220, 38, 55, 0.6), 0 0 35px rgba(220, 38, 55, 0.3); transform: translateY(-1px); }
-    92% { box-shadow: 0 4px 14px rgba(220, 38, 55, 0.25); transform: translateY(0); }
-}
-
-/* Desktop & Tablet Animated 4-Card Pipeline Journey (Section 10) */
-.hero-pipeline-wrap {
-    position: absolute;
-    inset-inline-end: 32px;
-    top: 50%;
-    transform: translateY(-50%);
-    width: 440px;
-    height: 120px;
-    pointer-events: none;
-    z-index: 5;
-}
-.pipeline-svg {
-    position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible;
-}
-.pipeline-stream {
-    stroke-dasharray: 8 160;
-    animation: streamFlow 8s linear infinite;
-}
-@keyframes streamFlow {
-    0% { stroke-dashoffset: 0; }
-    100% { stroke-dashoffset: -340; }
-}
-.pipeline-pulse-dot {
-    position: absolute; width: 9px; height: 9px; border-radius: 50%; background: #ffffff;
-    box-shadow: 0 0 10px #38bdf8, 0 0 20px #22c55e;
-    offset-path: path('M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88');
-    animation: pulseDotTravel 8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-    pointer-events: none; z-index: 10;
-}
-@keyframes pulseDotTravel {
-    0% { offset-distance: 0%; opacity: 0; transform: scale(0.5); }
-    4% { opacity: 1; transform: scale(1); }
-    70% { offset-distance: 100%; opacity: 1; transform: scale(1.4); }
-    76% { offset-distance: 100%; opacity: 0; transform: scale(1.8); }
-    100% { offset-distance: 100%; opacity: 0; transform: scale(0.5); }
-}
-
-.pipeline-card {
-    position: absolute; transform: translate(-50%, -50%);
-    display: inline-flex; align-items: center; gap: 7px;
-    padding: 6px 12px; border-radius: 12px;
-    background: rgba(22, 30, 46, 0.75); border: 1px solid rgba(255, 255, 255, 0.1);
-    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
-    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
-    color: #e2e8f0; font-size: 12px; font-weight: 800; white-space: nowrap;
-    animation-duration: 8s; animation-iteration-count: infinite; animation-timing-function: ease-in-out;
-}
-.pipeline-card-icon { font-size: 13px; display: inline-flex; align-items: center; }
-
-/* Card 1: جديد */
-.pipeline-card.stage-1 { animation-name: stage1Anim; }
-.pipeline-card.stage-1 .pipeline-card-icon { color: #38bdf8; }
-@keyframes stage1Anim {
-    0%, 3% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
-    6%, 22% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(56,189,248,0.6); background: rgba(56,189,248,0.18); box-shadow: 0 0 16px rgba(56,189,248,0.3); }
-    26%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(56,189,248,0.25); background: rgba(22,30,46,0.75); }
-    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
-}
-
-/* Card 2: تواصل */
-.pipeline-card.stage-2 { animation-name: stage2Anim; }
-.pipeline-card.stage-2 .pipeline-card-icon { color: #818cf8; }
-@keyframes stage2Anim {
-    0%, 22% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
-    25%, 44% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(129,140,248,0.6); background: rgba(129,140,248,0.18); box-shadow: 0 0 16px rgba(129,140,248,0.3); }
-    48%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(129,140,248,0.25); background: rgba(22,30,46,0.75); }
-    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
-}
-
-/* Card 3: متابعة */
-.pipeline-card.stage-3 { animation-name: stage3Anim; }
-.pipeline-card.stage-3 .pipeline-card-icon { color: #fbbf24; }
-@keyframes stage3Anim {
-    0%, 44% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
-    47%, 66% { opacity: 1; transform: translate(-50%, -50%) scale(1.05); border-color: rgba(251,191,36,0.6); background: rgba(251,191,36,0.18); box-shadow: 0 0 16px rgba(251,191,36,0.3); }
-    70%, 85% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(251,191,36,0.25); background: rgba(22,30,46,0.75); }
-    90%, 100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
-}
-
-/* Card 4: متبرع ✓ (Celebration / Success Glow) */
-.pipeline-card.stage-4 { animation-name: stage4Anim; }
-.pipeline-card.stage-4 .pipeline-card-icon { color: #22c55e; }
-.stage-success-ring {
-    position: absolute; inset: -3px; border-radius: 14px; border: 1px solid rgba(34, 197, 94, 0.8);
-    opacity: 0; pointer-events: none; animation: successRingPulse 8s ease-out infinite;
-}
-@keyframes successRingPulse {
-    0%, 66% { opacity: 0; transform: scale(0.9); }
-    68% { opacity: 0.85; transform: scale(1); }
-    78% { opacity: 0; transform: scale(1.3); }
-    100% { opacity: 0; transform: scale(1.3); }
-}
-@keyframes stage4Anim {
-    0%, 65% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); background: rgba(22,30,46,0.75); }
-    68%, 88% { opacity: 1; transform: translate(-50%, -50%) scale(1.08); border-color: rgba(34,197,94,0.7); background: rgba(34,197,94,0.2); box-shadow: 0 0 24px rgba(34,197,94,0.4); }
-    92%, 96% { opacity: 0.85; transform: translate(-50%, -50%) scale(1); border-color: rgba(34,197,94,0.3); background: rgba(22,30,46,0.75); }
-    100% { opacity: 0.7; transform: translate(-50%, -50%) scale(0.96); border-color: rgba(255,255,255,0.1); }
-}
-
-/* Mobile Journey */
-.hero-mobile-pipeline {
-    display: none; align-items: center; gap: 8px; margin-top: 18px;
-    padding: 8px 12px; border-radius: 12px; background: rgba(255, 255, 255, 0.05);
-    border: 1px solid rgba(255, 255, 255, 0.1); width: fit-content; max-width: 100%; flex-wrap: wrap;
-}
-.mobile-pipe-card {
-    display: inline-flex; align-items: center; gap: 5px; padding: 4px 8px; border-radius: 8px;
-    background: rgba(22, 30, 46, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); font-size: 11px; font-weight: 700;
-}
-
 /* Filters Panel */
 .filters-panel {
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 16px 20px; box-shadow: var(--shadow); margin-bottom: 24px;
+    margin-bottom: 18px; overflow: hidden;
 }
+.filters-summary {
+    min-height: 50px; padding: 0 16px; display: flex; align-items: center; gap: 9px;
+    color: var(--dark); font-size: 13px; font-weight: 700; cursor: pointer; list-style: none;
+}
+.filters-summary::-webkit-details-marker { display: none; }
+.filters-summary i { color: var(--muted); }
+.filters-summary .summary-chevron { margin-inline-start: auto; transition: transform .18s ease; }
+.filters-panel[open] .summary-chevron { transform: rotate(180deg); }
+.active-filter-count {
+    min-width: 22px; height: 22px; display: inline-grid; place-items: center; padding: 0 6px;
+    border-radius: 999px; background: #fff1f3; color: var(--red); font-size: 11px;
+}
+html.crm-monochrome .active-filter-count { background: #ededed; color: #262626; }
 .filters-form {
     display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)) auto; gap: 12px; align-items: end;
+    padding: 14px 16px 16px; border-top: 1px solid var(--line);
 }
-.filter-group label { display: block; font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
+.filter-group label { display: block; font-size: 11px; font-weight: 700; color: var(--muted); margin-bottom: 6px; }
 .filter-group input, .filter-group select {
-    width: 100%; border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px;
+    width: 100%; min-height: 38px; border: 1px solid var(--line); border-radius: 4px; padding: 7px 10px;
     background: var(--card); color: var(--dark); outline: none; transition: .15s; font-size: 13px;
 }
 .filter-group input:focus, .filter-group select:focus {
-    border-color: var(--red); box-shadow: 0 0 0 3px rgba(220, 38, 55, 0.1);
+    border-color: var(--red); box-shadow: 0 0 0 2px rgba(220, 38, 55, .08);
 }
+html.crm-monochrome .filter-group input:focus,
+html.crm-monochrome .filter-group select:focus { border-color: #737373; box-shadow: 0 0 0 2px rgba(23, 23, 23, .08); }
 
 /* KPI Summary Cards Grid (Section 6 & 7) */
 .kpi-grid {
-    display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 14px; margin-bottom: 24px;
+    display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px;
 }
 .kpi-card {
     background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 16px 18px; box-shadow: var(--shadow); display: flex; align-items: center; justify-content: space-between;
-    text-decoration: none; color: inherit; transition: border-color .2s ease, transform .2s ease, box-shadow .2s ease; min-width: 0;
+    padding: 14px 15px; display: flex; align-items: center; justify-content: space-between;
+    text-decoration: none; color: inherit; transition: border-color .15s ease, background .15s ease; min-width: 0;
 }
-.kpi-card:hover { transform: translateY(-3px); border-color: var(--card-accent, #cbd5e1); box-shadow: 0 14px 28px rgba(0,0,0,0.06); }
-.kpi-info span { display: block; font-size: 12px; color: var(--muted); font-weight: 700; }
-.kpi-info b { display: block; font-size: 20px; font-weight: 900; margin-top: 4px; color: var(--dark); }
+.kpi-card:hover { border-color: color-mix(in srgb, var(--card-accent, #94a3b8) 40%, var(--line)); background: color-mix(in srgb, var(--card-accent, #94a3b8) 3%, var(--card)); }
+.kpi-info span { display: block; font-size: 11px; color: var(--muted); font-weight: 650; }
+.kpi-info b { display: block; font-size: 19px; font-weight: 800; margin-top: 4px; color: var(--dark); font-variant-numeric: tabular-nums; }
 .kpi-icon-box {
-    width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; font-size: 18px; flex-shrink: 0;
+    width: 34px; height: 34px; border-radius: 4px; display: grid; place-items: center; font-size: 15px; flex-shrink: 0;
     margin-inline-start: 8px;
 }
+html.crm-monochrome .kpi-card { --card-accent: #525252 !important; }
+html.crm-monochrome .kpi-card .kpi-icon-box { background: #f5f5f5 !important; color: #404040 !important; }
+html.crm-monochrome .kpi-card .kpi-info b { color: #171717 !important; }
+html.crm-monochrome.dark-mode .kpi-card .kpi-icon-box { background: #292929 !important; color: #d4d4d4 !important; }
+html.crm-monochrome.dark-mode .kpi-card .kpi-info b { color: #f5f5f5 !important; }
+
 /* Dynamic Pipeline Stages Section (Section 5 & 8) */
 .stages-panel {
-    background: var(--card); border: 1px solid var(--line); border-radius: var(--radius);
-    padding: 22px 24px; box-shadow: var(--shadow); margin-bottom: 24px;
+    background: transparent; border: 1px solid var(--line); border-radius: var(--radius);
+    padding: 20px; margin-bottom: 18px;
 }
 .panel-head {
-    display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px;
-    padding-bottom: 14px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; background: transparent;
 }
-.panel-head h2 { margin: 0; font-size: 17px; font-weight: 900; display: flex; align-items: center; gap: 8px; }
+.panel-head h2 { margin: 0; font-size: 16px; font-weight: 800; display: flex; align-items: center; gap: 8px; }
+.panel-head h2 i { color: var(--muted); font-size: 15px; }
 .panel-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
 
 .stages-grid {
-    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px;
+    display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 10px;
 }
 .stage-summary-box {
-    position: relative; padding: 18px; border-radius: 14px; border: 1px solid var(--line);
-    border-top: 4px solid var(--stage-color, #3478f6);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--stage-color, #3478f6) 6%, #ffffff), #ffffff 45%);
-    transition: .2s; text-decoration: none; color: inherit; display: block;
+    position: relative; padding: 15px; border-radius: 4px; border: 1px solid var(--line);
+    background: var(--card); transition: border-color .15s ease, background .15s ease; text-decoration: none; color: inherit; display: block;
 }
-.stage-summary-box:hover { transform: translateY(-3px); box-shadow: 0 12px 28px rgba(0,0,0,0.06); }
-.stage-box-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
-.stage-box-title { display: flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 900; }
-.stage-box-count { font-size: 24px; font-weight: 900; color: var(--stage-color, #3478f6); }
-.stage-box-percentage { font-size: 12px; font-weight: 700; color: var(--muted); margin-bottom: 12px; display: block; }
+html.crm-monochrome .stage-summary-box { --stage-color: #525252 !important; }
+html.crm-monochrome .stage-summary-box .stage-box-title > span:first-child { border-radius: 3px !important; background: #f5f5f5 !important; color: #525252 !important; }
+html.crm-monochrome.dark-mode .stage-summary-box .stage-box-title > span:first-child { background: #292929 !important; color: #d4d4d4 !important; }
+.stage-summary-box:hover { border-color: color-mix(in srgb, var(--stage-color, #3478f6) 45%, var(--line)); background: color-mix(in srgb, var(--stage-color, #3478f6) 3%, var(--card)); }
+.stage-box-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 8px; }
+.stage-box-title { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 750; }
+.stage-box-count { font-size: 20px; font-weight: 800; color: var(--dark); font-variant-numeric: tabular-nums; }
+.stage-box-percentage { font-size: 11px; font-weight: 600; color: var(--muted); display: block; }
 .stage-statuses-chips { display: flex; flex-wrap: wrap; gap: 6px; }
 .stage-status-chip {
     display: inline-flex; align-items: center; justify-content: space-between; gap: 6px;
@@ -311,17 +221,16 @@ html.dark-mode .btn-leads-pill:hover, html.dark-mode .btn-leads-pill:focus-visib
 .charts-grid {
     display: grid;
     grid-template-columns: minmax(0, 1.85fr) minmax(0, 1.15fr);
-    gap: 18px;
-    margin-bottom: 24px;
+    gap: 14px;
+    margin-bottom: 18px;
     width: 100%;
     max-width: 100%;
 }
 .chart-card {
-    background: var(--card);
+    background: transparent;
     border: 1px solid var(--line);
     border-radius: var(--radius);
-    padding: 22px;
-    box-shadow: var(--shadow);
+    padding: 20px;
     min-width: 0;
     width: 100%;
     max-width: 100%;
@@ -332,19 +241,128 @@ html.dark-mode .btn-leads-pill:hover, html.dark-mode .btn-leads-pill:focus-visib
     width: 100%;
     max-width: 100%;
     min-width: 0;
-    height: 280px;
-    min-height: 280px;
+    height: 250px;
+    min-height: 250px;
+}
+
+/* Modern Fluid Collection Status Card */
+.collection-status-fluid-body {
+    display: grid;
+    grid-template-columns: minmax(180px, 1fr) minmax(220px, 1.4fr);
+    gap: 16px;
+    align-items: center;
+    padding-top: 6px;
+}
+.collection-donut-wrap {
+    position: relative;
+    height: 220px !important;
+    min-height: 220px !important;
+    display: grid;
+    place-items: center;
+}
+.collection-donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+    text-align: center;
+}
+.collection-donut-center .center-total {
+    font-size: 22px;
+    font-weight: 900;
+    line-height: 1;
+    color: var(--dark);
+    font-family: var(--font-primary);
+}
+.collection-donut-center .center-label {
+    font-size: 10px;
+    font-weight: 700;
+    color: var(--muted);
+    margin-top: 3px;
+}
+.status-bars-list {
+    display: grid;
+    gap: 8px;
+}
+.status-bar-row {
+    padding: 7px 9px;
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--bg) 60%, var(--card));
+    border: 1px solid var(--line);
+    transition: transform 0.15s, background-color 0.15s;
+}
+.status-bar-row:hover {
+    background: var(--card);
+    transform: translateX(-2px);
+    box-shadow: 0 3px 10px rgba(0, 0, 0, 0.04);
+}
+[dir="ltr"] .status-bar-row:hover {
+    transform: translateX(2px);
+}
+.status-bar-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 5px;
+    font-size: 11px;
+}
+.status-bar-title {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+.status-color-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex: 0 0 8px;
+}
+.status-bar-numbers {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-weight: 800;
+}
+.status-bar-count {
+    color: var(--dark);
+}
+.status-bar-pct {
+    color: var(--muted);
+    font-size: 10px;
+}
+.status-progress-track {
+    width: 100%;
+    height: 5px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--line) 80%, transparent);
+    overflow: hidden;
+}
+.status-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    transition: width 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
+@media (max-width: 992px) {
+    .collection-status-fluid-body {
+        grid-template-columns: 1fr;
+    }
 }
 
 /* Bottom Grid */
 .bottom-grid {
-    display: grid; grid-template-columns: 2fr 1fr; gap: 18px;
+    display: grid; grid-template-columns: 2fr 1fr; gap: 14px;
 }
 .table-wrap { overflow-x: auto; }
 table { width: 100%; border-collapse: collapse; min-width: 600px; }
-th, td { text-align: start; padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
-th { background: #f8fafc; color: var(--muted); font-size: 12px; font-weight: 800; }
-tr:hover td { background: #fafbfd; }
+th, td { text-align: start; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { background: color-mix(in srgb, var(--bg) 65%, var(--card)); color: var(--muted); font-size: 11px; font-weight: 750; }
+tr:hover td { background: color-mix(in srgb, var(--bg) 50%, var(--card)); }
 
 .badge {
     display: inline-flex; align-items: center; gap: 5px; padding: 4px 9px; border-radius: 999px;
@@ -353,15 +371,24 @@ tr:hover td { background: #fafbfd; }
 
 .quick-actions-list { display: grid; gap: 10px; }
 .quick-action-link {
-    display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 12px;
-    background: #f8fafc; border: 1px solid var(--line); text-decoration: none; font-weight: 800;
-    transition: .15s; font-size: 13px;
+    display: flex; align-items: center; gap: 11px; padding: 10px 12px; border-radius: 4px;
+    background: transparent; border: 1px solid transparent; text-decoration: none; font-weight: 700;
+    transition: background .15s ease, border-color .15s ease, color .15s ease; font-size: 13px;
 }
-.quick-action-link:hover { background: #fff1f3; border-color: #fecdd3; color: var(--red); transform: translateX(-3px); }
-.quick-action-link i { font-size: 17px; }
+.quick-action-link:hover { background: #fff7f8; border-color: #fecdd3; color: var(--red); }
+html.crm-monochrome .quick-action-link:hover { background: #f5f5f5; border-color: #d4d4d4; color: #171717; }
+html.crm-monochrome.dark-mode .quick-action-link:hover { background: #292929; border-color: #525252; color: #f5f5f5; }
+.quick-action-link i { font-size: 15px; }
+html.crm-monochrome .quick-action-link i { color: #525252 !important; }
+html.crm-monochrome .stages-panel .badge,
+html.crm-monochrome .bottom-grid .badge { background: #f5f5f5 !important; color: #525252 !important; border-color: #e5e5e5 !important; }
+
+:focus-visible { outline: 3px solid rgba(220, 38, 55, .18); outline-offset: 2px; }
+::selection { background: rgba(220, 38, 55, .16); color: var(--dark); }
+html.crm-monochrome :focus-visible { outline-color: rgba(23, 23, 23, .16); }
+html.crm-monochrome ::selection { background: rgba(23, 23, 23, .16); }
 
 @media (max-width: 1250px) {
-    .kpi-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
     .filters-form { grid-template-columns: repeat(3, 1fr); }
     .bottom-grid { grid-template-columns: 1fr; }
 }
@@ -372,16 +399,18 @@ tr:hover td { background: #fafbfd; }
     .stages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 @media (max-width: 900px) {
-    .hero-pipeline-wrap { display: none !important; }
-    .hero-mobile-pipeline { display: inline-flex; }
     .stages-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .kpi-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .filters-form { grid-template-columns: 1fr; }
 }
 @media (max-width: 600px) {
     .main { padding: 16px; }
+    .topbar-actions > a { flex: 1; }
     .stages-grid { grid-template-columns: 1fr; }
     .kpi-grid { grid-template-columns: 1fr; }
+    .chart-card, .stages-panel { padding: 16px; }
+    .panel-head { align-items: flex-start; gap: 10px; }
+    .kanban-popup { width: 100vw; height: 100dvh; border: 0; border-radius: 0; }
 }
 </style>
 </head>
@@ -396,97 +425,48 @@ tr:hover td { background: #fafbfd; }
             <div class="topbar-left">
                 <div>
                     <h1>{{ __('crm.dashboard') }}</h1>
-                    <p id="currentLiveDate">{{ __('crm.dashboard_live_tracking_subtitle') }}</p>
                 </div>
             </div>
+            @can('leads.view')
+                <form class="dashboard-search" method="GET" action="{{ route('v2.leads') }}" role="search">
+                    <i class="bi bi-search" aria-hidden="true"></i>
+                    <input name="q" type="search" placeholder="{{ __('crm.search') }}" aria-label="{{ __('crm.search') }}">
+                </form>
+            @endcan
             <div class="topbar-actions">
-                <a href="{{ route('v2.leads') }}" class="btn-leads-pill" title="{{ __('crm.all_leads') }}">
-                    <i class="bi bi-people"></i>
-                    <span>{{ __('crm.all_leads') }}</span>
-                </a>
+                @can('leads.create')
+                    <a class="btn primary" href="{{ route('v2.leads.create') }}">
+                        <i class="bi bi-plus-lg"></i> {{ __('crm.add_lead') }}
+                    </a>
+                @endcan
+                @can('leads.view')
+                    <a href="{{ route('v2.leads') }}" class="btn-leads-pill" title="{{ __('crm.all_leads') }}">
+                        <i class="bi bi-people"></i>
+                        <span>{{ __('crm.all_leads') }}</span>
+                    </a>
+                @endcan
                 @include('partials.profile-dropdown')
             </div>
         </header>
 
-        <!-- 1. HERO BANNER: 4-CARD ANIMATED DONOR JOURNEY (Sections 9 & 10) -->
-        <section class="hero" id="crmHeroBanner">
-            <div class="hero-bg-ambient" aria-hidden="true">
-                <div class="hero-glow-orb hero-glow-red"></div>
-                <div class="hero-glow-orb hero-glow-green"></div>
-            </div>
-
-            <!-- 4-Card Floating Animation (Desktop/Tablet) -->
-            <div class="hero-pipeline-wrap" id="heroPipelineWrap" aria-label="{{ __('crm.donor_journey_pipeline') }}">
-                <svg class="pipeline-svg" viewBox="0 0 440 120" fill="none">
-                    <defs>
-                        <linearGradient id="donorPipelineGrad" x1="100%" y1="0%" x2="0%" y2="0%">
-                            <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.4"/>
-                            <stop offset="35%" stop-color="#818cf8" stop-opacity="0.4"/>
-                            <stop offset="70%" stop-color="#fbbf24" stop-opacity="0.4"/>
-                            <stop offset="100%" stop-color="#22c55e" stop-opacity="0.6"/>
-                        </linearGradient>
-                    </defs>
-                    <path d="M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88" stroke="rgba(255,255,255,0.08)" stroke-width="2" stroke-dasharray="4 4"/>
-                    <path class="pipeline-stream" d="M 390,28 C 340,28 340,88 290,88 C 240,88 240,28 190,28 C 140,28 140,88 50,88" stroke="url(#donorPipelineGrad)" stroke-width="2"/>
-                </svg>
-
-                <div class="pipeline-pulse-dot" aria-hidden="true"></div>
-
-                <!-- 4 Animated Cards -->
-                <div class="pipeline-card stage-1" style="left: 390px; top: 28px;">
-                    <span class="pipeline-card-icon"><i class="bi bi-person-plus-fill"></i></span>
-                    <span>{{ __('crm.status_new') }}</span>
-                </div>
-
-                <div class="pipeline-card stage-2" style="left: 290px; top: 88px;">
-                    <span class="pipeline-card-icon"><i class="bi bi-telephone-outbound-fill"></i></span>
-                    <span>{{ __('crm.contact') }}</span>
-                </div>
-
-                <div class="pipeline-card stage-3" style="left: 190px; top: 28px;">
-                    <span class="pipeline-card-icon"><i class="bi bi-arrow-repeat"></i></span>
-                    <span>{{ __('crm.followup') }}</span>
-                </div>
-
-                <div class="pipeline-card stage-4" style="left: 50px; top: 88px;">
-                    <span class="pipeline-card-icon"><i class="bi bi-patch-check-fill"></i></span>
-                    <span>{{ __('crm.donor') }} ✓</span>
-                    <span class="stage-success-ring"></span>
-                </div>
-            </div>
-
-            <!-- Content -->
-            <div class="hero-main-content">
-                <small class="hero-subheading">{{ __('crm.welcome_dashboard_title') }}</small>
-                <h2 class="hero-heading">{{ __('crm.manage_donors_journey_heading') }}</h2>
-                <div class="hero-actions">
-                    @can('leads.create')
-                        <a class="btn primary hero-cta-btn" href="{{ route('v2.leads.create') }}">
-                            <i class="bi bi-plus-lg"></i> {{ __('crm.add_lead') }}
-                        </a>
-                    @endcan
-                    @can('tasks.view')
-                        <a class="btn soft" href="{{ route('v2.tasks.daily') }}" style="background:rgba(255,255,255,0.1); color:#fff; border-color:rgba(255,255,255,0.2)">
-                            <i class="bi bi-calendar-check"></i> {{ __('crm.daily_tasks_followups') }}
-                        </a>
-                    @endcan
-                </div>
-
-                <!-- Mobile 4-Step Journey -->
-                <div class="hero-mobile-pipeline">
-                    <div class="mobile-pipe-card"><i class="bi bi-person-plus-fill" style="color:#38bdf8"></i> {{ __('crm.status_new') }}</div>
-                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
-                    <div class="mobile-pipe-card"><i class="bi bi-telephone-outbound-fill" style="color:#818cf8"></i> {{ __('crm.contact') }}</div>
-                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
-                    <div class="mobile-pipe-card"><i class="bi bi-arrow-repeat" style="color:#fbbf24"></i> {{ __('crm.followup') }}</div>
-                    <span style="color:rgba(255,255,255,0.3)">{{ app()->getLocale() === 'ar' ? '←' : '→' }}</span>
-                    <div class="mobile-pipe-card" style="border-color:#22c55e; background:rgba(34,197,94,0.18)"><i class="bi bi-patch-check-fill" style="color:#22c55e"></i> {{ __('crm.donor') }} ✓</div>
-                </div>
-            </div>
-        </section>
-
-        <!-- 2. ADVANCED DONOR FILTERS (Section 12) -->
-        <section class="filters-panel">
+        @php
+            $activeDashboardFilters = collect([
+                $filters['employee'] ?? '',
+                $filters['status'] ?? '',
+                $filters['donation_type'] ?? '',
+                $filters['donation_cycle'] ?? '',
+                ($filters['period'] ?? 'all') !== 'all' ? $filters['period'] : '',
+            ])->filter(static fn ($value) => $value !== '')->count();
+        @endphp
+        <details class="filters-panel" @if($activeDashboardFilters > 0) open @endif>
+            <summary class="filters-summary">
+                <i class="bi bi-sliders2" aria-hidden="true"></i>
+                <span>{{ __('crm.filter') }}</span>
+                @if($activeDashboardFilters > 0)
+                    <span class="active-filter-count">{{ $activeDashboardFilters }}</span>
+                @endif
+                <i class="bi bi-chevron-down summary-chevron" aria-hidden="true"></i>
+            </summary>
             <form method="GET" action="{{ route('dashboard') }}" class="filters-form">
                 <!-- Employee Filter -->
                 <div class="filter-group">
@@ -562,12 +542,16 @@ tr:hover td { background: #fafbfd; }
                     @endif
                 </div>
             </form>
-        </section>
+        </details>
 
         <!-- 3. KPI METRICS GRID (Sections 6, 7 & 23) -->
         <section class="kpi-grid">
             <!-- Total Customers -->
+            @can('leads.view')
             <a href="{{ route('v2.leads') }}" class="kpi-card" style="--card-accent: #3478f6;">
+            @else
+            <div class="kpi-card" style="cursor:default; --card-accent: #3478f6;">
+            @endcan
                 <div class="kpi-info">
                     <span>{{ __('crm.total_leads') }}</span>
                     <b>{{ number_format($totalCustomersCount) }}</b>
@@ -575,10 +559,18 @@ tr:hover td { background: #fafbfd; }
                 <div class="kpi-icon-box" style="background:rgba(52,120,246,0.1); color:#3478f6;">
                     <i class="bi bi-people-fill"></i>
                 </div>
+            @can('leads.view')
             </a>
+            @else
+            </div>
+            @endcan
 
             <!-- New Stage Customers -->
+            @can('leads.view')
             <a href="{{ route('v2.leads', ['stage' => $stages->firstWhere('code', 'new')?->id ?? 'new']) }}" class="kpi-card" style="--card-accent: #0284c7;">
+            @else
+            <div class="kpi-card" style="cursor:default; --card-accent: #0284c7;">
+            @endcan
                 <div class="kpi-info">
                     <span>{{ __('crm.status_new') }}</span>
                     <b>{{ number_format($newCustomersCount) }}</b>
@@ -586,10 +578,18 @@ tr:hover td { background: #fafbfd; }
                 <div class="kpi-icon-box" style="background:rgba(56,189,248,0.12); color:#0284c7;">
                     <i class="bi bi-person-plus-fill"></i>
                 </div>
+            @can('leads.view')
             </a>
+            @else
+            </div>
+            @endcan
 
             <!-- Confirmed Donors -->
+            @can('leads.view')
             <a href="{{ route('v2.leads', ['stage' => $stages->firstWhere('code', 'donor')?->id ?? 'donor']) }}" class="kpi-card" style="--card-accent: #16a34a;">
+            @else
+            <div class="kpi-card" style="cursor:default; --card-accent: #16a34a;">
+            @endcan
                 <div class="kpi-info">
                     <span>{{ __('crm.donor') }}</span>
                     <b>{{ number_format($donorCustomersCount) }}</b>
@@ -597,7 +597,11 @@ tr:hover td { background: #fafbfd; }
                 <div class="kpi-icon-box" style="background:rgba(22,163,74,0.12); color:#16a34a;">
                     <i class="bi bi-heart-fill"></i>
                 </div>
+            @can('leads.view')
             </a>
+            @else
+            </div>
+            @endcan
 
             <!-- Donor Conversion Rate (Section 7) -->
             <div class="kpi-card" style="cursor:default; --card-accent: #16a34a;">
@@ -622,7 +626,11 @@ tr:hover td { background: #fafbfd; }
             </div>
 
             <!-- Today Follow-ups -->
+            @can('tasks.view')
             <a href="{{ route('v2.tasks.daily', ['scope' => 'today']) }}" class="kpi-card" style="--card-accent: #d97706;">
+            @else
+            <div class="kpi-card" style="cursor:default; --card-accent: #d97706;">
+            @endcan
                 <div class="kpi-info">
                     <span>{{ __('crm.today_followups') }}</span>
                     <b style="color:{{ $followupCounts['today'] > 0 ? '#d97706' : 'inherit' }}">{{ number_format($followupCounts['today']) }}</b>
@@ -630,7 +638,11 @@ tr:hover td { background: #fafbfd; }
                 <div class="kpi-icon-box" style="background:rgba(245,158,11,0.1); color:#d97706;">
                     <i class="bi bi-telephone-inbound-fill"></i>
                 </div>
+            @can('tasks.view')
             </a>
+            @else
+            </div>
+            @endcan
         </section>
 
         <!-- 4. DYNAMIC PIPELINE STATUSES SUMMARY -->
@@ -638,21 +650,27 @@ tr:hover td { background: #fafbfd; }
             <div class="panel-head">
                 <div>
                     <h2><i class="bi bi-diagram-3"></i> {{ __('crm.donor_journey_pipeline_title') }}</h2>
-                    <p>{{ __('crm.pipeline_stages_desc') }}</p>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <span class="badge" style="background:#e0f2fe; color:#0369a1; font-size:12px; padding:6px 12px;">
                         {{ $pipelineStages->count() }} {{ __('crm.active_stages') }}
                     </span>
-                    <a href="{{ route('v2.leads.kanban') }}" class="btn small soft" title="{{ __('crm.view_interactive_board') }}">
-                        <i class="bi bi-kanban"></i> {{ __('crm.kanban') }}
+                    @can('leads.view')
+                    <a href="{{ route('v2.leads.kanban') }}" class="btn primary" style="font-size:14px; padding:8px 18px; min-height:40px; font-weight:800; display:inline-flex; align-items:center; gap:8px; box-shadow: 0 2px 10px rgba(220,38,55,0.22); text-decoration:none;" title="{{ __('crm.view_interactive_board') }}">
+                        <i class="bi bi-kanban" style="font-size:16px;"></i>
+                        <span>{{ __('crm.kanban_board_title') ?? __('crm.kanban') }}</span>
                     </a>
+                    @endcan
                 </div>
             </div>
 
             <div class="stages-grid">
                 @foreach ($pipelineStages as $stage)
+                    @can('leads.view')
                     <a href="{{ route('v2.leads', ['stage' => $stage->id]) }}" class="stage-summary-box" style="--stage-color: {{ $stage->color ?: '#3478f6' }};">
+                    @else
+                    <div class="stage-summary-box" style="cursor:default; --stage-color: {{ $stage->color ?: '#3478f6' }};">
+                    @endcan
                         <div class="stage-box-top">
                             <div class="stage-box-title">
                                 <span style="display:inline-flex; align-items:center; justify-content:center; width:22px; height:22px; border-radius:6px; background:{{ $stage->color ?: '#3478f6' }}18; color:{{ $stage->color ?: '#3478f6' }}; font-size:13px;">
@@ -666,7 +684,11 @@ tr:hover td { background: #fafbfd; }
                         <span class="stage-box-percentage">
                             {{ $stage->percentage }}% {{ __('crm.of_total_leads') }}
                         </span>
+                    @can('leads.view')
                     </a>
+                    @else
+                    </div>
+                    @endcan
                 @endforeach
             </div>
         </section>
@@ -708,9 +730,11 @@ tr:hover td { background: #fafbfd; }
                         <h2><i class="bi bi-clock-history"></i> {{ __('crm.latest_followups_calls') }}</h2>
                         <p>{{ __('crm.latest_activities_desc') }}</p>
                     </div>
+                    @can('tasks.view')
                     <a href="{{ route('v2.tasks.daily') }}" class="btn small soft">
                         {{ __('crm.view_all') }}
                     </a>
+                    @endcan
                 </div>
                 <div class="table-wrap">
                     <table>
@@ -728,9 +752,15 @@ tr:hover td { background: #fafbfd; }
                                 <tr>
                                     <td>
                                         @if ($followup->lead)
+                                            @can('leads.view')
                                             <a href="{{ route('v2.leads.show', $followup->lead) }}" style="font-weight:900; text-decoration:none; color:var(--dark)">
                                                 {{ $followup->lead->name }}
                                             </a>
+                                            @else
+                                            <span style="font-weight:900; color:var(--dark)">
+                                                {{ $followup->lead->name }}
+                                            </span>
+                                            @endcan
                                         @else
                                             <span style="color:var(--muted)">—</span>
                                         @endif
@@ -786,23 +816,160 @@ tr:hover td { background: #fafbfd; }
                             <span>{{ __('crm.today_followups_tasks') }}</span>
                         </a>
                     @endcan
-                    <a href="{{ route('v2.leads.kanban') }}" class="quick-action-link">
-                        <i class="bi bi-kanban-fill" style="color:#7e22ce"></i>
-                        <span>{{ __('crm.leads_kanban_board') }}</span>
-                    </a>
+                    @can('collections.view')
+                        <a href="{{ route('v2.collections.index') }}" class="quick-action-link">
+                            <i class="bi bi-cash-stack" style="color:#0f766e"></i>
+                            <span>{{ __('crm.collections') }}</span>
+                        </a>
+                    @endcan
                     @can('leads.export')
                         <a href="{{ route('v2.leads.export') }}" class="quick-action-link">
                             <i class="bi bi-file-earmark-arrow-down-fill" style="color:#16a34a"></i>
                             <span>{{ __('crm.export_donors_data') }}</span>
                         </a>
                     @endcan
+                    @can('settings.access')
                     <a href="{{ route('v2.settings.stages.index') }}" class="quick-action-link">
                         <i class="bi bi-sliders" style="color:#475569"></i>
                         <span>{{ __('crm.donor_stages_settings') }}</span>
                     </a>
+                    @endcan
                 </div>
             </article>
         </section>
+
+        <!-- 7. COLLECTIONS MANAGEMENT & PERFORMANCE -->
+        @if($collectionSummary !== null)
+            <section class="stages-panel" style="margin-top:18px;">
+                <div class="panel-head">
+                    <div>
+                        <h2><i class="bi bi-cash-stack"></i> {{ __('crm.collection_dashboard_title') }}</h2>
+                        <p>{{ __('crm.collection_dashboard_desc') }}</p>
+                    </div>
+                    @can('collections.view')
+                    <a href="{{ route('v2.collections.index') }}" class="btn small soft">{{ __('crm.view_all') }}</a>
+                    @endcan
+                </div>
+                <div class="stages-grid">
+                    @can('collections.view')
+                    <a href="{{ route('v2.collections.index', ['scope' => 'open']) }}" class="stage-summary-box" style="--stage-color:#0f766e">
+                    @else
+                    <div class="stage-summary-box" style="cursor:default; --stage-color:#0f766e">
+                    @endcan
+                        <div class="stage-box-top"><span class="stage-box-title">{{ __('crm.collection_open') }}</span><span class="stage-box-count">{{ number_format($collectionSummary['open']) }}</span></div>
+                    @can('collections.view')
+                    </a>
+                    @else
+                    </div>
+                    @endcan
+
+                    @can('collections.view')
+                    <a href="{{ route('v2.collections.index', ['scope' => 'overdue']) }}" class="stage-summary-box" style="--stage-color:#dc2637">
+                    @else
+                    <div class="stage-summary-box" style="cursor:default; --stage-color:#dc2637">
+                    @endcan
+                        <div class="stage-box-top"><span class="stage-box-title">{{ __('crm.collection_overdue') }}</span><span class="stage-box-count">{{ number_format($collectionSummary['overdue']) }}</span></div>
+                    @can('collections.view')
+                    </a>
+                    @else
+                    </div>
+                    @endcan
+
+                    <div class="stage-summary-box" style="--stage-color:#d97706">
+                        <div class="stage-box-top"><span class="stage-box-title">{{ __('crm.collection_expected_open') }}</span><span class="stage-box-count">{{ number_format($collectionSummary['expected_open'], 2) }}</span></div>
+                    </div>
+                    <div class="stage-summary-box" style="--stage-color:#16a34a">
+                        <div class="stage-box-top"><span class="stage-box-title">{{ __('crm.collection_received_value') }}</span><span class="stage-box-count">{{ number_format($collectionSummary['received'], 2) }}</span></div>
+                    </div>
+                </div>
+            </section>
+
+            @if(auth()->user()->isSuperAdmin() && $collectionStatusDistribution !== null)
+                <section class="charts-grid">
+                    <article class="chart-card">
+                        <div class="panel-head">
+                            <div>
+                                <h2><i class="bi bi-pie-chart-fill" style="color:#0f766e"></i> {{ __('crm.collection_status_report') }}</h2>
+                                <p>{{ __('crm.by_current_status') }}</p>
+                            </div>
+                            <span class="badge" style="background:#f0fdf4; color:#16a34a; font-size:11px; padding:4px 10px;">
+                                <i class="bi bi-layers-fill"></i>
+                                {{ number_format(array_sum($collectionStatusDistribution['data'])) }} {{ __('crm.cases') }}
+                            </span>
+                        </div>
+                        <div class="collection-status-fluid-body">
+                            <div class="collection-status-chart-col">
+                                <div class="chart-wrap-responsive collection-donut-wrap">
+                                    <canvas id="collectionStatusChart" role="img" aria-label="{{ __('crm.collection_status_report') }}"></canvas>
+                                    <div class="collection-donut-center" id="collectionDonutCenter">
+                                        <span class="center-total">{{ number_format(array_sum($collectionStatusDistribution['data'])) }}</span>
+                                        <span class="center-label">{{ __('crm.total') }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="collection-status-breakdown-col">
+                                @php
+                                    $totalCases = max(1, array_sum($collectionStatusDistribution['data']));
+                                    $statusColors = [
+                                        '#0f766e',
+                                        '#2563eb',
+                                        '#7c3aed',
+                                        '#ef4444',
+                                        '#16a34a',
+                                        '#64748b',
+                                    ];
+                                @endphp
+                                <div class="status-bars-list">
+                                    @foreach ($collectionStatusDistribution['labels'] as $idx => $label)
+                                        @php
+                                            $count = $collectionStatusDistribution['data'][$idx] ?? 0;
+                                            $pct = round(($count / $totalCases) * 100, 1);
+                                            $colColor = $statusColors[$idx % count($statusColors)];
+                                        @endphp
+                                        <div class="status-bar-row" data-status-index="{{ $idx }}">
+                                            <div class="status-bar-header">
+                                                <span class="status-bar-title">
+                                                    <span class="status-color-dot" style="background:{{ $colColor }}"></span>
+                                                    <strong>{{ $label }}</strong>
+                                                </span>
+                                                <div class="status-bar-numbers">
+                                                    <span class="status-bar-count">{{ number_format($count) }}</span>
+                                                    <span class="status-bar-pct">({{ $pct }}%)</span>
+                                                </div>
+                                            </div>
+                                            <div class="status-progress-track">
+                                                <div class="status-progress-fill" style="width:{{ max($count > 0 ? 3 : 0, $pct) }}%; background:{{ $colColor }}"></div>
+                                            </div>
+                                        </div>
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="chart-card">
+                        <div class="panel-head">
+                            <div>
+                                <h2><i class="bi bi-person-check"></i> {{ __('crm.collector_performance') }}</h2>
+                                <p>{{ __('crm.sales_team_performance_overview') }}</p>
+                            </div>
+                        </div>
+                        <div class="table-wrap">
+                            <table>
+                                <thead><tr><th>{{ __('crm.collector') }}</th><th>{{ __('crm.collected_cases') }}</th><th>{{ __('crm.open_value') }}</th></tr></thead>
+                                <tbody>
+                                    @forelse($collectorPerformance as $collector)
+                                        <tr><td>{{ $collector['name'] }}</td><td>{{ $collector['collected'] }} / {{ $collector['total'] }}</td><td>{{ number_format($collector['open_value'], 2) }}</td></tr>
+                                    @empty
+                                        <tr><td colspan="3" style="text-align:center;color:var(--muted)">{{ __('crm.no_collection_cases') }}</td></tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </article>
+                </section>
+            @endif
+        @endif
     </main>
 </div>
 
@@ -813,55 +980,45 @@ document.addEventListener('DOMContentLoaded', function() {
     Chart.defaults.font.family = 'Tajawal, Tahoma, Arial, sans-serif';
 
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const root = document.documentElement;
+    const mountedCharts = new Map();
+    const stageSourceColors = {!! json_encode($stageDistribution['colors']) !!};
+    const stageGrayColors = ['#171717', '#525252', '#8a8a8a', '#b8b8b8', '#dedede'];
+    const chartPalette = () => {
+        const monochrome = root.classList.contains('crm-monochrome');
+        const dark = root.classList.contains('dark-mode');
 
-    const chartAnimation = (duration, stagger) => {
+        return {
+            monochrome,
+            text: dark ? '#a3a3a3' : '#64748b',
+            surface: dark ? (monochrome ? '#1c1c1c' : '#1e293b') : '#ffffff',
+            stages: monochrome ? stageGrayColors : stageSourceColors,
+            donation: monochrome ? (dark ? '#f5f5f5' : '#171717') : '#f59e0b',
+            newLeads: monochrome ? '#b8b8b8' : '#38bdf8',
+            donors: monochrome ? '#525252' : '#22c55e',
+            donationTicks: monochrome ? (dark ? '#d4d4d4' : '#737373') : '#d97706',
+        };
+    };
+
+    const chartAnimation = () => {
         if (prefersReducedMotion) {
             return false;
         }
 
         return {
-            duration,
+            duration: 280,
             easing: 'easeOutQuart',
-            delay(context) {
-                if (context.type !== 'data' || context.mode === 'resize') {
-                    return 0;
-                }
-
-                const dataDelay = context.dataIndex * stagger;
-                const datasetDelay = context.datasetIndex * 70;
-                return Math.min(dataDelay + datasetDelay, 210);
-            }
         };
     };
 
     const animateChartWhenVisible = (canvas, config) => {
-        const mountChart = () => {
-            if (canvas.dataset.chartMounted === 'true') {
-                return;
-            }
-
-            canvas.dataset.chartMounted = 'true';
-            new Chart(canvas.getContext('2d'), config);
-        };
-
-        if (prefersReducedMotion || !('IntersectionObserver' in window)) {
-            mountChart();
+        if (canvas.dataset.chartMounted === 'true') {
             return;
         }
 
-        const observer = new IntersectionObserver((entries) => {
-            if (!entries.some(entry => entry.isIntersecting)) {
-                return;
-            }
-
-            observer.disconnect();
-            mountChart();
-        }, {
-            threshold: 0.2,
-            rootMargin: '0px 0px -8% 0px'
-        });
-
-        observer.observe(canvas);
+        canvas.dataset.chartMounted = 'true';
+        const chart = new Chart(canvas.getContext('2d'), config);
+        mountedCharts.set(canvas.id, chart);
     };
 
     // 1. Chart 1 — Stage Donut Chart (Section 11)
@@ -869,7 +1026,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (donutCtx) {
         const stageLabels = {!! json_encode($stageDistribution['labels']) !!};
         const stageData = {!! json_encode($stageDistribution['data']) !!};
-        const stageColors = {!! json_encode($stageDistribution['colors']) !!};
+        const palette = chartPalette();
+        const stageColors = stageData.map((_, index) => palette.stages[index % palette.stages.length]);
 
         animateChartWhenVisible(donutCtx, {
             type: 'doughnut',
@@ -879,7 +1037,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     data: stageData,
                     backgroundColor: stageColors,
                     borderWidth: 2,
-                    borderColor: '#ffffff',
+                    borderColor: palette.surface,
                 }]
             },
             options: {
@@ -887,7 +1045,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 maintainAspectRatio: false,
                 cutout: '68%',
                 animation: prefersReducedMotion ? false : {
-                    ...chartAnimation(720, 24),
+                    ...chartAnimation(),
                     animateRotate: true,
                     animateScale: true
                 },
@@ -896,7 +1054,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: 'bottom',
                         rtl: {{ app()->getLocale() === 'ar' ? 'true' : 'false' }},
                         labels: {
-                            color: '#64748b',
+                            color: palette.text,
                             usePointStyle: true,
                             pointStyle: 'circle',
                             padding: 10,
@@ -922,6 +1080,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // 2. Chart 2 — Monthly Trend Activity Chart (Section 11)
     const trendCtx = document.getElementById('activityTrendChart');
     if (trendCtx) {
+        const palette = chartPalette();
         const monthsData = {!! json_encode($monthsTrend) !!};
         const labels = monthsData.map(m => m.label);
         const newCounts = monthsData.map(m => m.new_count);
@@ -937,10 +1096,10 @@ document.addEventListener('DOMContentLoaded', function() {
                         label: @json(__('crm.donations_value_egp')),
                         data: donationVals,
                         yAxisID: 'y1',
-                        borderColor: '#f59e0b',
-                        backgroundColor: '#f59e0b',
-                        borderWidth: 2.5,
-                        pointRadius: 4,
+                        borderColor: palette.donation,
+                        backgroundColor: palette.donation,
+                        borderWidth: 1.8,
+                        pointRadius: 2,
                         tension: 0.25,
                     },
                     {
@@ -948,8 +1107,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         label: @json(__('crm.new_leads_chart')),
                         data: newCounts,
                         yAxisID: 'y',
-                        backgroundColor: '#38bdf8',
-                        borderRadius: 6,
+                        backgroundColor: palette.newLeads,
+                        borderRadius: 2,
                         barThickness: 14,
                     },
                     {
@@ -957,8 +1116,8 @@ document.addEventListener('DOMContentLoaded', function() {
                         label: @json(__('crm.donors_chart')),
                         data: donorCounts,
                         yAxisID: 'y',
-                        backgroundColor: '#22c55e',
-                        borderRadius: 6,
+                        backgroundColor: palette.donors,
+                        borderRadius: 2,
                         barThickness: 14,
                     }
                 ]
@@ -966,13 +1125,13 @@ document.addEventListener('DOMContentLoaded', function() {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                animation: chartAnimation(680, 28),
+                animation: chartAnimation(),
                 plugins: {
                     legend: {
                         position: 'bottom',
                         rtl: {{ app()->getLocale() === 'ar' ? 'true' : 'false' }},
                         labels: {
-                            color: '#64748b',
+                            color: palette.text,
                             usePointStyle: true,
                             padding: 14,
                             font: { size: 12, weight: '700' }
@@ -986,7 +1145,7 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: '{{ app()->getLocale() === 'ar' ? 'right' : 'left' }}',
                         beginAtZero: true,
                         grid: { color: 'rgba(226, 232, 240, 0.6)' },
-                        ticks: { color: '#64748b', precision: 0 }
+                        ticks: { color: palette.text, precision: 0 }
                     },
                     y1: {
                         type: 'linear',
@@ -994,33 +1153,114 @@ document.addEventListener('DOMContentLoaded', function() {
                         position: '{{ app()->getLocale() === 'ar' ? 'left' : 'right' }}',
                         beginAtZero: true,
                         grid: { drawOnChartArea: false },
-                        ticks: { color: '#d97706' }
+                        ticks: { color: palette.donationTicks }
                     },
                     x: {
                         grid: { display: false },
-                        ticks: { color: '#64748b' }
+                        ticks: { color: palette.text }
                     }
                 }
             }
         });
     }
 
-    // Set Live Date
-    try {
-        const dateEl = document.getElementById('currentLiveDate');
-        if (dateEl) {
-            const currentLocale = @json(app()->getLocale() === 'ar' ? 'ar-EG' : 'en-US');
-            const liveSubtitle = @json(__('crm.dashboard_live_tracking_subtitle'));
-            const formatted = new Intl.DateTimeFormat(currentLocale, {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
-            }).format(new Date());
-            dateEl.textContent = `${formatted} — ${liveSubtitle}`;
+    const collectionStatusCtx = document.getElementById('collectionStatusChart');
+    if (collectionStatusCtx) {
+        const collectionStatus = @json($collectionStatusDistribution);
+        const palette = chartPalette();
+        const colors = palette.monochrome
+            ? ['#171717', '#525252', '#737373', '#a3a3a3', '#d4d4d4', '#e5e5e5']
+            : ['#0f766e', '#2563eb', '#7c3aed', '#ef4444', '#16a34a', '#64748b'];
+        const total = collectionStatus ? collectionStatus.data.reduce((a, b) => a + b, 0) : 0;
+        const centerEl = document.getElementById('collectionDonutCenter');
+
+        animateChartWhenVisible(collectionStatusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: collectionStatus.labels,
+                datasets: [{
+                    data: collectionStatus.data,
+                    backgroundColor: colors,
+                    borderColor: palette.surface,
+                    borderWidth: 2,
+                    borderRadius: 5,
+                    spacing: 3,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '74%',
+                animation: chartAnimation(),
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(ctx) {
+                                const val = ctx.parsed || 0;
+                                const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                                return ` ${ctx.label}: ${val} (${pct}%)`;
+                            }
+                        }
+                    }
+                },
+                onHover: (evt, elements) => {
+                    if (!centerEl) return;
+                    if (elements && elements.length > 0) {
+                        const idx = elements[0].index;
+                        const val = collectionStatus.data[idx];
+                        const pct = total > 0 ? Math.round((val / total) * 100) : 0;
+                        const totalSpan = centerEl.querySelector('.center-total');
+                        const labelSpan = centerEl.querySelector('.center-label');
+                        if (totalSpan) totalSpan.textContent = val;
+                        if (labelSpan) labelSpan.textContent = `${pct}%`;
+                    } else {
+                        const totalSpan = centerEl.querySelector('.center-total');
+                        const labelSpan = centerEl.querySelector('.center-label');
+                        if (totalSpan) totalSpan.textContent = total;
+                        if (labelSpan) labelSpan.textContent = @json(__('crm.total'));
+                    }
+                }
+            }
+        });
+    }
+
+    window.addEventListener('crm:theme-changed', () => {
+        const palette = chartPalette();
+        const donut = mountedCharts.get('stageDonutChart');
+        if (donut) {
+            donut.data.datasets[0].backgroundColor = donut.data.datasets[0].data
+                .map((_, index) => palette.stages[index % palette.stages.length]);
+            donut.data.datasets[0].borderColor = palette.surface;
+            donut.options.plugins.legend.labels.color = palette.text;
+            donut.update('none');
         }
-    } catch (e) {}
+
+        const trend = mountedCharts.get('activityTrendChart');
+        if (trend) {
+            trend.data.datasets[0].borderColor = palette.donation;
+            trend.data.datasets[0].backgroundColor = palette.donation;
+            trend.data.datasets[1].backgroundColor = palette.newLeads;
+            trend.data.datasets[2].backgroundColor = palette.donors;
+            trend.options.plugins.legend.labels.color = palette.text;
+            trend.options.scales.y.ticks.color = palette.text;
+            trend.options.scales.y1.ticks.color = palette.donationTicks;
+            trend.options.scales.x.ticks.color = palette.text;
+            trend.update('none');
+        }
+
+        const collections = mountedCharts.get('collectionStatusChart');
+        if (collections) {
+            collections.data.datasets[0].borderColor = palette.surface;
+            collections.options.plugins.legend.labels.color = palette.text;
+            collections.update('none');
+        }
+    });
 });
 </script>
+<script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 </body>
 </html>

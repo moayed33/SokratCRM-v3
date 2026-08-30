@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
 <style>
 :root{
  --red:#dc2637;
@@ -29,47 +29,24 @@ body{
  font-family:var(--font-primary)
 }
 a{color:inherit}
+.crm-app{display:flex;min-height:100vh}
+.crm-main{flex:1;min-width:0;padding:24px clamp(16px,3vw,32px) 60px;text-align:start}
 .topbar{
- position:sticky;
- top:0;
- z-index:20;
  display:flex;
+ justify-content:space-between;
  align-items:center;
- gap:16px;
- min-height:78px;
- padding:12px clamp(16px,3vw,38px);
- border-bottom:1px solid var(--line);
- background:#ffffffed;
- backdrop-filter:blur(12px);
- box-shadow:0 8px 30px #1720330a
+ gap:18px;
+ margin-bottom:24px;
+ flex-wrap:wrap
 }
-.brand{
- display:flex;
- align-items:center;
- gap:10px;
- text-decoration:none
-}
-.brand img{
- width:52px;
- height:52px;
- object-fit:contain
-}
-.brand strong{
- display:block;
- color:var(--red);
- font:900 21px var(--font-primary)
-}
-.brand small{
- display:block;
- margin-top:4px;
- color:var(--muted);
- font-size:10px
-}
+.topbar-left{display:flex;align-items:center;gap:12px}
+.topbar-left h1{margin:0;font-size:24px;font-weight:900;color:var(--dark)}
 .top-actions{
  margin-inline-start:auto;
  display:flex;
  align-items:center;
- gap:8px
+ gap:10px;
+ flex-wrap:wrap
 }
 .btn{
  min-height:40px;
@@ -139,9 +116,9 @@ main{
  box-shadow:var(--shadow)
 }
 .board{
- display:grid;
- grid-auto-flow:column;
- grid-auto-columns:minmax(270px,290px);
+  display:grid;
+  grid-auto-flow:column;
+  grid-auto-columns:minmax(270px,1fr);
  gap:12px;
  min-height:610px;
  padding:14px;
@@ -184,9 +161,11 @@ main{
  font-size:16px
 }
 .column-title{
- flex:1;
- margin:0;
- font-size:13px
+  flex:1;
+  min-width:0;
+  margin:0;
+  overflow-wrap:anywhere;
+  font-size:13px
 }
 .column-count{
  min-width:30px;
@@ -249,6 +228,414 @@ main{
  .page-head{align-items:flex-start;flex-direction:column}
  .board{grid-auto-columns:minmax(260px,82vw)}
 }
+
+body.kanban-popup-view .topbar,
+body.kanban-popup-view .page-head{
+ display:none
+}
+body.kanban-popup-view .kanban-main{
+ padding:14px;
+ min-height:100dvh
+}
+body.kanban-popup-view .board-shell{
+ border-radius:12px
+}
+
+/* CRM KANBAN TOOLBAR & PAGINATION START */
+.kanban-toolbar{
+ display:flex;
+ flex-direction:column;
+ gap:10px;
+ margin-bottom:14px;
+ padding:12px 16px;
+ background:#ffffff;
+ border:1px solid var(--line,#e7e9ef);
+ border-radius:14px;
+ box-shadow:0 4px 16px rgba(23,32,51,0.04)
+}
+.kanban-toolbar-main{
+ display:flex;
+ align-items:center;
+ flex-wrap:wrap;
+ gap:10px
+}
+.kanban-search-box{
+ position:relative;
+ flex:1 1 220px;
+ min-width:180px
+}
+.kanban-search-icon{
+ position:absolute;
+ inset-inline-start:12px;
+ top:50%;
+ transform:translateY(-50%);
+ color:#929aa7;
+ font-size:13px;
+ pointer-events:none
+}
+.kanban-search-input{
+ width:100%;
+ height:38px;
+ padding-inline-start:34px;
+ padding-inline-end:30px;
+ border:1px solid #dfe3ea;
+ border-radius:10px;
+ background:#f8f9fb;
+ color:#1f2937;
+ font-family:inherit;
+ font-size:12px;
+ font-weight:700;
+ outline:none;
+ transition:border-color .15s,background-color .15s,box-shadow .15s
+}
+.kanban-search-input:focus{
+ border-color:#3478f6;
+ background:#ffffff;
+ box-shadow:0 0 0 3px rgba(52,120,246,0.12)
+}
+.kanban-search-clear{
+ position:absolute;
+ inset-inline-end:8px;
+ top:50%;
+ transform:translateY(-50%);
+ border:none;
+ background:none;
+ color:#9ca3af;
+ padding:4px;
+ cursor:pointer;
+ font-size:14px;
+ display:flex;
+ align-items:center
+}
+.kanban-search-clear:hover{
+ color:#dc2637
+}
+.kanban-filter-select-wrap{
+ display:flex;
+ align-items:center;
+ gap:6px
+}
+.kanban-filter-label{
+ display:flex;
+ align-items:center;
+ gap:4px;
+ color:#64748b;
+ font-size:11px;
+ font-weight:800;
+ white-space:nowrap
+}
+.kanban-filter-select{
+ height:38px;
+ padding:0 10px;
+ border:1px solid #dfe3ea;
+ border-radius:10px;
+ background:#f8f9fb;
+ color:#374151;
+ font-family:inherit;
+ font-size:12px;
+ font-weight:700;
+ outline:none;
+ cursor:pointer;
+ transition:border-color .15s,background-color .15s
+}
+.kanban-filter-select:focus{
+ border-color:#3478f6;
+ background:#ffffff;
+ box-shadow:0 0 0 3px rgba(52,120,246,0.12)
+}
+.kanban-reset-btn{
+ height:38px;
+ padding:0 12px;
+ display:inline-flex;
+ align-items:center;
+ gap:6px;
+ border:1px solid #fecaca;
+ border-radius:10px;
+ background:#fef2f2;
+ color:#dc2626;
+ font-family:inherit;
+ font-size:11px;
+ font-weight:800;
+ cursor:pointer;
+ transition:background-color .15s,border-color .15s
+}
+.kanban-reset-btn:hover{
+ background:#fee2e2;
+ border-color:#fca5a5
+}
+.kanban-toolbar-status{
+ display:flex;
+ align-items:center;
+ gap:8px;
+ padding-top:8px;
+ border-top:1px solid #f1f3f7;
+ font-size:11px;
+ color:#64748b
+}
+.kanban-filter-badge{
+ display:inline-flex;
+ align-items:center;
+ gap:5px;
+ padding:3px 8px;
+ border-radius:6px;
+ background:#eff6ff;
+ color:#2563eb;
+ font-size:11px;
+ font-weight:700
+}
+.kanban-column-pagination{
+ display:flex;
+ align-items:center;
+ justify-content:space-between;
+ gap:6px;
+ padding:8px 10px;
+ margin-top:8px;
+ border-top:1px solid var(--line,#e7e9ef);
+ background:#ffffff;
+ border-radius:10px
+}
+.kanban-page-btn{
+ width:30px;
+ height:30px;
+ display:grid;
+ place-items:center;
+ padding:0;
+ border:1px solid #e2e8f0;
+ border-radius:8px;
+ background:#f8fafc;
+ color:#475569;
+ font-size:12px;
+ cursor:pointer;
+ transition:background-color .15s,border-color .15s,color .15s
+}
+.kanban-page-btn:hover:not(:disabled){
+ border-color:var(--column-color,#3478f6);
+ color:var(--column-color,#3478f6);
+ background:#ffffff
+}
+.kanban-page-btn:disabled{
+ opacity:0.35;
+ cursor:not-allowed;
+ border-color:#edf2f7;
+ background:#f8fafc;
+ color:#94a3b8
+}
+.kanban-page-info{
+ font-size:11px;
+ font-weight:800;
+ color:#475569;
+ direction:ltr;
+ text-align:center;
+ flex:1
+}
+.kanban-filter-empty{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ min-height:180px;
+ padding:24px 12px;
+ text-align:center;
+ color:#94a3b8
+}
+.kanban-filter-empty i{
+ font-size:24px;
+ color:#cbd5e1
+}
+.kanban-filter-empty strong{
+ font-size:11px;
+ color:#64748b
+}
+html.dark-mode {
+ --bg:#09090b;
+ --card:#18181b;
+ --dark:#f4f4f5;
+ --muted:#a1a1aa;
+ --line:rgba(255,255,255,0.08);
+}
+html.dark-mode body {
+ background: #09090b !important;
+ color: #f4f4f5 !important;
+}
+html.dark-mode .page-head h1 { color: #f4f4f5 !important; }
+html.dark-mode .page-head p { color: #a1a1aa !important; }
+html.dark-mode .summary { background: #18181b !important; border-color: rgba(255,255,255,0.08) !important; color: #a1a1aa !important; }
+html.dark-mode .summary b { color: #f4f4f5 !important; }
+html.dark-mode .board-shell {
+ background: #121214 !important;
+ border-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .kanban-column {
+ background: #18181b !important;
+ border-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .column-head {
+ border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .column-icon {
+ background: color-mix(in srgb, var(--column-color) 22%, #18181b) !important;
+}
+html.dark-mode .column-title {
+ color: #f4f4f5 !important;
+}
+html.dark-mode .kanban-followup-toolbar {
+ background: #18181b !important;
+ border-bottom-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .kanban-scope-btn {
+ background: #27272a !important;
+ border-color: rgba(255,255,255,0.08) !important;
+ color: #a1a1aa !important;
+}
+html.dark-mode .kanban-scope-btn.active {
+ background: color-mix(in srgb, var(--column-color) 25%, #27272a) !important;
+ border-color: var(--column-color) !important;
+ color: var(--column-color) !important;
+}
+html.dark-mode .kanban-card {
+ background: #27272a !important;
+ border-color: rgba(255,255,255,0.08) !important;
+ box-shadow: 0 4px 14px rgba(0,0,0,0.35) !important;
+}
+html.dark-mode .kanban-card-name {
+ color: #f4f4f5 !important;
+}
+html.dark-mode .kanban-card-stage {
+ background: color-mix(in srgb, var(--card-stage-color) 22%, #27272a) !important;
+ color: var(--card-stage-color) !important;
+}
+html.dark-mode .kanban-card-row {
+ background: #1f1f23 !important;
+ border-color: rgba(255,255,255,0.06) !important;
+}
+html.dark-mode .kanban-card-row span {
+ color: #a1a1aa !important;
+}
+html.dark-mode .kanban-card-row strong {
+ color: #f4f4f5 !important;
+}
+html.dark-mode .kanban-phone {
+ color: #60a5fa !important;
+}
+html.dark-mode .kanban-card-actions .btn {
+ background: #18181b !important;
+ border-color: rgba(255,255,255,0.12) !important;
+ color: #f4f4f5 !important;
+}
+html.dark-mode .kanban-card-actions .call {
+ background: var(--card-stage-color) !important;
+ border-color: var(--card-stage-color) !important;
+ color: #fff !important;
+}
+html.dark-mode .kanban-card-actions .donation {
+ background: #16a34a !important;
+ border-color: #16a34a !important;
+ color: #fff !important;
+}
+html.dark-mode .kanban-stepper-dot{
+ background:#52525b;
+ border-color:#52525b
+}
+html.dark-mode .kanban-stepper-line{
+ background:#3f3f46
+}
+html.dark-mode .kanban-stepper-label{
+ color:#71717a
+}
+html.dark-mode .kanban-stage-btn{
+ background:color-mix(in srgb,var(--btn-stage-color,#3478f6) 15%,#27272a) !important;
+ border-color:color-mix(in srgb,var(--btn-stage-color,#3478f6) 30%,#3f3f46) !important;
+ color:var(--btn-stage-color,#3478f6) !important
+}
+html.dark-mode .kanban-stage-btn:hover{
+ background:color-mix(in srgb,var(--btn-stage-color,#3478f6) 25%,#27272a) !important
+}
+html.crm-monochrome .kanban-stepper-dot.active{
+ background:#71717a !important;
+ border-color:#71717a !important;
+ box-shadow:0 0 0 2.5px rgba(113,113,122,0.22) !important
+}
+html.crm-monochrome .kanban-stepper-dot.completed{
+ background:#a1a1aa !important;
+ border-color:#a1a1aa !important
+}
+html.crm-monochrome .kanban-stepper-line.completed{
+ background:#a1a1aa !important
+}
+html.crm-monochrome .kanban-stage-btn{
+ border-color:#d4d4d8 !important;
+ background:#f4f4f5 !important;
+ color:#52525b !important
+}
+html.crm-monochrome.dark-mode .kanban-stage-btn{
+ border-color:#3f3f46 !important;
+ background:#27272a !important;
+ color:#a1a1aa !important
+}
+html.dark-mode .kanban-no-date {
+ background: #27272a !important;
+ color: #a1a1aa !important;
+}
+html.dark-mode .kanban-empty i,
+html.dark-mode .kanban-scope-empty i {
+ background: #27272a !important;
+ border-color: rgba(255,255,255,0.08) !important;
+}
+html.dark-mode .kanban-scope-empty strong {
+ color: #e4e4e7 !important;
+}
+html.dark-mode .kanban-scope-empty p {
+ color: #a1a1aa !important;
+}
+html.dark-mode .btn {
+ background: #27272a !important;
+ border-color: rgba(255,255,255,0.12) !important;
+ color: #f4f4f5 !important;
+}
+html.dark-mode .btn.primary {
+ background: var(--red) !important;
+ border-color: var(--red) !important;
+ color: #fff !important;
+}
+html.dark-mode .kanban-toolbar,
+html.crm-monochrome.dark-mode .kanban-toolbar{
+ background:#1e1e20;
+ border-color:rgba(255,255,255,0.08)
+}
+html.dark-mode .kanban-search-input,
+html.dark-mode .kanban-filter-select,
+html.crm-monochrome.dark-mode .kanban-search-input,
+html.crm-monochrome.dark-mode .kanban-filter-select{
+ background:#27272a;
+ border-color:rgba(255,255,255,0.12);
+ color:#e4e4e7
+}
+html.dark-mode .kanban-column-pagination,
+html.crm-monochrome.dark-mode .kanban-column-pagination{
+ background:#1e1e20;
+ border-color:rgba(255,255,255,0.08)
+}
+html.dark-mode .kanban-page-btn,
+html.crm-monochrome.dark-mode .kanban-page-btn{
+ background:#27272a;
+ border-color:rgba(255,255,255,0.12);
+ color:#a1a1aa
+}
+html.dark-mode .kanban-page-info,
+html.crm-monochrome.dark-mode .kanban-page-info{
+ color:#a1a1aa
+}
+
+/* Monochrome Theme Overrides */
+html.crm-monochrome:not(.dark-mode) .board-shell { background: #f0f0f0 !important; border-color: #e5e5e5 !important; }
+html.crm-monochrome:not(.dark-mode) .kanban-column { background: #fafafa !important; border-color: #e5e5e5 !important; }
+html.crm-monochrome:not(.dark-mode) .kanban-card { background: #fff !important; border-color: #e5e5e5 !important; }
+html.crm-monochrome.dark-mode .board-shell { background: #111 !important; border-color: #333 !important; }
+html.crm-monochrome.dark-mode .kanban-column { background: #1c1c1c !important; border-color: #333 !important; }
+html.crm-monochrome.dark-mode .kanban-card { background: #262626 !important; border-color: #333 !important; }
+html.crm-monochrome.dark-mode .kanban-card-row { background: #1a1a1a !important; border-color: #333 !important; }
+/* CRM KANBAN TOOLBAR & PAGINATION END */
 
 
 /* CRM LIVE KANBAN START */
@@ -395,6 +782,16 @@ main{
  border-color:var(--card-stage-color);
  background:var(--card-stage-color)
 }
+.kanban-card-actions .donation{
+ grid-column:1/-1;
+ border-color:#16a34a;
+ background:#16a34a;
+ color:#fff
+}
+.kanban-card-actions .donation:hover{
+ border-color:#15803d;
+ background:#15803d
+}
 
 .kanban-empty{
  margin:auto
@@ -409,6 +806,105 @@ main{
   grid-column:auto
  }
 }
+
+/* KANBAN STAGE STEPPER START */
+.kanban-stage-stepper{
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:0;
+ padding:4px 6px;
+ margin:-2px 0
+}
+.kanban-stepper-step{
+ display:flex;
+ flex-direction:column;
+ align-items:center;
+ gap:2px;
+ flex:0 0 auto;
+ position:relative
+}
+.kanban-stepper-dot{
+ width:8px;
+ height:8px;
+ border-radius:50%;
+ background:#d1d5db;
+ border:1.5px solid #d1d5db;
+ transition:background .2s,border-color .2s
+}
+.kanban-stepper-dot.completed{
+ background:color-mix(in srgb,var(--card-stage-color) 45%,#d1d5db);
+ border-color:color-mix(in srgb,var(--card-stage-color) 45%,#d1d5db)
+}
+.kanban-stepper-dot.active{
+ background:var(--card-stage-color);
+ border-color:var(--card-stage-color);
+ box-shadow:0 0 0 2.5px color-mix(in srgb,var(--card-stage-color) 22%,transparent)
+}
+.kanban-stepper-line{
+ width:16px;
+ height:2px;
+ background:#d1d5db;
+ flex:0 0 auto;
+ align-self:flex-start;
+ margin-top:3px
+}
+.kanban-stepper-line.completed{
+ background:color-mix(in srgb,var(--card-stage-color) 45%,#d1d5db)
+}
+.kanban-stepper-label{
+ font-size:7px;
+ font-weight:800;
+ color:#9ca3af;
+ line-height:1;
+ margin-top:1px
+}
+.kanban-stepper-step.active .kanban-stepper-label{
+ color:var(--card-stage-color)
+}
+.kanban-stepper-step.completed .kanban-stepper-label{
+ color:color-mix(in srgb,var(--card-stage-color) 60%,#9ca3af)
+}
+@media(max-width:760px){
+ .kanban-stepper-line{width:10px}
+}
+/* KANBAN STAGE STEPPER END */
+
+/* KANBAN STAGE TRANSITION BUTTONS START */
+.kanban-stage-transitions{
+ display:flex;
+ align-items:center;
+ gap:4px;
+ padding-top:4px
+}
+.kanban-stage-btn{
+ width:28px;
+ height:28px;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+ padding:0;
+ border:1px solid color-mix(in srgb,var(--btn-stage-color,#3478f6) 30%,transparent);
+ border-radius:8px;
+ background:color-mix(in srgb,var(--btn-stage-color,#3478f6) 8%,transparent);
+ color:var(--btn-stage-color,#3478f6);
+ font-size:13px;
+ cursor:pointer;
+ text-decoration:none;
+ transition:transform .15s,background .15s,border-color .15s
+}
+.kanban-stage-btn:hover{
+ transform:scale(1.12);
+ background:color-mix(in srgb,var(--btn-stage-color,#3478f6) 18%,transparent);
+ border-color:color-mix(in srgb,var(--btn-stage-color,#3478f6) 50%,transparent)
+}
+.kanban-stage-btn:active{
+ transform:scale(0.95)
+}
+@media(max-width:760px){
+ .kanban-stage-btn{width:26px;height:26px;font-size:12px}
+}
+/* KANBAN STAGE TRANSITION BUTTONS END */
 
 
 
@@ -748,20 +1244,6 @@ main{
   )!important
 }
 
-.kanban-drag-hint{
- padding:9px 11px;
- border-bottom:1px dashed #e0e4eb;
- background:#fbfcfd;
- color:#7a8495;
- font-size:9px;
- font-weight:800;
- line-height:1.6;
- text-align:center
-}
-
-.kanban-drag-hint strong{
- color:#48566b
-}
 
 .kanban-followup-modal{
  position:fixed;
@@ -839,6 +1321,67 @@ main{
  flex:1;
  border:0;
  background:#f5f6f8
+}
+
+html.dark-mode .kanban-followup-dialog,
+html.crm-monochrome.dark-mode .kanban-followup-dialog {
+ background: #18181b !important;
+ border-color: rgba(255, 255, 255, 0.12) !important;
+ box-shadow: 0 30px 90px rgba(0, 0, 0, 0.8) !important;
+}
+
+html.dark-mode .kanban-followup-modal-head,
+html.crm-monochrome.dark-mode .kanban-followup-modal-head {
+ background: #18181b !important;
+ border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-mode .kanban-followup-modal-title h3,
+html.crm-monochrome.dark-mode .kanban-followup-modal-title h3 {
+ color: #f4f4f5 !important;
+}
+
+html.dark-mode .kanban-followup-modal-title p,
+html.crm-monochrome.dark-mode .kanban-followup-modal-title p {
+ color: #a1a1aa !important;
+}
+
+html.dark-mode .kanban-followup-close,
+html.crm-monochrome.dark-mode .kanban-followup-close {
+ background: #27272a !important;
+ border-color: rgba(255, 255, 255, 0.12) !important;
+ color: #e4e4e7 !important;
+}
+
+html.dark-mode .kanban-followup-close:hover,
+html.crm-monochrome.dark-mode .kanban-followup-close:hover {
+ background: #3f3f46 !important;
+ color: #fff !important;
+}
+
+html.dark-mode .kanban-followup-frame,
+html.crm-monochrome.dark-mode .kanban-followup-frame {
+ background: #09090b !important;
+}
+
+html.crm-monochrome:not(.dark-mode) .kanban-followup-dialog {
+ background: #fff !important;
+ border-color: #e5e5e5 !important;
+}
+html.crm-monochrome:not(.dark-mode) .kanban-followup-modal-head {
+ background: #fafafa !important;
+ border-bottom-color: #e5e5e5 !important;
+}
+html.crm-monochrome:not(.dark-mode) .kanban-followup-modal-title h3 {
+ color: #171717 !important;
+}
+html.crm-monochrome:not(.dark-mode) .kanban-followup-close {
+ background: #f5f5f5 !important;
+ border-color: #e5e5e5 !important;
+ color: #171717 !important;
+}
+html.crm-monochrome:not(.dark-mode) .kanban-followup-frame {
+ background: #fafafa !important;
 }
 
 body.kanban-modal-open{
@@ -1036,50 +1579,114 @@ body.kanban-modal-open{
 <body>
 @include('partials.page-loader')
 
-<header class="topbar">
- <a class="brand" href="{{ route('dashboard') }}">
-  <img src="{{ asset('images/sokrat-pro-tech.png') }}" alt="Sokrat PRO">
-  <span>
-   <strong>SokratCRM</strong>
-   <small>{{ __('crm.crm_subtitle') }}</small>
-  </span>
- </a>
+<div class="crm-app app">
+    @include('partials.crm-sidebar')
 
- <div class="top-actions">
-  <a class="btn light" href="{{ route('dashboard') }}"><i class="bi bi-arrow-right"></i> {{ __('crm.dashboard') }}</a>
-  @can('leads.create')
-  <a class="btn" href="{{ route('v2.leads.create') }}"
-   data-kanban-create-popup
-   draggable="false"><i class="bi bi-plus-lg"></i> {{ __('crm.add_lead_short') }}</a>
-  @endcan
- </div>
-</header>
+    <main class="crm-main main kanban-main">
+        <header class="topbar">
+            <div class="topbar-left">
+                <div>
+                    <h1>{{ __('crm.kanban_view') }}</h1>
+                </div>
+            </div>
 
-<main>
- <section class="page-head">
-  <div>
-   <h1>Kanban View</h1>
-   <p>
-    {{ __('crm.kanban_subtitle') }}
-   </p>
+            <div class="top-actions">
+                <div class="summary">
+                    <span>
+                        {{ __('crm.total_leads') }}
+                        <b>{{ number_format($totalLeads) }}</b>
+                    </span>
+                    <span>
+                        {{ __('crm.status_count') }}
+                        <b>{{ count($kanbanColumns) }}</b>
+                    </span>
+                </div>
+
+
+                @include('partials.profile-dropdown')
+            </div>
+        </header>
+ <section class="kanban-toolbar" aria-label="{{ __('crm.filter_leads') }}">
+  <div class="kanban-toolbar-main">
+   <div class="kanban-search-box">
+    <i class="bi bi-search kanban-search-icon" aria-hidden="true"></i>
+    <input
+     type="search"
+     id="kanbanSearchInput"
+     class="kanban-search-input"
+     placeholder="{{ __('crm.lead_search_placeholder') }}"
+     aria-label="{{ __('crm.lead_search_placeholder') }}"
+     autocomplete="off"
+    >
+    <button type="button" id="kanbanSearchClear" class="kanban-search-clear" aria-label="{{ __('crm.close') }}" style="display:none;">
+     <i class="bi bi-x-circle-fill"></i>
+    </button>
+   </div>
+
+   <div class="kanban-filter-select-wrap">
+    <label for="kanbanScopeFilterSelect" class="kanban-filter-label">
+     <i class="bi bi-calendar-event"></i>
+     <span>{{ __('crm.period') }}:</span>
+    </label>
+    <select id="kanbanScopeFilterSelect" class="kanban-filter-select" aria-label="{{ __('crm.period') }}">
+     <option value="all">{{ __('crm.all_leads') }}</option>
+     <option value="today">{{ __('crm.today') }}</option>
+     <option value="overdue">{{ __('crm.overdue') }}</option>
+     <option value="upcoming">{{ __('crm.upcoming') }}</option>
+     <option value="no_date">{{ __('crm.no_date') }}</option>
+    </select>
+   </div>
+
+   <div class="kanban-filter-select-wrap">
+    <label for="kanbanEmployeeFilterSelect" class="kanban-filter-label">
+     <i class="bi bi-person-badge"></i>
+     <span>{{ __('crm.employee') }}:</span>
+    </label>
+    <select id="kanbanEmployeeFilterSelect" class="kanban-filter-select" aria-label="{{ __('crm.employee') }}">
+     <option value="">{{ __('crm.all_employees') }}</option>
+     @if (isset($employees))
+      @foreach ($employees as $emp)
+       <option value="{{ $emp->id }}" data-name="{{ $emp->name }}">{{ $emp->name }}</option>
+      @endforeach
+     @endif
+    </select>
+   </div>
+
+   <div class="kanban-filter-select-wrap">
+    <label for="kanbanLimitSelect" class="kanban-filter-label">
+     <i class="bi bi-list-ol"></i>
+     <span>{{ __('crm.leads_per_column') }}:</span>
+    </label>
+    <select id="kanbanLimitSelect" class="kanban-filter-select" aria-label="{{ __('crm.leads_per_column') }}">
+     <option value="5">5</option>
+     <option value="10" selected>10</option>
+     <option value="15">15</option>
+     <option value="25">25</option>
+     <option value="50">50</option>
+     <option value="all">{{ __('crm.all') }}</option>
+    </select>
+   </div>
+
+   <button
+    type="button"
+    id="kanbanResetFiltersBtn"
+    class="kanban-reset-btn"
+    style="display:none;"
+    title="{{ __('crm.reset_filters') }}"
+   >
+    <i class="bi bi-x-circle"></i>
+    <span>{{ __('crm.clear_filters') }}</span>
+   </button>
   </div>
 
-  <div class="summary">
-   <span>
-    {{ __('crm.total_leads') }}
-    <b>
-     {{ number_format($totalLeads) }}
-    </b>
-   </span>
-
-   <span>
-    {{ __('crm.status_count') }}
-    <b>
-     {{ count($kanbanColumns) }}
-    </b>
+  <div class="kanban-toolbar-status" id="kanbanToolbarStatus" style="display:none;">
+   <span class="kanban-filter-badge">
+    <i class="bi bi-funnel-fill"></i>
+    <span id="kanbanFilterCountText"></span>
    </span>
   </div>
  </section>
+
 
  <section class="board-shell">
   <div
@@ -1147,11 +1754,6 @@ body.kanban-modal-open{
       </span>
      </header>
 
-     <div class="kanban-drag-hint">
-      {{ __('crm.drag_hint_title') }}
-      <strong>{{ __('crm.confirm_transfer') }}</strong>
-      {{ __('crm.drag_hint_end') }}
-     </div>
 
           @if (!$kanbanDirectStatus)
 <div class="kanban-followup-toolbar">
@@ -1334,17 +1936,23 @@ body.kanban-modal-open{
           draggable="{{ auth()->user()->can('leads.followups.create') ? 'true' : 'false' }}"
           data-kanban-lead="{{ $lead->id }}"
           data-kanban-lead-name="{{ $lead->name }}"
+          data-kanban-lead-phone="{{ $lead->phone }}"
+          data-kanban-lead-company="{{ $lead->company_name ?: $lead->source }}"
+          data-kanban-lead-employee="{{ $lead->assignedUser?->name ?? $lead->assigned_employee }}"
+          data-kanban-lead-employee-id="{{ $lead->assigned_user_id ?? '' }}"
+          data-kanban-lead-scope="{{ $lead->next_follow_up_at ? $scope : 'no_date' }}"
+          data-kanban-lead-has-date="{{ $lead->next_follow_up_at ? '1' : '0' }}"
           data-current-status-id="{{ $lead->lead_status_id ?? ($column['status_id'] ?? '') }}"
           data-current-status-name="{{ $lead->status?->name_ar ?? $column['name'] }}"
           data-followup-url="{{ route(
            'v2.leads.followups.index',
            $lead
           ) }}"
-          data-kanban-lead-scope="{{ $scope }}"
           style="
            --card-stage-color:
             {{ $column['stage_color'] }};
           "
+          data-stage-position="{{ $column['position'] ?? 0 }}"
          >
           <div class="kanban-card-head">
            <a
@@ -1363,6 +1971,31 @@ body.kanban-modal-open{
              ?: $column['name']
             }}
            </span>
+          </div>
+
+          {{-- Stage progress stepper --}}
+          <div class="kanban-stage-stepper">
+           @foreach ($kanbanColumns as $stepIdx => $stepCol)
+            @if ($stepIdx > 0)
+             <span class="kanban-stepper-line{{ ($column['position'] ?? 0) > ($kanbanColumns[$stepIdx - 1]['position'] ?? 0) ? ' completed' : '' }}"></span>
+            @endif
+            @php
+             $stepPos = $stepCol['position'] ?? $stepIdx;
+             $curPos = $column['position'] ?? 0;
+             $stepClass = $stepPos === $curPos ? 'active' : ($stepPos < $curPos ? 'completed' : '');
+             $stepShort = match($stepCol['code']) {
+              'new' => 'ج',
+              'no_answer' => 'ل',
+              'not_interested' => 'غ',
+              'donor' => 'م',
+              default => mb_substr($stepCol['name'], 0, 1),
+             };
+            @endphp
+            <span class="kanban-stepper-step {{ $stepClass }}">
+             <span class="kanban-stepper-dot {{ $stepClass }}"></span>
+             <span class="kanban-stepper-label">{{ $stepShort }}</span>
+            </span>
+           @endforeach
           </div>
 
           <div class="kanban-card-info">
@@ -1431,35 +2064,46 @@ body.kanban-modal-open{
 
           <div class="kanban-card-actions">
            @if ($lead->phone)
+            @php
+             $phoneClean = preg_replace('/[^0-9+]/', '', (string) $lead->phone);
+            @endphp
             <a
              class="btn call"
              @can('leads.followups.create')
-             data-kanban-call-dial-popup
-             data-followup-url="{{ route(
+             data-transition-popup="{{ route(
               'v2.leads.followups.index',
-              $lead
+              ['lead' => $lead, 'channel' => 'call']
              ) }}"
+             data-transition-context="kanban"
+             data-lead-name="{{ $lead->name }}"
              @endcan
-             data-tel-href="tel:{{
-              preg_replace(
-               '/[^0-9+]/',
-               '',
-               (string) $lead->phone
-              )
-             }}"
-             href="tel:{{
-              preg_replace(
-               '/[^0-9+]/',
-               '',
-               (string) $lead->phone
-              )
-             }}"
+             data-sip-href="sip:{{ $phoneClean }}"
+             href="sip:{{ $phoneClean }}"
              draggable="false"
-             title="{{ __('crm.call_and_log_followup') }}"
+             title="{{ __('crm.call_via_microsip') }}"
             >
              <i class="bi bi-telephone-outbound-fill"></i> {{ __('crm.call') }}
             </a>
            @endif
+
+           @can('leads.followups.create')
+           <a
+            class="btn donation"
+            href="{{ route(
+             'v2.leads.followups.index',
+             [$lead, 'make_donation' => 1]
+            ) }}"
+            data-transition-popup="{{ route(
+             'v2.leads.followups.index',
+             [$lead, 'make_donation' => 1]
+            ) }}"
+            data-transition-context="kanban"
+            data-lead-name="{{ $lead->name }}"
+            title="{{ __('crm.record_donation') }}"
+           >
+            <i class="bi bi-heart-fill"></i> {{ __('crm.record_donation') }}
+           </a>
+           @endcan
 
            <a
             class="btn light"
@@ -1467,26 +2111,57 @@ body.kanban-modal-open{
              'v2.leads.show',
              $lead
             ) }}"
-           
-             data-kanban-customer-popup
-             draggable="false">
+            data-kanban-customer-popup
+            draggable="false">
             <i class="bi bi-eye"></i> {{ __('crm.view_lead') }}
            </a>
 
            @can('leads.followups.create')
            <a
-            class="btn"
+            class="btn light"
             href="{{ route(
              'v2.leads.followups.index',
              $lead
             ) }}"
-           
-             data-kanban-followup-popup
-             draggable="false">
+            data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+            data-transition-context="kanban"
+            data-lead-name="{{ $lead->name }}"
+            draggable="false">
             <i class="bi bi-plus-circle"></i> {{ __('crm.log_followup') }}
            </a>
            @endcan
           </div>
+
+          {{-- Stage transition buttons --}}
+          @can('leads.followups.create')
+          <div class="kanban-stage-transitions">
+           @php
+            $transitionStages = [
+             'new' => ['icon' => 'bi-plus-circle', 'color' => '#3478f6'],
+             'no_answer' => ['icon' => 'bi-telephone-x', 'color' => '#e59b16'],
+             'not_interested' => ['icon' => 'bi-x-circle', 'color' => '#dc2637'],
+             'donor' => ['icon' => 'bi-heart', 'color' => '#16a34a'],
+            ];
+           @endphp
+           @foreach ($kanbanColumns as $targetCol)
+            @if ($targetCol['code'] !== $column['code'])
+             <a
+              class="kanban-stage-btn"
+              style="--btn-stage-color:{{ $transitionStages[$targetCol['code']]['color'] ?? $targetCol['stage_color'] }}"
+              href="{{ route('v2.leads.followups.index', [$lead, 'kanban_popup' => 1, 'target_status_code' => $targetCol['code']]) }}"
+              data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'target_status_code' => $targetCol['code']]) }}"
+              data-transition-context="kanban"
+              data-lead-name="{{ $lead->name }}"
+              data-transition-description="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
+              draggable="false"
+              title="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
+             >
+              <i class="bi {{ $transitionStages[$targetCol['code']]['icon'] ?? 'bi-arrow-right-circle' }}"></i>
+             </a>
+            @endif
+           @endforeach
+          </div>
+          @endcan
          </article>
         @empty
          <div class="kanban-scope-empty">
@@ -1506,6 +2181,27 @@ body.kanban-modal-open{
        </div>
       @endforeach
      </div>
+     <footer class="kanban-column-pagination" data-kanban-pagination>
+      <button
+       type="button"
+       class="kanban-page-btn"
+       data-page-action="prev"
+       title="{{ __('crm.previous') }}"
+       aria-label="{{ __('crm.previous') }}"
+      >
+       <i class="bi bi-chevron-right ltr:rotate-180"></i>
+      </button>
+      <span class="kanban-page-info" data-page-info>1 / 1</span>
+      <button
+       type="button"
+       class="kanban-page-btn"
+       data-page-action="next"
+       title="{{ __('crm.next') }}"
+       aria-label="{{ __('crm.next') }}"
+      >
+       <i class="bi bi-chevron-left ltr:rotate-180"></i>
+      </button>
+     </footer>
     </article>
    @endforeach
   </div>
@@ -1551,7 +2247,7 @@ body.kanban-modal-open{
    class="kanban-followup-frame"
    id="crmKanbanUtilityFrame"
    src="about:blank"
-   title="Kanban Popup"
+   title="{{ __('crm.kanban_popup') }}"
   ></iframe>
  </div>
 </div>
@@ -1601,47 +2297,7 @@ body.kanban-modal-open{
 <!-- CRM KANBAN CARD ACTION MODAL END -->
 
 
-<!-- CRM KANBAN FOLLOWUP MODAL START -->
-<div
- class="kanban-followup-modal"
- id="crmKanbanFollowupModal"
- role="dialog"
- aria-modal="true"
- aria-hidden="true"
- aria-labelledby="crmKanbanFollowupTitle"
->
- <div class="kanban-followup-dialog">
-  <header class="kanban-followup-modal-head">
-   <div class="kanban-followup-modal-title">
-    <h3 id="crmKanbanFollowupTitle">
-     {{ __('crm.log_followup_and_change_status') }}
-    </h3>
-
-    <p id="crmKanbanFollowupDescription">
-     {{ __('crm.status_change_notice') }}
-    </p>
-   </div>
-
-   <button
-    class="kanban-followup-close"
-    id="crmKanbanFollowupClose"
-    type="button"
-    aria-label="{{ __('crm.cancel_and_close') }}"
-    title="{{ __('crm.close') }}"
-   >
-    ×
-   </button>
-  </header>
-
-  <iframe
-   class="kanban-followup-frame"
-   id="crmKanbanFollowupFrame"
-   src="about:blank"
-   title="{{ __('crm.log_lead_followup') }}"
-  ></iframe>
- </div>
-</div>
-<!-- CRM KANBAN FOLLOWUP MODAL END -->
+@include('partials.transition-popup')
 
 <div
  class="kanban-drag-toast"
@@ -1748,30 +2404,6 @@ document.addEventListener(
 <!-- CRM KANBAN DRAG DROP JS START -->
 <script>
 (() => {
- const modal =
-  document.getElementById(
-   'crmKanbanFollowupModal'
-  );
-
- const frame =
-  document.getElementById(
-   'crmKanbanFollowupFrame'
-  );
-
- const closeButton =
-  document.getElementById(
-   'crmKanbanFollowupClose'
-  );
-
- const modalTitle =
-  document.getElementById(
-   'crmKanbanFollowupTitle'
-  );
-
- const modalDescription =
-  document.getElementById(
-   'crmKanbanFollowupDescription'
-  );
 
  const toast =
   document.getElementById(
@@ -1780,7 +2412,6 @@ document.addEventListener(
 
  let dragData = null;
  let toastTimer = null;
- let callPopupActive = false;
 
  const clearDropTargets = () => {
   document
@@ -1821,343 +2452,50 @@ document.addEventListener(
     2600
    );
  };
+ window.showKanbanToast = showToast;
 
- const closeModal = () => {
-  if (!modal || !frame) {
+ try {
+  const pendingToast = sessionStorage.getItem('crm_kanban_toast');
+  if (pendingToast) {
+   sessionStorage.removeItem('crm_kanban_toast');
+   showToast(pendingToast);
+  }
+ } catch (e) {}
+
+ const openFollowupModal = (targetColumn) => {
+  if (!dragData || !window.crmTransitionPopup) {
    return;
   }
 
-  modal.classList.remove(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'true'
-  );
-
-  document.body.classList.remove(
-   'kanban-modal-open'
-  );
-
-  frame.src = 'about:blank';
-
-  dragData = null;
-  callPopupActive = false;
- };
-
- const openFollowupModal = (
-  targetColumn
- ) => {
-  callPopupActive = false;
-
-  if (
-   !dragData
-   || !modal
-   || !frame
-  ) {
-   return;
-  }
-
-  const targetStatusId =
-   targetColumn.dataset
-    .kanbanStatusId || '';
-
-  const targetStatusName =
-   targetColumn.dataset
-    .kanbanStatusName || '';
+  const targetStatusId = targetColumn.dataset.kanbanStatusId || '';
+  const targetStatusName = targetColumn.dataset.kanbanStatusName || '';
 
   if (!targetStatusId) {
-   showToast(
-    @json(__('crm.stage_has_no_status_for_transfer'))
-   );
-
+   showToast(@json(__('crm.stage_has_no_status_for_transfer')));
    dragData = null;
    return;
   }
 
-  if (
-   String(
-    dragData.currentStatusId
-   )
-   === String(
-    targetStatusId
-   )
-  ) {
-   showToast(
-    @json(__('crm.lead_already_in_status'))
-   );
-
+  if (String(dragData.currentStatusId) === String(targetStatusId)) {
+   showToast(@json(__('crm.lead_already_in_status')));
    dragData = null;
    return;
   }
 
-  const url = new URL(
-   dragData.followupUrl,
-   window.location.href
-  );
+  const url = new URL(dragData.followupUrl, window.location.href);
+  url.searchParams.set('target_status_id', targetStatusId);
+  url.searchParams.set('context', 'kanban');
 
-  url.searchParams.set(
-   'kanban_popup',
-   '1'
-  );
+  const heading = @json(__('crm.move_lead_to'))
+   .replace(':lead', dragData.leadName)
+   .replace(':status', targetStatusName);
+  const description = @json(__('crm.from_status_to_status_notice'))
+   .replace(':from', dragData.currentStatusName)
+   .replace(':to', targetStatusName);
 
-  url.searchParams.set(
-   'target_status_id',
-   targetStatusId
-  );
-
-  if (modalTitle) {
-   modalTitle.textContent =
-    @json(__('crm.move_lead_to'))
-     .replace(':lead', dragData.leadName)
-     .replace(':status', targetStatusName);
-  }
-
-  if (modalDescription) {
-   modalDescription.textContent =
-    @json(__('crm.from_status_to_status_notice'))
-     .replace(':from', dragData.currentStatusName)
-     .replace(':to', targetStatusName);
-  }
-
-  frame.src =
-   url.toString();
-
-  modal.classList.add(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'false'
-  );
-
-  document.body.classList.add(
-   'kanban-modal-open'
-  );
- };
-
-
- /* CRM KANBAN CALL POPUP START */
-
- const openCallFollowupModal = (
-  button
- ) => {
-  if (
-   !modal
-   || !frame
-   || !button
-  ) {
-   return;
-  }
-
-  const card =
-   button.closest(
-    '[data-kanban-lead]'
-   );
-
-  if (!card) {
-   return;
-  }
-
-  const followupUrl =
-   button.dataset
-    .followupUrl
-   || card.dataset
-    .followupUrl
-   || '';
-
-  if (!followupUrl) {
-   return;
-  }
-
-  const leadName =
-   card.dataset
-    .kanbanLeadName
-   || @json(__('crm.client'));
-
-  const currentStatusName =
-   card.dataset
-    .currentStatusName
-   || '';
-
-  const url = new URL(
-   followupUrl,
-   window.location.href
-  );
-
-  url.searchParams.set(
-   'kanban_popup',
-   '1'
-  );
-
-  url.searchParams.set(
-   'channel',
-   'call'
-  );
-
-  /*
-   * No target_status_id here.
-   * A call follow-up starts from the current
-   * status and allows the employee to choose
-   * a different status before saving.
-   */
-  url.searchParams.delete(
-   'target_status_id'
-  );
-
-  callPopupActive = true;
+  window.crmTransitionPopup.open(url.toString(), heading, description, 'kanban');
   dragData = null;
-
-  if (modalTitle) {
-   modalTitle.textContent =
-    @json(__('crm.log_call_followup_for'))
-     .replace(':name', leadName);
-  }
-
-  if (modalDescription) {
-   modalDescription.textContent =
-    currentStatusName
-     ? (
-      @json(__('crm.current_status_prefix'))
-      + currentStatusName
-      + ' — '
-      + @json(__('crm.change_status_after_call_hint'))
-     )
-     : @json(__('crm.log_call_result_hint'));
-  }
-
-  frame.src =
-   url.toString();
-
-  modal.classList.add(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'false'
-  );
-
-  document.body.classList.add(
-   'kanban-modal-open'
-  );
  };
-
- /*
-  * Drag/drop popup deliberately locks the
-  * destination status.
-  *
-  * Call popup uses the same follow-up screen,
-  * but unlocks the status selector because the
-  * employee may change the customer's status
-  * after the telephone call.
-  */
- frame?.addEventListener(
-  'load',
-  () => {
-   if (!callPopupActive) {
-    return;
-   }
-
-   try {
-    const doc =
-     frame.contentDocument;
-
-    if (!doc) {
-     return;
-    }
-
-    const statusSelect =
-     doc.getElementById(
-      'lead_status_id'
-     );
-
-    if (statusSelect) {
-     statusSelect.disabled = false;
-
-     const hiddenStatus =
-      doc.querySelector(
-       'input[type="hidden"]'
-       + '[name="lead_status_id"]'
-      );
-
-     hiddenStatus?.remove();
-
-     const field =
-      statusSelect.closest(
-       '.field'
-      );
-
-     const helper =
-      field?.querySelector(
-       'small'
-      );
-
-     if (helper) {
-      helper.textContent =
-       @json(__('crm.change_status_after_call_hint'));
-     }
-    }
-
-    const communicationSelect =
-     doc.getElementById(
-      'communication_type'
-     );
-
-    if (communicationSelect) {
-     communicationSelect.value =
-      'call';
-
-     communicationSelect
-      .dispatchEvent(
-       new Event(
-        'change',
-        {
-         bubbles:true
-        }
-       )
-      );
-    }
-   } catch (error) {
-    console.error(
-     'Unable to prepare call follow-up popup.',
-     error
-    );
-   }
-  }
- );
-
- document
-  .querySelectorAll(
-   '[data-kanban-call]'
-  )
-  .forEach(
-   (button) => {
-    button.addEventListener(
-     'click',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      openCallFollowupModal(
-       button
-      );
-     }
-    );
-
-    button.addEventListener(
-     'dragstart',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-     }
-    );
-   }
-  );
-
- /* CRM KANBAN CALL POPUP END */
 
  document
   .querySelectorAll(
@@ -2267,701 +2605,81 @@ document.addEventListener(
    }
   );
 
- closeButton?.addEventListener(
-  'click',
-  closeModal
- );
-
- modal?.addEventListener(
-  'click',
-  (event) => {
-   if (event.target === modal) {
-    closeModal();
-   }
-  }
- );
-
- document.addEventListener(
-  'keydown',
-  (event) => {
-   if (
-    event.key === 'Escape'
-    && modal?.classList.contains(
-     'open'
-    )
-   ) {
-    closeModal();
-   }
-  }
- );
-
- window.addEventListener(
-  'message',
-  (event) => {
-   if (
-    event.origin
-    !== window.location.origin
-   ) {
-    return;
-   }
-
-   if (
-    event.data?.type
-    !== 'crm-kanban-followup-saved'
-   ) {
-    return;
-   }
-
-   if (modalTitle) {
-    modalTitle.textContent =
-     @json(__('crm.followup_saved_successfully'));
-   }
-
-   if (modalDescription) {
-    modalDescription.textContent =
-     @json(__('crm.updating_kanban_now'));
-   }
-
-   window.setTimeout(
-    () => {
-     window.location.reload();
-    },
-    250
-   );
-  }
- );
 })();
 </script>
 <!-- CRM KANBAN DRAG DROP JS END -->
 
 
-<!-- CRM KANBAN CALL DIALER AND POPUP START -->
+
+
+<!-- CRM KANBAN CUSTOMER DETAIL POPUP START -->
 <script>
 (() => {
- const modal =
-  document.getElementById(
-   'crmKanbanFollowupModal'
-  );
+ const modal = document.getElementById('crmKanbanActionModal');
+ const frame = document.getElementById('crmKanbanActionFrame');
+ const closeButton = document.getElementById('crmKanbanActionClose');
+ const title = document.getElementById('crmKanbanActionTitle');
+ const description = document.getElementById('crmKanbanActionDescription');
 
- const frame =
-  document.getElementById(
-   'crmKanbanFollowupFrame'
-  );
-
- const title =
-  document.getElementById(
-   'crmKanbanFollowupTitle'
-  );
-
- const description =
-  document.getElementById(
-   'crmKanbanFollowupDescription'
-  );
-
- let activeCallPopup = false;
-
- const prepareCallPopup = (
-  button
- ) => {
-  if (
-   !button
-   || !modal
-   || !frame
-  ) {
-   return false;
-  }
-
-  const card =
-   button.closest(
-    '[data-kanban-lead]'
-   );
-
-  if (!card) {
-   return false;
-  }
-
-  const followupUrl =
-   button.dataset.followupUrl
-   || card.dataset.followupUrl
-   || '';
-
-  if (!followupUrl) {
-   return false;
-  }
-
-  const leadName =
-   card.dataset.kanbanLeadName
-   || @json(__('crm.client'));
-
-  const currentStatus =
-   card.dataset.currentStatusName
-   || '';
-
-  const url = new URL(
-   followupUrl,
-   window.location.href
-  );
-
-  url.searchParams.set(
-   'kanban_popup',
-   '1'
-  );
-
-  url.searchParams.set(
-   'channel',
-   'call'
-  );
-
-  /*
-   * A normal CALL follow-up starts from
-   * the current status.
-   * It is not a drag/drop destination.
-   */
-  url.searchParams.delete(
-   'target_status_id'
-  );
-
-  if (title) {
-   title.textContent =
-    @json(__('crm.log_call_followup_for'))
-     .replace(':name', leadName);
-  }
-
-  if (description) {
-   description.textContent =
-    currentStatus
-     ? (
-      @json(__('crm.current_status_prefix'))
-      + currentStatus
-      + ' — '
-      + @json(__('crm.log_call_result_hint'))
-     )
-     : @json(__('crm.log_call_result_hint'));
-  }
-
-  activeCallPopup = true;
-
-  frame.src =
-   url.toString();
-
-  modal.classList.add(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'false'
-  );
-
-  document.body.classList.add(
-   'kanban-modal-open'
-  );
-
-  return true;
- };
-
- /*
-  * Drag/drop popup locks the destination status.
-  * A telephone call is different:
-  * employee can change the status after talking
-  * with the customer.
-  */
- frame?.addEventListener(
-  'load',
-  () => {
-   if (!activeCallPopup) {
-    return;
-   }
-
-   try {
-    const doc =
-     frame.contentDocument;
-
-    if (!doc) {
-     return;
-    }
-
-    const statusSelect =
-     doc.getElementById(
-      'lead_status_id'
-     );
-
-    if (statusSelect) {
-     statusSelect.disabled = false;
-
-     const hiddenStatus =
-      doc.querySelector(
-       'input[type="hidden"]'
-       + '[name="lead_status_id"]'
-      );
-
-     hiddenStatus?.remove();
-
-     const field =
-      statusSelect.closest(
-       '.field'
-      );
-
-     const helper =
-      field?.querySelector(
-       'small'
-      );
-
-     if (helper) {
-      helper.textContent =
-       @json(__('crm.change_status_after_call_end_hint'));
-    }
-
-    const communicationSelect =
-     doc.getElementById(
-      'communication_type'
-     );
-
-    if (communicationSelect) {
-     communicationSelect.value =
-      'call';
-
-     communicationSelect
-      .dispatchEvent(
-       new Event(
-        'change',
-        {
-         bubbles:true
-        }
-       )
-      );
-    }
-   } catch (error) {
-    console.error(
-     'Unable to prepare call popup.',
-     error
-    );
-   }
-  }
- );
-
- document
-  .querySelectorAll(
-   '[data-kanban-call-dial-popup]'
-  )
-  .forEach(
-   (button) => {
-    button.addEventListener(
-     'click',
-     (event) => {
-      event.preventDefault();
-      event.stopImmediatePropagation();
-
-      const telHref =
-       button.dataset.telHref
-       || button.getAttribute(
-        'href'
-       )
-       || '';
-
-      /*
-       * Open the CRM popup FIRST.
-       * Then invoke the operating-system
-       * telephone handler.
-       *
-       * On mobile the dialer may come to the
-       * foreground. When the employee returns
-       * to the browser, the follow-up popup
-       * remains open.
-       */
-      const popupOpened =
-       prepareCallPopup(
-        button
-       );
-
-      if (!popupOpened) {
-       if (telHref) {
-        window.location.href =
-         telHref;
-       }
-
-       return;
-      }
-
-      if (telHref) {
-       window.setTimeout(
-        () => {
-         window.location.href =
-          telHref;
-        },
-        180
-       );
-      }
-     },
-     true
-    );
-
-    button.addEventListener(
-     'dragstart',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-     }
-    );
-   }
-  );
-
- window.addEventListener(
-  'message',
-  (event) => {
-   if (
-    event.origin
-    !== window.location.origin
-   ) {
-    return;
-   }
-
-   if (
-    event.data?.type
-    === 'crm-kanban-followup-saved'
-   ) {
-    activeCallPopup = false;
-   }
-  }
- );
-})();
-</script>
-<!-- CRM KANBAN CALL DIALER AND POPUP END -->
-
-
-<!-- CRM KANBAN CARD ACTION POPUPS V2 START -->
-<script>
-(() => {
- const modal =
-  document.getElementById(
-   'crmKanbanActionModal'
-  );
-
- const frame =
-  document.getElementById(
-   'crmKanbanActionFrame'
-  );
-
- const closeButton =
-  document.getElementById(
-   'crmKanbanActionClose'
-  );
-
- const title =
-  document.getElementById(
-   'crmKanbanActionTitle'
-  );
-
- const description =
-  document.getElementById(
-   'crmKanbanActionDescription'
-  );
-
- if (
-  !modal
-  || !frame
- ) {
-  return;
- }
-
- let popupMode = '';
+ if (!modal || !frame) return;
 
  const closePopup = () => {
-  modal.classList.remove(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'true'
-  );
-
-  document.body.classList.remove(
-   'kanban-modal-open'
-  );
-
+  modal.classList.remove('open');
+  modal.setAttribute('aria-hidden', 'true');
+  document.body.classList.remove('kanban-modal-open');
   frame.src = 'about:blank';
-
-  popupMode = '';
  };
 
- const openPopup = (
-  url,
-  heading,
-  subheading,
-  mode
- ) => {
-  popupMode = mode;
-
-  if (title) {
-   title.textContent =
-    heading;
-  }
-
-  if (description) {
-   description.textContent =
-    subheading;
-  }
-
+ const openPopup = (url, heading, subheading) => {
+  if (title) title.textContent = heading;
+  if (description) description.textContent = subheading;
   frame.src = url;
-
-  modal.classList.add(
-   'open'
-  );
-
-  modal.setAttribute(
-   'aria-hidden',
-   'false'
-  );
-
-  document.body.classList.add(
-   'kanban-modal-open'
-  );
+  modal.classList.add('open');
+  modal.setAttribute('aria-hidden', 'false');
+  document.body.classList.add('kanban-modal-open');
  };
 
- /*
-  * Follow-up popup uses the compact popup
-  * version of the existing follow-up page.
-  *
-  * The generic follow-up button is NOT a
-  * drag/drop operation, so the status selector
-  * must remain editable.
-  */
- frame.addEventListener(
-  'load',
-  () => {
-   if (
-    popupMode !== 'followup'
-   ) {
-    return;
-   }
-
-   try {
-    const doc =
-     frame.contentDocument;
-
-    if (!doc) {
-     return;
-    }
-
-    const statusSelect =
-     doc.getElementById(
-      'lead_status_id'
-     );
-
-    if (statusSelect) {
-     statusSelect.disabled = false;
-
-     const hiddenStatus =
-      doc.querySelector(
-       'input[type="hidden"]'
-       + '[name="lead_status_id"]'
-      );
-
-     hiddenStatus?.remove();
-
-     const field =
-      statusSelect.closest(
-       '.field'
-      );
-
-     const helper =
-      field?.querySelector(
-       'small'
-      );
-
-     if (helper) {
-      helper.textContent =
-       @json(__('crm.select_status_then_save_hint'));
-    }
-   } catch (error) {
-    console.error(
-     'Unable to prepare follow-up popup.',
-     error
-    );
-   }
-  }
- );
-
  document
-  .querySelectorAll(
-   '[data-kanban-followup-popup]'
-  )
-  .forEach(
-   (button) => {
-    button.addEventListener(
-     'click',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
+  .querySelectorAll('[data-kanban-customer-popup]')
+  .forEach((button) => {
+   button.addEventListener('click', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
 
-      const href =
-       button.getAttribute(
-        'href'
-       );
+    const href = button.getAttribute('href');
+    if (!href) return;
 
-      if (!href) {
-       return;
-      }
+    const card = button.closest('[data-kanban-lead]');
+    const leadName = card?.dataset.kanbanLeadName || @json(__('crm.client'));
+    const statusName = card?.dataset.currentStatusName || '';
 
-      const card =
-       button.closest(
-        '[data-kanban-lead]'
-       );
-
-      const leadName =
-       card?.dataset
-        .kanbanLeadName
-       || @json(__('crm.client'));
-
-      const statusName =
-       card?.dataset
-        .currentStatusName
-       || '';
-
-      const url = new URL(
-       href,
-       window.location.href
-      );
-
-      url.searchParams.set(
-       'kanban_popup',
-       '1'
-      );
-
-      url.searchParams.delete(
-       'target_status_id'
-      );
-
-      openPopup(
-       url.toString(),
-       @json(__('crm.log_followup_for_name'))
-        .replace(':name', leadName),
-       statusName
-        ? (
-         @json(__('crm.current_status_prefix'))
-         + statusName
-         + ' — '
-         + @json(__('crm.log_followup_hint'))
-        )
-        : @json(__('crm.log_followup_hint')),
-       'followup'
-      );
-     }
+    openPopup(
+     new URL(href, window.location.href).toString(),
+     @json(__('crm.view_lead_details_for')).replace(':name', leadName),
+     statusName
+      ? @json(__('crm.current_status_prefix')) + statusName
+      : @json(__('crm.view_lead_details_hint'))
     );
+   });
 
-    button.addEventListener(
-     'dragstart',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-     }
-    );
-   }
-  );
+   button.addEventListener('dragstart', (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+   });
+  });
 
- /*
-  * Customer details use a separate iframe
-  * from the call/drag popup, therefore the
-  * existing call and drag behavior remains
-  * completely isolated.
-  */
- document
-  .querySelectorAll(
-   '[data-kanban-customer-popup]'
-  )
-  .forEach(
-   (button) => {
-    button.addEventListener(
-     'click',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const href =
-       button.getAttribute(
-        'href'
-       );
-
-      if (!href) {
-       return;
-      }
-
-      const card =
-       button.closest(
-        '[data-kanban-lead]'
-       );
-
-      const leadName =
-       card?.dataset
-        .kanbanLeadName
-       || @json(__('crm.client'));
-
-      const statusName =
-       card?.dataset
-        .currentStatusName
-       || '';
-
-      openPopup(
-       new URL(
-        href,
-        window.location.href
-       ).toString(),
-       @json(__('crm.view_lead_details_for'))
-        .replace(':name', leadName),
-       statusName
-        ? (
-         @json(__('crm.current_status_prefix'))
-         + statusName
-        )
-        : @json(__('crm.view_lead_details_hint')),
-       'customer'
-      );
-     }
-    );
-
-    button.addEventListener(
-     'dragstart',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-     }
-    );
-   }
-  );
-
- closeButton?.addEventListener(
-  'click',
-  closePopup
- );
-
- modal.addEventListener(
-  'click',
-  (event) => {
-   if (
-    event.target === modal
-   ) {
-    closePopup();
-   }
+ closeButton?.addEventListener('click', closePopup);
+ modal.addEventListener('click', (event) => {
+  if (event.target === modal) closePopup();
+ });
+ document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && modal.classList.contains('open')) {
+   closePopup();
   }
- );
-
- document.addEventListener(
-  'keydown',
-  (event) => {
-   if (
-    event.key === 'Escape'
-    && modal.classList.contains(
-     'open'
-    )
-   ) {
-    closePopup();
-   }
-  }
- );
+ });
 })();
 </script>
-<!-- CRM KANBAN CARD ACTION POPUPS V2 END -->
+<!-- CRM KANBAN CUSTOMER DETAIL POPUP END -->
 
 
 <!-- CRM KANBAN FIXED TOTAL COUNT START -->
@@ -3170,48 +2888,6 @@ document.addEventListener(
    }
   );
 
- document
-  .querySelectorAll(
-   '[data-kanban-create-popup]'
-  )
-  .forEach(
-   (button) => {
-    button.addEventListener(
-     'click',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-
-      const href =
-       button.getAttribute(
-        'href'
-       );
-
-      if (!href) {
-       return;
-      }
-
-      openPopup(
-       new URL(
-        href,
-        window.location.href
-       ).toString(),
-       @json(__('crm.add_lead')),
-       @json(__('crm.add_new_lead_kanban_desc')),
-       'create'
-      );
-     }
-    );
-
-    button.addEventListener(
-     'dragstart',
-     (event) => {
-      event.preventDefault();
-      event.stopPropagation();
-     }
-    );
-   }
-  );
 
  /*
   * Normal successful creation redirects
@@ -3360,149 +3036,333 @@ document.addEventListener(
 <!-- CRM KANBAN UTILITY POPUPS JS END -->
 
 
-<!-- CRM KANBAN PAGE SIZE 15 V7 JS START -->
+<!-- CRM KANBAN FILTER & PAGINATION JS START -->
 <script>
 (() => {
- const PAGE_SIZE = 15;
+ const searchInput = document.getElementById('kanbanSearchInput');
+ const searchClear = document.getElementById('kanbanSearchClear');
+ const scopeSelect = document.getElementById('kanbanScopeFilterSelect');
+ const employeeSelect = document.getElementById('kanbanEmployeeFilterSelect');
+ const limitSelect = document.getElementById('kanbanLimitSelect');
+ const resetBtn = document.getElementById('kanbanResetFiltersBtn');
+ const statusToolbar = document.getElementById('kanbanToolbarStatus');
+ const filterCountText = document.getElementById('kanbanFilterCountText');
+ const columns = Array.from(document.querySelectorAll('[data-kanban-column]'));
 
- const getPanelCards = (panel) =>
-  Array.from(
-   panel.children
-  ).filter(
-   (element) =>
-    element.classList.contains(
-     'kanban-card'
-    )
-  );
+ if (!columns.length) return;
 
- const setupPanel = (panel) => {
-  const cards =
-   getPanelCards(panel);
+ let searchQuery = '';
+ let scopeFilter = 'all';
+ let employeeFilter = '';
+ let leadsLimit = 10;
+ const columnPages = new Map();
 
-  /*
-   * 15 or fewer:
-   * show normally, no button needed.
-   */
-  if (
-   cards.length
-   <= PAGE_SIZE
-  ) {
-   return;
+ const normalize = (str) => (str || '').toString().trim().toLowerCase();
+
+ const matchesCard = (card) => {
+  if (searchQuery) {
+   const name = normalize(card.dataset.kanbanLeadName);
+   const phone = normalize(card.dataset.kanbanLeadPhone);
+   const company = normalize(card.dataset.kanbanLeadCompany);
+   const employee = normalize(card.dataset.kanbanLeadEmployee);
+   if (!name.includes(searchQuery) &&
+       !phone.includes(searchQuery) &&
+       !company.includes(searchQuery) &&
+       !employee.includes(searchQuery)) {
+    return false;
+   }
   }
 
-  let visibleCount =
-   PAGE_SIZE;
-
-  const wrap =
-   document.createElement(
-    'div'
-   );
-
-  wrap.className =
-   'kanban-more-wrap';
-
-  wrap.setAttribute(
-   'data-kanban-more-wrap',
-   ''
-  );
-
-  const button =
-   document.createElement(
-    'button'
-   );
-
-  button.type =
-   'button';
-
-  button.className =
-   'kanban-more-btn';
-
-  button.setAttribute(
-   'data-kanban-more',
-   ''
-  );
-
-  const render = () => {
-   cards.forEach(
-    (card, index) => {
-     const visible =
-      index < visibleCount;
-
-     card.hidden =
-      !visible;
-
-     if (visible) {
-      card.removeAttribute(
-       'aria-hidden'
-      );
-     } else {
-      card.setAttribute(
-       'aria-hidden',
-       'true'
-      );
-     }
-    }
-   );
-
-   const remaining =
-    cards.length
-     - visibleCount;
-
-   if (remaining <= 0) {
-    wrap.hidden = true;
-    return;
+  if (employeeFilter) {
+   const empId = card.dataset.kanbanLeadEmployeeId || '';
+   const empName = card.dataset.kanbanLeadEmployee || '';
+   if (empId !== employeeFilter && normalize(empName) !== normalize(employeeFilter)) {
+    return false;
    }
+  }
 
-   wrap.hidden = false;
-
-   const nextBatch =
-    Math.min(
-     PAGE_SIZE,
-     remaining
-    );
-
-   button.textContent =
-    @json(__('crm.more_items'))
-    + ' ('
-    + nextBatch
-    + ')';
-  };
-
-  button.addEventListener(
-   'click',
-   () => {
-    visibleCount =
-     Math.min(
-      visibleCount
-       + PAGE_SIZE,
-      cards.length
-     );
-
-    render();
+  if (scopeFilter !== 'all') {
+   const cardScope = card.dataset.kanbanLeadScope || '';
+   const hasDate = card.dataset.kanbanLeadHasDate === '1';
+   if (scopeFilter === 'no_date') {
+    if (hasDate) return false;
+   } else {
+    if (cardScope !== scopeFilter) return false;
    }
-  );
+  }
 
-  wrap.appendChild(
-   button
-  );
-
-  panel.appendChild(
-   wrap
-  );
-
-  render();
+  return true;
  };
 
- document
-  .querySelectorAll(
-   '.kanban-scope-panel'
-  )
-  .forEach(
-   setupPanel
-  );
+ const updateColumn = (column) => {
+  const visibleCounter = column.querySelector('[data-kanban-visible-count]');
+  const pagination = column.querySelector('[data-kanban-pagination]');
+  const pageInfo = pagination?.querySelector('[data-page-info]');
+  const prevBtn = pagination?.querySelector('[data-page-action="prev"]');
+  const nextBtn = pagination?.querySelector('[data-page-action="next"]');
+  const columnBody = column.querySelector('.column-body');
+
+  const panels = Array.from(column.querySelectorAll('[data-kanban-panel]'));
+  let activeCards = [];
+  const activePanel = panels.find(p => !p.hidden) || panels[0];
+
+  if (activePanel) {
+   activeCards = Array.from(activePanel.querySelectorAll('.kanban-card'));
+  } else {
+   activeCards = Array.from(column.querySelectorAll('.kanban-card'));
+  }
+
+  const matchingCards = [];
+  const nonMatchingCards = [];
+
+  activeCards.forEach(card => {
+   if (matchesCard(card)) {
+    matchingCards.push(card);
+   } else {
+    nonMatchingCards.push(card);
+   }
+  });
+
+  nonMatchingCards.forEach(card => {
+   card.style.display = 'none';
+  });
+
+  const limit = (leadsLimit === 'all' || leadsLimit <= 0) ? Infinity : Number(leadsLimit);
+  const totalItems = matchingCards.length;
+  const totalPages = Math.max(1, limit === Infinity ? 1 : Math.ceil(totalItems / limit));
+
+  let currentPage = columnPages.get(column) || 1;
+  if (currentPage > totalPages) currentPage = totalPages;
+  if (currentPage < 1) currentPage = 1;
+  columnPages.set(column, currentPage);
+
+  const startIdx = limit === Infinity ? 0 : (currentPage - 1) * limit;
+  const endIdx = limit === Infinity ? totalItems : startIdx + limit;
+
+  matchingCards.forEach((card, idx) => {
+   if (idx >= startIdx && idx < endIdx) {
+    card.style.display = '';
+   } else {
+    card.style.display = 'none';
+   }
+  });
+
+  if (visibleCounter) {
+   visibleCounter.textContent = new Intl.NumberFormat('en-US').format(totalItems);
+  }
+
+  let emptyFilterMsg = column.querySelector('.kanban-filter-empty');
+  if (totalItems === 0 && activeCards.length > 0) {
+   if (!emptyFilterMsg) {
+    emptyFilterMsg = document.createElement('div');
+    emptyFilterMsg.className = 'kanban-filter-empty';
+    emptyFilterMsg.innerHTML = '<i class="bi bi-search"></i><strong>' + @json(__('crm.no_matching_leads')) + '</strong>';
+    if (activePanel) activePanel.appendChild(emptyFilterMsg);
+    else if (columnBody) columnBody.appendChild(emptyFilterMsg);
+   }
+   emptyFilterMsg.style.display = 'flex';
+  } else if (emptyFilterMsg) {
+   emptyFilterMsg.style.display = 'none';
+  }
+
+  if (pagination) {
+   if (totalPages <= 1) {
+    pagination.style.display = 'none';
+   } else {
+    pagination.style.display = 'flex';
+    if (pageInfo) {
+     const fromItem = startIdx + 1;
+     const toItem = Math.min(endIdx, totalItems);
+     pageInfo.textContent = `${currentPage} / ${totalPages} (${fromItem}–${toItem})`;
+    }
+    if (prevBtn) {
+     prevBtn.disabled = (currentPage <= 1);
+    }
+    if (nextBtn) {
+     nextBtn.disabled = (currentPage >= totalPages);
+    }
+   }
+  }
+
+  return totalItems;
+ };
+
+ const render = () => {
+  let totalMatched = 0;
+  let totalAll = 0;
+
+  columns.forEach(col => {
+   const allCards = col.querySelectorAll('.kanban-card');
+   totalAll += allCards.length;
+   const matchedInCol = updateColumn(col);
+   totalMatched += matchedInCol;
+  });
+
+  const isFiltered = Boolean(searchQuery || scopeFilter !== 'all' || employeeFilter || leadsLimit !== 10);
+
+  if (resetBtn) {
+   resetBtn.style.display = isFiltered ? 'inline-flex' : 'none';
+  }
+
+  if (statusToolbar && filterCountText) {
+   if (isFiltered) {
+    statusToolbar.style.display = 'flex';
+    filterCountText.textContent = @json(__('crm.showing_leads_range'))
+     .replace(':from', '1')
+     .replace(':to', totalMatched.toString())
+     .replace(':total', totalAll.toString()) || `Showing ${totalMatched} of ${totalAll} leads`;
+   } else {
+    statusToolbar.style.display = 'none';
+   }
+  }
+
+  if (searchClear) {
+   searchClear.style.display = searchQuery ? 'flex' : 'none';
+  }
+ };
+
+ let searchDebounceTimer = null;
+ if (searchInput) {
+  searchInput.addEventListener('input', () => {
+   window.clearTimeout(searchDebounceTimer);
+   searchDebounceTimer = window.setTimeout(() => {
+    searchQuery = normalize(searchInput.value);
+    columns.forEach(col => columnPages.set(col, 1));
+    render();
+   }, 120);
+  });
+ }
+
+ if (searchClear) {
+  searchClear.addEventListener('click', () => {
+   if (searchInput) searchInput.value = '';
+   searchQuery = '';
+   columns.forEach(col => columnPages.set(col, 1));
+   render();
+   if (searchInput) searchInput.focus();
+  });
+ }
+
+ if (scopeSelect) {
+  scopeSelect.addEventListener('change', () => {
+   scopeFilter = scopeSelect.value;
+   if (['today', 'overdue', 'upcoming'].includes(scopeFilter)) {
+    columns.forEach(col => {
+     const btn = col.querySelector(`[data-kanban-scope="${scopeFilter}"]`);
+     if (btn) btn.click();
+    });
+   }
+   columns.forEach(col => columnPages.set(col, 1));
+   render();
+  });
+ }
+
+ if (employeeSelect) {
+  employeeSelect.addEventListener('change', () => {
+   employeeFilter = employeeSelect.value;
+   columns.forEach(col => columnPages.set(col, 1));
+   render();
+  });
+ }
+
+ if (limitSelect) {
+  limitSelect.addEventListener('change', () => {
+   leadsLimit = limitSelect.value === 'all' ? 'all' : parseInt(limitSelect.value, 10);
+   columns.forEach(col => columnPages.set(col, 1));
+   render();
+  });
+ }
+
+ if (resetBtn) {
+  resetBtn.addEventListener('click', () => {
+   if (searchInput) searchInput.value = '';
+   if (scopeSelect) scopeSelect.value = 'all';
+   if (employeeSelect) employeeSelect.value = '';
+   if (limitSelect) limitSelect.value = '10';
+
+   searchQuery = '';
+   scopeFilter = 'all';
+   employeeFilter = '';
+   leadsLimit = 10;
+
+   columns.forEach(col => {
+    columnPages.set(col, 1);
+    const todayBtn = col.querySelector('[data-kanban-scope="today"]');
+    if (todayBtn && !todayBtn.classList.contains('active')) {
+     todayBtn.click();
+    }
+   });
+
+   render();
+  });
+ }
+
+ columns.forEach(col => {
+  const pagination = col.querySelector('[data-kanban-pagination]');
+  if (!pagination) return;
+
+  pagination.addEventListener('click', (e) => {
+   const actionBtn = e.target.closest('[data-page-action]');
+   if (!actionBtn || actionBtn.disabled) return;
+
+   const action = actionBtn.dataset.pageAction;
+   let cur = columnPages.get(col) || 1;
+
+   if (action === 'prev') {
+    cur = Math.max(1, cur - 1);
+   } else if (action === 'next') {
+    cur += 1;
+   }
+
+   columnPages.set(col, cur);
+   updateColumn(col);
+  });
+ });
+
+ columns.forEach(col => {
+  col.querySelectorAll('[data-kanban-scope]').forEach(btn => {
+   btn.addEventListener('click', () => {
+    columnPages.set(col, 1);
+    window.setTimeout(() => updateColumn(col), 0);
+   });
+  });
+ });
+
+ render();
+
+ const syncIframeTheme = (frameEl) => {
+  try {
+   if (!frameEl || !frameEl.contentDocument) return;
+   const doc = frameEl.contentDocument;
+   const rootEl = doc.documentElement;
+   if (!rootEl) return;
+   const isDark = document.documentElement.classList.contains('dark-mode');
+   const isMono = document.documentElement.classList.contains('crm-monochrome');
+   rootEl.classList.toggle('dark-mode', isDark);
+   rootEl.classList.toggle('crm-monochrome', isMono);
+   if (document.documentElement.dataset.theme) {
+    rootEl.dataset.theme = document.documentElement.dataset.theme;
+   }
+   if (document.documentElement.dataset.palette) {
+    rootEl.dataset.palette = document.documentElement.dataset.palette;
+   }
+  } catch (e) {}
+ };
+
+ document.querySelectorAll('.kanban-followup-frame').forEach((frameEl) => {
+  frameEl.addEventListener('load', () => syncIframeTheme(frameEl));
+ });
+
+ window.addEventListener('crm:theme-changed', () => {
+  document.querySelectorAll('.kanban-followup-frame').forEach((frameEl) => {
+   syncIframeTheme(frameEl);
+  });
+ });
 })();
 </script>
-<!-- CRM KANBAN PAGE SIZE 15 V7 JS END -->
-
+<!-- CRM KANBAN FILTER & PAGINATION JS END -->
+    </main>
+</div>
+<script src="{{ asset('crm-sidebar.js') }}"></script>
 </body>
 </html>

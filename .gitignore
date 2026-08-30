@@ -40,9 +40,13 @@ Thumbs.db
 /vendor/
 /node_modules/
 
-# Live backup directories
+# Live backup directories & archives
 /backups-*/
-
+*.sql
+*.sql.gz
+*.tar
+*.tar.gz
+*.zip
 # Local .gitignore backups
 /.gitignore.backup-*
 

@@ -10,11 +10,23 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('calendar_events')) {
+            return;
+        }
+
         Schema::table('calendar_events', function (Blueprint $table): void {
-            $table->string('sync_id', 255)->nullable()->after('status')->index();
-            $table->string('provider', 50)->nullable()->after('sync_id')->index();
-            $table->dateTime('synced_at')->nullable()->after('provider');
-            $table->unsignedInteger('reminder_minutes_before')->nullable()->default(15)->after('synced_at');
+            if (! Schema::hasColumn('calendar_events', 'sync_id')) {
+                $table->string('sync_id', 255)->nullable()->after('status')->index();
+            }
+            if (! Schema::hasColumn('calendar_events', 'provider')) {
+                $table->string('provider', 50)->nullable()->after('sync_id')->index();
+            }
+            if (! Schema::hasColumn('calendar_events', 'synced_at')) {
+                $table->dateTime('synced_at')->nullable()->after('provider');
+            }
+            if (! Schema::hasColumn('calendar_events', 'reminder_minutes_before')) {
+                $table->unsignedInteger('reminder_minutes_before')->nullable()->default(15)->after('synced_at');
+            }
         });
     }
 

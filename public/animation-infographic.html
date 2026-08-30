@@ -1,0 +1,1948 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظرة عامة على تنفيذ الرسوم المتحركة — Animation Implementation Overview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fira+Code:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&family=Tajawal:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg-page: #f1f5f9;
+    --bg-card: #ffffff;
+    --bg-subtle: #f8fafc;
+    --border-light: #e2e8f0;
+    --border-medium: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --text-light: #94a3b8;
+    
+    /* Chart Palette */
+    --c-blue: #2563eb;
+    --c-sky: #0284c7;
+    --c-cyan: #06b6d4;
+    --c-green: #16a34a;
+    --c-emerald: #10b981;
+    --c-amber: #f59e0b;
+    --c-orange: #ea580c;
+    --c-red: #dc2626;
+    --c-rose: #f43f5e;
+    --c-purple: #7c3aed;
+    --c-indigo: #4f46e5;
+    
+    /* Code Palette */
+    --code-bg: #090d16;
+    --code-header: #101626;
+    --code-border: #1e293b;
+    --code-text: #e2e8f0;
+    --code-kw: #f43f5e;
+    --code-fn: #38bdf8;
+    --code-prop: #fbbf24;
+    --code-val: #34d399;
+    --code-num: #c084fc;
+    --code-str: #fde047;
+    --code-comm: #64748b;
+    
+    --shadow-sm: 0 2px 6px rgba(15, 23, 42, 0.04);
+    --shadow-md: 0 10px 25px -5px rgba(15, 23, 42, 0.06), 0 8px 10px -6px rgba(15, 23, 42, 0.03);
+    --shadow-lg: 0 20px 35px -10px rgba(15, 23, 42, 0.1), 0 10px 15px -5px rgba(15, 23, 42, 0.04);
+  }
+
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+
+  body {
+    font-family: 'Tajawal', 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    background-color: var(--bg-page);
+    background-image: 
+      radial-gradient(circle at 10% 10%, rgba(37, 99, 235, 0.04) 0%, transparent 40%),
+      radial-gradient(circle at 90% 20%, rgba(16, 185, 129, 0.03) 0%, transparent 40%),
+      radial-gradient(circle at 50% 90%, rgba(245, 158, 11, 0.03) 0%, transparent 50%),
+      linear-gradient(to right, rgba(226, 232, 240, 0.6) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(226, 232, 240, 0.6) 1px, transparent 1px);
+    background-size: 100% 100%, 100% 100%, 100% 100%, 32px 32px, 32px 32px;
+    color: var(--text-primary);
+    min-height: 100vh;
+    padding: 32px 28px 60px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .ltr { direction: ltr; text-align: left; }
+  .rtl { direction: rtl; text-align: right; }
+
+  /* Main Container (Enforcing LTR Grid Layout so Left Column = Radial, Right Column = Bar/Line) */
+  .infographic-container {
+    max-width: 1560px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    direction: ltr;
+  }
+
+  /* Global Controller Toolbar */
+  .control-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #0b1120;
+    color: #f8fafc;
+    padding: 12px 24px;
+    border-radius: 16px;
+    box-shadow: var(--shadow-lg);
+    border: 1px solid #1e293b;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+
+  .toolbar-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .toolbar-brand .badge-pulse {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #10b981;
+    box-shadow: 0 0 12px #10b981;
+    animation: livePulse 1.8s infinite;
+  }
+
+  .toolbar-title {
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .toolbar-title span.tag {
+    background: #1e293b;
+    color: #38bdf8;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    padding: 3px 8px;
+    border-radius: 6px;
+    border: 1px solid #334155;
+  }
+
+  .toolbar-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #1e293b;
+    color: #f8fafc;
+    border: 1px solid #334155;
+    padding: 8px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: inherit;
+  }
+
+  .btn-action:hover {
+    background: #334155;
+    border-color: #475569;
+    transform: translateY(-1px);
+  }
+
+  .btn-action.btn-primary {
+    background: #2563eb;
+    border-color: #3b82f6;
+  }
+
+  .btn-action.btn-primary:hover {
+    background: #1d4ed8;
+    box-shadow: 0 0 16px rgba(37, 99, 235, 0.45);
+  }
+
+  .speed-pill-group {
+    display: flex;
+    background: #1e293b;
+    border-radius: 8px;
+    padding: 3px;
+    border: 1px solid #334155;
+  }
+
+  .speed-pill {
+    padding: 4px 10px;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: #94a3b8;
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s ease;
+  }
+
+  .speed-pill.active {
+    background: #3b82f6;
+    color: #ffffff;
+    box-shadow: 0 2px 6px rgba(59, 130, 246, 0.3);
+  }
+
+  /* ========================================================
+     TOP BANNER: SYSTEM EXECUTION FLOW (LTR 5 Steps)
+     ======================================================== */
+  .top-banner-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    padding: 32px 36px 36px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .top-banner-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 5px;
+    background: linear-gradient(90deg, #2563eb, #06b6d4, #10b981, #f59e0b, #ec4899);
+  }
+
+  .banner-header {
+    text-align: center;
+    margin-bottom: 28px;
+  }
+
+  .banner-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #eff6ff;
+    color: #1d4ed8;
+    font-size: 12px;
+    font-weight: 800;
+    padding: 6px 16px;
+    border-radius: 999px;
+    border: 1px solid #bfdbfe;
+    margin-bottom: 12px;
+    letter-spacing: 0.03em;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .banner-title-ar {
+    font-size: 32px;
+    font-weight: 900;
+    color: var(--text-primary);
+    margin-bottom: 4px;
+    letter-spacing: -0.02em;
+    direction: rtl;
+  }
+
+  .banner-title-en {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text-muted);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    letter-spacing: -0.01em;
+  }
+
+  /* Flow Steps Stepper */
+  .flowchart-wrapper {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 8px;
+    position: relative;
+    margin-top: 14px;
+  }
+
+  .flow-step-node {
+    flex: 1;
+    background: var(--bg-subtle);
+    border: 1px solid var(--border-light);
+    border-radius: 14px;
+    padding: 20px 14px 16px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    position: relative;
+    transition: all 0.25s ease;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .flow-step-node:hover {
+    transform: translateY(-3px);
+    border-color: #93c5fd;
+    box-shadow: var(--shadow-md);
+    background: #ffffff;
+  }
+
+  .flow-step-node.active-step {
+    border-color: #3b82f6;
+    background: linear-gradient(180deg, #f0f7ff 0%, #ffffff 100%);
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.12);
+  }
+
+  .step-index-badge {
+    position: absolute;
+    top: -11px;
+    background: #0f172a;
+    color: #ffffff;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 800;
+    padding: 2px 10px;
+    border-radius: 999px;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+  }
+
+  .flow-step-node.active-step .step-index-badge {
+    background: #2563eb;
+  }
+
+  .step-icon-wrap {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-top: 6px;
+    margin-bottom: 12px;
+    font-size: 22px;
+    transition: all 0.3s ease;
+  }
+
+  .icon-1 { background: #dbeafe; color: #1d4ed8; }
+  .icon-2 { background: #e0e7ff; color: #4338ca; }
+  .icon-3 { background: #ccfbf1; color: #0f766e; }
+  .icon-4 { background: #fef3c7; color: #b45309; }
+  .icon-5 { background: #fce7f3; color: #be185d; }
+
+  .flow-step-node:hover .step-icon-wrap {
+    transform: scale(1.1);
+  }
+
+  .step-name-en {
+    font-size: 14px;
+    font-weight: 800;
+    color: var(--text-primary);
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+
+  .step-desc-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 600;
+  }
+
+  .flow-arrow-connector {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #94a3b8;
+    padding: 0 2px;
+    position: relative;
+  }
+
+  .flow-arrow-connector svg {
+    width: 22px;
+    height: 22px;
+    animation: arrowPulseLtr 2s infinite ease-in-out;
+  }
+
+  /* ========================================================
+     MAIN TWO-COLUMN WORKBENCH (Left: Radial | Right: Bar/Line)
+     ======================================================== */
+  .main-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 28px;
+    direction: ltr;
+  }
+
+  .column-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+
+  /* Standard Card Box */
+  .info-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    position: relative;
+  }
+
+  .section-card-title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid var(--border-light);
+  }
+
+  .section-card-title .heading-group {
+    direction: rtl;
+    text-align: right;
+  }
+
+  .section-card-title .heading-group h2 {
+    font-size: 19px;
+    font-weight: 900;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section-card-title .heading-group p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 3px;
+  }
+
+  .card-tech-tag {
+    background: #f1f5f9;
+    color: #475569;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border-light);
+    direction: ltr;
+  }
+
+  /* ========================================================
+     LEFT COLUMN: CIRCULAR / RADIAL PIE CHART SYSTEM
+     ======================================================== */
+  .donut-replica-wrap {
+    display: grid;
+    grid-template-columns: 240px 1fr;
+    gap: 22px;
+    align-items: center;
+  }
+
+  .donut-svg-stage {
+    position: relative;
+    width: 240px;
+    height: 240px;
+    margin: 0 auto;
+  }
+
+  .donut-center-stat {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+    direction: rtl;
+  }
+
+  .donut-center-stat .big-num {
+    font-size: 26px;
+    font-weight: 900;
+    color: var(--text-primary);
+    line-height: 1;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .donut-center-stat .stat-label {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  .donut-legend-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    direction: rtl;
+  }
+
+  .legend-item-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    background: var(--bg-subtle);
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    font-size: 12.5px;
+    transition: all 0.2s ease;
+  }
+
+  .legend-item-row:hover {
+    background: #ffffff;
+    border-color: #93c5fd;
+    transform: translateX(-3px);
+  }
+
+  .legend-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-weight: 700;
+  }
+
+  .legend-color-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+
+  .legend-values {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    direction: ltr;
+  }
+
+  .legend-count { color: var(--text-primary); }
+  .legend-pct { color: var(--text-muted); font-size: 11px; }
+
+  /* Radial Slice Isolation Stage */
+  .slice-isolation-card {
+    background: linear-gradient(145deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid #bfdbfe;
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: 0 10px 30px -5px rgba(37, 99, 235, 0.08);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .slice-isolation-stage {
+    display: grid;
+    grid-template-columns: 260px 1fr;
+    gap: 22px;
+    align-items: center;
+    margin-top: 10px;
+  }
+
+  .slice-visualizer-canvas {
+    width: 260px;
+    height: 240px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: radial-gradient(circle, #eff6ff 0%, #f8fafc 85%);
+    border-radius: 14px;
+    border: 1px dashed #93c5fd;
+    overflow: visible;
+  }
+
+  .svg-ripple-layer {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    pointer-events: none;
+  }
+
+  .ripple-circle {
+    fill: none;
+    stroke: rgba(37, 99, 235, 0.5);
+    stroke-width: 1.5;
+    transform-origin: center;
+    animation: pulseRipple 2.4s infinite cubic-bezier(0.2, 0.8, 0.4, 1);
+  }
+
+  .ripple-circle:nth-child(2) { animation-delay: 0.7s; stroke: rgba(6, 182, 212, 0.5); }
+  .ripple-circle:nth-child(3) { animation-delay: 1.4s; stroke: rgba(99, 102, 241, 0.4); }
+
+  .isolated-wedge-slice {
+    transform-origin: 130px 120px;
+    animation: liveRadialGrow 2s infinite ease-in-out;
+    filter: drop-shadow(0 8px 20px rgba(37, 99, 235, 0.4));
+    cursor: pointer;
+  }
+
+  .param-badges-column {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    direction: ltr;
+  }
+
+  .param-badge {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border: 1px solid var(--border-light);
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    box-shadow: var(--shadow-sm);
+  }
+
+  .param-badge .param-name {
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    color: #1d4ed8;
+  }
+
+  .param-badge .param-val {
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    color: #0f172a;
+    background: #f1f5f9;
+    padding: 2px 6px;
+    border-radius: 4px;
+  }
+
+  /* Dual Code Snippets Connected by Link Arrow */
+  .code-snippets-container {
+    position: relative;
+  }
+
+  .code-snippets-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    position: relative;
+    direction: ltr;
+  }
+
+  .code-link-bridge {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+    background: #0f172a;
+    border: 1px solid #38bdf8;
+    color: #38bdf8;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0 15px rgba(56, 189, 248, 0.4);
+    animation: bridgePulse 2s infinite ease-in-out;
+  }
+
+  .code-block-card {
+    background: var(--code-bg);
+    border: 1px solid var(--code-border);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.25);
+    display: flex;
+    flex-direction: column;
+  }
+
+  .code-header {
+    background: var(--code-header);
+    padding: 9px 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--code-border);
+  }
+
+  .code-header-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .traffic-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+  }
+  .dot-red { background: #ef4444; }
+  .dot-yellow { background: #f59e0b; }
+  .dot-green { background: #10b981; }
+
+  .code-title {
+    color: #94a3b8;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 600;
+    margin-left: 6px;
+  }
+
+  .code-tag {
+    background: rgba(59, 130, 246, 0.15);
+    color: #60a5fa;
+    font-size: 10px;
+    font-family: 'Fira Code', monospace;
+    padding: 1px 6px;
+    border-radius: 4px;
+    border: 1px solid rgba(59, 130, 246, 0.3);
+  }
+
+  .code-body {
+    padding: 14px;
+    font-family: 'Fira Code', monospace;
+    font-size: 11.5px;
+    line-height: 1.6;
+    color: var(--code-text);
+    overflow-x: auto;
+    direction: ltr;
+    text-align: left;
+    white-space: pre;
+  }
+
+  .kw { color: var(--code-kw); font-weight: 600; }
+  .fn { color: var(--code-fn); }
+  .prop { color: var(--code-prop); }
+  .val { color: var(--code-val); }
+  .num { color: var(--code-num); }
+  .str { color: var(--code-str); }
+  .comm { color: var(--code-comm); font-style: italic; }
+
+  /* ========================================================
+     RIGHT COLUMN: COMBINED BAR & LINE CHART SYSTEM
+     ======================================================== */
+  .barline-replica-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    direction: ltr;
+  }
+
+  .chart-svg-container {
+    width: 100%;
+    height: 230px;
+    position: relative;
+    background: #ffffff;
+    border-radius: 12px;
+  }
+
+  .chart-legends-bar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    padding: 8px 14px;
+    background: var(--bg-subtle);
+    border-radius: 10px;
+    border: 1px solid var(--border-light);
+    flex-wrap: wrap;
+    direction: rtl;
+  }
+
+  .chart-legend-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 700;
+    color: var(--text-secondary);
+  }
+
+  .legend-glyph-bar {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+  }
+
+  .legend-glyph-line {
+    width: 18px;
+    height: 3px;
+    border-radius: 999px;
+    position: relative;
+  }
+
+  .legend-glyph-line::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: inherit;
+  }
+
+  /* Individual Animation Concept Showcase Grid */
+  .concept-showcase-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    direction: ltr;
+  }
+
+  .concept-card {
+    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+    border: 1px solid var(--border-light);
+    border-radius: 16px;
+    padding: 18px;
+    box-shadow: var(--shadow-sm);
+    display: flex;
+    flex-direction: column;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .concept-card-blue {
+    border-color: #bfdbfe;
+    box-shadow: 0 8px 24px -6px rgba(37, 99, 235, 0.1);
+  }
+
+  .concept-card-red {
+    border-color: #fecdd3;
+    box-shadow: 0 8px 24px -6px rgba(220, 38, 38, 0.1);
+  }
+
+  .concept-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+    direction: rtl;
+  }
+
+  .concept-title {
+    font-size: 13.5px;
+    font-weight: 800;
+    color: var(--text-primary);
+  }
+
+  .concept-stage-view {
+    height: 145px;
+    background: #0b1120;
+    border-radius: 12px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #1e293b;
+    overflow: hidden;
+  }
+
+  /* Animated Bar Entity */
+  .animated-bar-entity {
+    width: 32px;
+    background: linear-gradient(180deg, #38bdf8 0%, #2563eb 100%);
+    border-radius: 4px 4px 0 0;
+    position: absolute;
+    bottom: 22px;
+    box-shadow: 0 0 22px rgba(56, 189, 248, 0.6);
+    transform-origin: bottom center;
+    animation: barHeightGrow 2s infinite cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+
+  .bar-axis-ground {
+    position: absolute;
+    bottom: 21px;
+    left: 15px;
+    right: 15px;
+    height: 2px;
+    background: #334155;
+  }
+
+  .vector-arrow-up {
+    position: absolute;
+    right: 25px;
+    top: 25px;
+    bottom: 25px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: space-between;
+    color: #38bdf8;
+    font-size: 10px;
+    font-family: 'Fira Code', monospace;
+  }
+
+  /* Animated Line Entity */
+  .line-path-entity {
+    stroke-dasharray: 220;
+    stroke-dashoffset: 220;
+    animation: linePathDraw 2s infinite ease-out;
+  }
+
+  .line-point-ping {
+    animation: pointPing 2s infinite ease-in-out;
+  }
+
+  .concept-meta-tags {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 10px;
+    font-size: 11px;
+    font-family: 'Fira Code', monospace;
+    direction: ltr;
+  }
+
+  .meta-tag {
+    background: #f1f5f9;
+    padding: 2px 8px;
+    border-radius: 4px;
+    color: #475569;
+    font-weight: 600;
+  }
+
+  /* Target Code Snippets Stack */
+  .target-code-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    direction: ltr;
+  }
+
+  /* ========================================================
+     BOTTOM ROW: ARCHITECTURAL INTEGRITY & FINAL SUMMARY CARD
+     (Summary Card placed at very bottom right)
+     ======================================================== */
+  .bottom-summary-section {
+    grid-column: 1 / -1;
+    display: grid;
+    grid-template-columns: 1fr 1.35fr;
+    gap: 28px;
+    align-items: stretch;
+    direction: ltr;
+    position: relative;
+  }
+
+  .architecture-notes-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-light);
+    border-radius: 18px;
+    padding: 24px;
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .final-summary-card {
+    background: linear-gradient(135deg, #090e1a 0%, #0f172a 50%, #1e1b4b 100%);
+    border: 2px solid #3b82f6;
+    border-radius: 20px;
+    padding: 28px 32px;
+    box-shadow: 0 15px 35px -5px rgba(15, 23, 42, 0.3), 0 0 30px rgba(59, 130, 246, 0.25);
+    color: #ffffff;
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .final-summary-card::after {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(circle, rgba(59, 130, 246, 0.1) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  .summary-connector-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: rgba(56, 189, 248, 0.15);
+    color: #38bdf8;
+    font-size: 10px;
+    font-family: 'Fira Code', monospace;
+    font-weight: 700;
+    padding: 3px 10px;
+    border-radius: 999px;
+    border: 1px solid rgba(56, 189, 248, 0.3);
+  }
+
+  .summary-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .summary-text-en {
+    font-size: 18px;
+    font-weight: 800;
+    color: #f8fafc;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    letter-spacing: -0.01em;
+  }
+
+  .summary-text-ar {
+    font-size: 19px;
+    font-weight: 800;
+    color: #38bdf8;
+    line-height: 1.5;
+    margin-bottom: 20px;
+    letter-spacing: -0.01em;
+    direction: rtl;
+    text-align: right;
+  }
+
+  .sync-timeline-matrix {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+  }
+
+  .sync-col {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 10px;
+    padding: 10px;
+    text-align: center;
+  }
+
+  .sync-col-title {
+    font-size: 11px;
+    color: #94a3b8;
+    font-family: 'Fira Code', monospace;
+    margin-bottom: 4px;
+  }
+
+  .sync-col-val {
+    font-size: 13px;
+    font-weight: 800;
+    color: #ffffff;
+    font-family: 'Plus Jakarta Sans', sans-serif;
+  }
+
+  .sync-col-pill {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+  }
+
+  /* ========================================================
+     ANIMATIONS & KEYFRAMES
+     ======================================================== */
+  @keyframes livePulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.85); }
+  }
+
+  @keyframes arrowPulseLtr {
+    0%, 100% { opacity: 0.5; transform: translateX(0); }
+    50% { opacity: 1; transform: translateX(4px); }
+  }
+
+  @keyframes bridgePulse {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); box-shadow: 0 0 10px rgba(56, 189, 248, 0.3); }
+    50% { transform: translate(-50%, -50%) scale(1.15); box-shadow: 0 0 20px rgba(56, 189, 248, 0.7); }
+  }
+
+  @keyframes pulseRipple {
+    0% {
+      r: 40;
+      opacity: 0.9;
+      stroke-width: 2.5;
+    }
+    100% {
+      r: 105;
+      opacity: 0;
+      stroke-width: 0.5;
+    }
+  }
+
+  @keyframes liveRadialGrow {
+    0% {
+      transform: scale(0.88);
+      filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.2));
+    }
+    50% {
+      transform: scale(1.12);
+      filter: drop-shadow(0 12px 28px rgba(37, 99, 235, 0.65));
+    }
+    100% {
+      transform: scale(0.88);
+      filter: drop-shadow(0 2px 8px rgba(37, 99, 235, 0.2));
+    }
+  }
+
+  @keyframes barHeightGrow {
+    0% {
+      height: 20px;
+      opacity: 0.5;
+      filter: brightness(0.9);
+    }
+    50% {
+      height: 100px;
+      opacity: 1;
+      filter: brightness(1.25) drop-shadow(0 0 18px rgba(56, 189, 248, 0.8));
+    }
+    100% {
+      height: 20px;
+      opacity: 0.5;
+      filter: brightness(0.9);
+    }
+  }
+
+  @keyframes linePathDraw {
+    0% {
+      stroke-dashoffset: 220;
+      opacity: 0.2;
+    }
+    50% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+      filter: drop-shadow(0 0 8px #f43f5e);
+    }
+    100% {
+      stroke-dashoffset: -220;
+      opacity: 0.2;
+    }
+  }
+
+  @keyframes pointPing {
+    0%, 100% {
+      r: 5;
+      fill: #f43f5e;
+    }
+    50% {
+      r: 8;
+      fill: #ffffff;
+      stroke: #f43f5e;
+      stroke-width: 3;
+    }
+  }
+
+  /* Responsive styling */
+  @media (max-width: 1200px) {
+    .main-grid {
+      grid-template-columns: 1fr;
+    }
+    .flowchart-wrapper {
+      flex-wrap: wrap;
+    }
+    .flow-arrow-connector {
+      display: none;
+    }
+    .bottom-summary-section {
+      grid-template-columns: 1fr;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="infographic-container">
+
+  <!-- GLOBAL TOOLBAR / CONTROLLER -->
+  <header class="control-toolbar">
+    <div class="toolbar-brand">
+      <div class="badge-pulse"></div>
+      <div class="toolbar-title">
+        <span class="rtl">محرك الرسوم المتحركة المستهدفة للمخططات</span>
+        <span class="tag">Targeted Chart Motion System v3.4</span>
+      </div>
+    </div>
+    <div class="toolbar-actions">
+      <div class="speed-pill-group">
+        <button class="speed-pill" onclick="setSpeed(0.5)">0.5x</button>
+        <button class="speed-pill active" onclick="setSpeed(1)">1.0x</button>
+        <button class="speed-pill" onclick="setSpeed(2)">2.0x</button>
+      </div>
+      <button class="btn-action btn-primary" onclick="restartAllAnimations()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        <span class="rtl">إعادة تشغيل التسلسل الموحد (Sync Replay)</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- ========================================================
+       TOP BANNER: SYSTEM EXECUTION FLOW (LTR Order)
+       ======================================================== -->
+  <section class="top-banner-card">
+    <div class="banner-header">
+      <div class="banner-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>SYSTEM ARCHITECTURE & MOTION PIPELINE</span>
+      </div>
+      <h1 class="banner-title-ar">نظرة عامة على تنفيذ الرسوم المتحركة</h1>
+      <div class="banner-title-en">(Animation Implementation Overview)</div>
+    </div>
+
+    <!-- 5-Step Connected Flowchart (Left-To-Right) -->
+    <div class="flowchart-wrapper">
+      
+      <!-- Step 1 -->
+      <div class="flow-step-node">
+        <span class="step-index-badge">01</span>
+        <div class="step-icon-wrap icon-1">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        </div>
+        <div class="step-name-en">User Access Dashboard</div>
+        <div class="step-desc-sub">Session init & route mount</div>
+      </div>
+
+      <div class="flow-arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+
+      <!-- Step 2 -->
+      <div class="flow-step-node">
+        <span class="step-index-badge">02</span>
+        <div class="step-icon-wrap icon-2">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+        </div>
+        <div class="step-name-en">Fetch Data</div>
+        <div class="step-desc-sub">REST / WebSocket payload</div>
+      </div>
+
+      <div class="flow-arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+
+      <!-- Step 3 -->
+      <div class="flow-step-node">
+        <span class="step-index-badge">03</span>
+        <div class="step-icon-wrap icon-3">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </div>
+        <div class="step-name-en">DOM Injection (Clean)</div>
+        <div class="step-desc-sub">Zero-repaint isolated container</div>
+      </div>
+
+      <div class="flow-arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+
+      <!-- Step 4 (Active/Highlighted) -->
+      <div class="flow-step-node active-step">
+        <span class="step-index-badge">04</span>
+        <div class="step-icon-wrap icon-4">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+        </div>
+        <div class="step-name-en">Start Animation Sequence</div>
+        <div class="step-desc-sub" style="color:#b45309; font-weight:700;">(Targeted Chart Elements)</div>
+      </div>
+
+      <div class="flow-arrow-connector">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      </div>
+
+      <!-- Step 5 -->
+      <div class="flow-step-node">
+        <span class="step-index-badge">05</span>
+        <div class="step-icon-wrap icon-5">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 3h6v6"/><path d="M10 14L21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>
+        </div>
+        <div class="step-name-en">User Interaction Listeners</div>
+        <div class="step-desc-sub">Hover, tooltip & filter events</div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ========================================================
+       MAIN TWO-COLUMN WORKBENCH
+       Left Column: Circular / Radial Chart
+       Right Column: Combined Bar & Line Chart
+       ======================================================== -->
+  <div class="main-grid">
+
+    <!-- ========================================================
+         LEFT COLUMN (Circular/Radial Chart)
+         ======================================================== -->
+    <div class="column-wrapper">
+
+      <!-- 1. Replica of Radial/Pie Chart Card -->
+      <div class="info-box">
+        <div class="section-card-title">
+          <div class="heading-group">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10h-10z"/></svg>
+              <span>توزيع حالات العملاء</span>
+            </h2>
+            <p>تحليل توزيع الحالات والنسب المئوية للعملاء في النظام</p>
+          </div>
+          <span class="card-tech-tag">SVG DONUT ENGINE</span>
+        </div>
+
+        <div class="donut-replica-wrap">
+          <!-- Donut SVG with Segment Highlights -->
+          <div class="donut-svg-stage">
+            <svg viewBox="0 0 240 240" width="240" height="240" id="mainDonutChartSvg">
+              <!-- Background Circle Ring -->
+              <circle cx="120" cy="120" r="75" fill="none" stroke="#f1f5f9" stroke-width="32"/>
+              
+              <!-- Segment 4: مكتمل (Purple/Indigo) 12% -> dash: 56.5, offset: 0 -->
+              <circle id="pieSlice4" cx="120" cy="120" r="75" fill="none" stroke="#6366f1" stroke-width="30"
+                      stroke-dasharray="56.5 471.2" stroke-dashoffset="-414.7"
+                      style="transition: transform 0.3s; transform-origin: 120px 120px; cursor:pointer;" />
+
+              <!-- Segment 3: قيد المتابعة (Amber/Orange) 18% -> dash: 84.8 -->
+              <circle id="pieSlice3" cx="120" cy="120" r="75" fill="none" stroke="#f59e0b" stroke-width="30"
+                      stroke-dasharray="84.8 471.2" stroke-dashoffset="-329.9"
+                      style="transition: transform 0.3s; transform-origin: 120px 120px; cursor:pointer;" />
+
+              <!-- Segment 2: متبرعون (Emerald) 28% -> dash: 131.9 -->
+              <circle id="pieSlice2" cx="120" cy="120" r="75" fill="none" stroke="#10b981" stroke-width="30"
+                      stroke-dasharray="131.9 471.2" stroke-dashoffset="-198.0"
+                      style="transition: transform 0.3s; transform-origin: 120px 120px; cursor:pointer;" />
+
+              <!-- Segment 1: عملاء جدد (Sky Blue) 42% -> dash: 198.0 (PRIMARY TARGET) -->
+              <circle id="pieSlice1" cx="120" cy="120" r="75" fill="none" stroke="#0284c7" stroke-width="32"
+                      stroke-dasharray="198.0 471.2" stroke-dashoffset="0"
+                      style="filter: drop-shadow(0 4px 12px rgba(2, 132, 199, 0.4)); cursor:pointer;" />
+
+              <!-- Center Hollow -->
+              <circle cx="120" cy="120" r="59" fill="#ffffff" />
+            </svg>
+            <div class="donut-center-stat">
+              <div class="big-num">1,420</div>
+              <div class="stat-label">إجمالي العملاء</div>
+            </div>
+          </div>
+
+          <!-- Legends Breakdown -->
+          <div class="donut-legend-grid">
+            <div class="legend-item-row" style="border-inline-start: 3px solid #0284c7;">
+              <div class="legend-title">
+                <span class="legend-color-dot" style="background:#0284c7;"></span>
+                <span>عملاء جدد (New Leads)</span>
+              </div>
+              <div class="legend-values">
+                <span class="legend-count">596</span>
+                <span class="legend-pct">(42%)</span>
+              </div>
+            </div>
+
+            <div class="legend-item-row" style="border-inline-start: 3px solid #10b981;">
+              <div class="legend-title">
+                <span class="legend-color-dot" style="background:#10b981;"></span>
+                <span>متبرعون (Donors)</span>
+              </div>
+              <div class="legend-values">
+                <span class="legend-count">398</span>
+                <span class="legend-pct">(28%)</span>
+              </div>
+            </div>
+
+            <div class="legend-item-row" style="border-inline-start: 3px solid #f59e0b;">
+              <div class="legend-title">
+                <span class="legend-color-dot" style="background:#f59e0b;"></span>
+                <span>قيد المتابعة (In Follow-up)</span>
+              </div>
+              <div class="legend-values">
+                <span class="legend-count">256</span>
+                <span class="legend-pct">(18%)</span>
+              </div>
+            </div>
+
+            <div class="legend-item-row" style="border-inline-start: 3px solid #6366f1;">
+              <div class="legend-title">
+                <span class="legend-color-dot" style="background:#6366f1;"></span>
+                <span>مكتمل (Completed)</span>
+              </div>
+              <div class="legend-values">
+                <span class="legend-count">170</span>
+                <span class="legend-pct">(12%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Isolated Blue Pie Slice with Multi-layered Ripple Pulse & Radial Grow Indicator -->
+      <div class="slice-isolation-card">
+        <div class="section-card-title" style="margin-bottom: 8px;">
+          <div class="heading-group">
+            <h2 style="color: #1d4ed8;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><path d="m4.93 4.93 4.24 4.24"/><path d="m14.83 9.17 4.24-4.24"/><path d="m14.83 14.83 4.24 4.24"/><path d="m9.17 14.83-4.24 4.24"/></svg>
+              <span>تشريح الشريحة المنفصلة وموجات النبض</span>
+            </h2>
+            <p>Isolated Blue Pie Slice: Multi-layered Ripple Pulse & Radial Grow Indicator</p>
+          </div>
+          <span class="card-tech-tag" style="background:#dbeafe; color:#1e40af; border-color:#bfdbfe;">TARGET: .slice-1</span>
+        </div>
+
+        <div class="slice-isolation-stage">
+          <!-- Interactive Stage Visualizer -->
+          <div class="slice-visualizer-canvas">
+            <!-- Ripple Concentric Pulse Waves -->
+            <svg class="svg-ripple-layer" width="240" height="240" viewBox="0 0 240 240">
+              <!-- Concentric ripple rings -->
+              <circle class="ripple-circle" cx="120" cy="120" r="40" />
+              <circle class="ripple-circle" cx="120" cy="120" r="40" />
+              <circle class="ripple-circle" cx="120" cy="120" r="40" />
+              
+              <!-- Coordinate Origin Grid Crosshairs -->
+              <line x1="120" y1="20" x2="120" y2="220" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3 3"/>
+              <line x1="20" y1="120" x2="220" y2="120" stroke="#93c5fd" stroke-width="1" stroke-dasharray="3 3"/>
+              <circle cx="120" cy="120" r="4" fill="#1d4ed8"/>
+            </svg>
+
+            <!-- The Isolated Blue Pie Slice with Glow -->
+            <svg width="240" height="240" viewBox="0 0 240 240" style="position:absolute; top:0; left:0;">
+              <defs>
+                <linearGradient id="sliceGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#38bdf8"/>
+                  <stop offset="100%" stop-color="#2563eb"/>
+                </linearGradient>
+              </defs>
+              <!-- Pie wedge path (42% arc) -->
+              <path class="isolated-wedge-slice"
+                    d="M 120 120 L 120 35 A 85 85 0 0 1 198 152 Z"
+                    fill="url(#sliceGradient)"
+                    stroke="#ffffff"
+                    stroke-width="2.5" />
+            </svg>
+
+            <!-- Vector Label Badge Overlay -->
+            <div style="position:absolute; bottom:8px; right:8px; background:rgba(15,23,42,0.85); color:#ffffff; font-size:10px; font-family:'Fira Code', monospace; padding:3px 8px; border-radius:5px;">
+              origin: (120, 120) • scale: 1.12
+            </div>
+          </div>
+
+          <!-- Parameter Specifications Callouts -->
+          <div class="param-badges-column">
+            <div class="param-badge">
+              <span class="param-name">radius</span>
+              <span class="param-val">10px &rarr; 85px</span>
+            </div>
+            <div class="param-badge">
+              <span class="param-name">pulse-width</span>
+              <span class="param-val">40px</span>
+            </div>
+            <div class="param-badge">
+              <span class="param-name">pulse-height</span>
+              <span class="param-val">20px</span>
+            </div>
+            <div class="param-badge">
+              <span class="param-name">radial-width</span>
+              <span class="param-val">100px</span>
+            </div>
+            <div class="param-badge" style="background:#eff6ff; border-color:#93c5fd;">
+              <span class="param-name" style="color:#2563eb;">transform-origin</span>
+              <span class="param-val" style="background:#dbeafe; color:#1e40af;">center center</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. Dual Dark-Mode Code Snippets: CSS @keyframes & JS .animate linked by arrow -->
+      <div class="code-snippets-container">
+        <!-- Floating Arrow Bridge linking CSS and JS -->
+        <div class="code-link-bridge" title="Imperative execution linking CSS keyframe definition">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+        </div>
+
+        <div class="code-snippets-grid">
+          
+          <!-- Snippet 1: CSS Keyframes -->
+          <div class="code-block-card">
+            <div class="code-header">
+              <div class="code-header-left">
+                <span class="traffic-dot dot-red"></span>
+                <span class="traffic-dot dot-yellow"></span>
+                <span class="traffic-dot dot-green"></span>
+                <span class="code-title">keyframes.css</span>
+              </div>
+              <span class="code-tag">CSS3 MOTION</span>
+            </div>
+            <pre class="code-body"><code><span class="comm">/* CSS @keyframes radialGrow */</span>
+<span class="kw">@keyframes</span> <span class="fn">radialGrow</span> {
+  <span class="num">0%</span> {
+    <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1.0</span>);
+    <span class="prop">filter</span>: <span class="fn">drop-shadow</span>(<span class="num">0 0 0px</span> <span class="val">#38bdf8</span>);
+  }
+  <span class="num">50%</span> {
+    <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1.1</span>);
+    <span class="comm">/* radius: 10px; */</span>
+    <span class="comm">/* pulse-width: 40px; */</span>
+    <span class="comm">/* pulse-height: 20px; */</span>
+    <span class="comm">/* radial-width: 100px; */</span>
+    <span class="prop">filter</span>: <span class="fn">drop-shadow</span>(<span class="num">0 0 16px</span> <span class="val">#38bdf8</span>);
+  }
+  <span class="num">100%</span> {
+    <span class="prop">transform</span>: <span class="fn">scale</span>(<span class="num">1.0</span>);
+  }
+}
+
+<span class="kw">.slice-1</span> {
+  <span class="prop">transform-origin</span>: <span class="val">120px 120px</span>;
+  <span class="prop">animation</span>: <span class="fn">radialGrow</span> <span class="num">1.8s</span> <span class="val">ease-in-out infinite</span>;
+}</code></pre>
+          </div>
+
+          <!-- Snippet 2: JS .animate Implementation -->
+          <div class="code-block-card">
+            <div class="code-header">
+              <div class="code-header-left">
+                <span class="traffic-dot dot-red"></span>
+                <span class="traffic-dot dot-yellow"></span>
+                <span class="traffic-dot dot-green"></span>
+                <span class="code-title">animateSlice.js</span>
+              </div>
+              <span class="code-tag">JS .animate()</span>
+            </div>
+            <pre class="code-body"><code><span class="comm">// Targeted JS Trigger Logic</span>
+<span class="kw">const</span> <span class="prop">sliceElement</span> = 
+  document.<span class="fn">querySelector</span>(<span class="str">'.slice-1'</span>);
+
+<span class="comm">// select(.slice-1).animate({ scale: 1.1 }, 300)</span>
+<span class="fn">select</span>(<span class="str">'.slice-1'</span>).<span class="fn">animate</span>([
+  { 
+    <span class="prop">scale</span>: <span class="num">1.0</span>,
+    <span class="prop">filter</span>: <span class="str">'brightness(1)'</span> 
+  },
+  { 
+    <span class="prop">scale</span>: <span class="num">1.1</span>, 
+    <span class="prop">filter</span>: <span class="str">'brightness(1.2)'</span> 
+  },
+  { 
+    <span class="prop">scale</span>: <span class="num">1.0</span>,
+    <span class="prop">filter</span>: <span class="str">'brightness(1)'</span> 
+  }
+], {
+  <span class="prop">duration</span>: <span class="num">300</span>,
+  <span class="prop">easing</span>: <span class="str">'cubic-bezier(0.4, 0, 0.2, 1)'</span>,
+  <span class="prop">iterations</span>: <span class="num">1</span>
+});</code></pre>
+          </div>
+
+        </div>
+      </div>
+
+    </div>
+
+    <!-- ========================================================
+         RIGHT COLUMN (Bar/Line Chart)
+         ======================================================== -->
+    <div class="column-wrapper">
+
+      <!-- 1. Replica of Combined Bar & Line Chart Card -->
+      <div class="info-box">
+        <div class="section-card-title">
+          <div class="heading-group">
+            <h2>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#ea580c" stroke-width="2.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              <span>مؤشر حركة العملاء</span>
+            </h2>
+            <p>مقارنة العملاء الجدد والمتبرعين وإجمالي التبرعات عبر الخط الزمني</p>
+          </div>
+          <span class="card-tech-tag">BAR + LINE HYBRID ENGINE</span>
+        </div>
+
+        <div class="barline-replica-stage">
+          <!-- Combined SVG Chart Stage -->
+          <div class="chart-svg-container">
+            <svg viewBox="0 0 680 230" width="100%" height="230" preserveAspectRatio="none">
+              <!-- Y-Axis Grid Lines -->
+              <line x1="45" y1="30" x2="645" y2="30" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="45" y1="75" x2="645" y2="75" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="45" y1="120" x2="645" y2="120" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="45" y1="165" x2="645" y2="165" stroke="#f1f5f9" stroke-width="1"/>
+              <line x1="45" y1="195" x2="645" y2="195" stroke="#cbd5e1" stroke-width="1"/>
+
+              <!-- Y-Axis Ticks Left (Count) -->
+              <text x="35" y="34" font-size="10" font-family="'Fira Code', monospace" fill="#94a3b8" text-anchor="end">80</text>
+              <text x="35" y="79" font-size="10" font-family="'Fira Code', monospace" fill="#94a3b8" text-anchor="end">60</text>
+              <text x="35" y="124" font-size="10" font-family="'Fira Code', monospace" fill="#94a3b8" text-anchor="end">40</text>
+              <text x="35" y="169" font-size="10" font-family="'Fira Code', monospace" fill="#94a3b8" text-anchor="end">20</text>
+              <text x="35" y="198" font-size="10" font-family="'Fira Code', monospace" fill="#94a3b8" text-anchor="end">0</text>
+
+              <!-- Y-Axis Ticks Right (EGP Value) -->
+              <text x="655" y="34" font-size="10" font-family="'Fira Code', monospace" fill="#ea580c" text-anchor="start">40k</text>
+              <text x="655" y="124" font-size="10" font-family="'Fira Code', monospace" fill="#ea580c" text-anchor="start">20k</text>
+              <text x="655" y="198" font-size="10" font-family="'Fira Code', monospace" fill="#ea580c" text-anchor="start">0</text>
+
+              <!-- Group of 7 Days Data Columns with Arabic Dates -->
+              <!-- Day 1: 14 أغسطس (x=90) -->
+              <g class="chart-day-col" transform="translate(90, 0)">
+                <rect class="bar-red" x="-14" y="105" width="12" height="90" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="135" width="12" height="60" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">14 أغسطس</text>
+              </g>
+
+              <!-- Day 2: 15 أغسطس (x=175) -->
+              <g class="chart-day-col" transform="translate(175, 0)">
+                <rect class="bar-red" x="-14" y="85" width="12" height="110" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="115" width="12" height="80" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">15 أغسطس</text>
+              </g>
+
+              <!-- Day 3: 16 أغسطس (x=260) -->
+              <g class="chart-day-col" transform="translate(260, 0)">
+                <rect class="bar-red" x="-14" y="120" width="12" height="75" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="90" width="12" height="105" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">16 أغسطس</text>
+              </g>
+
+              <!-- Day 4: 17 أغسطس (x=345) -->
+              <g class="chart-day-col" transform="translate(345, 0)">
+                <rect class="bar-red" x="-14" y="60" width="12" height="135" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="75" width="12" height="120" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">17 أغسطس</text>
+              </g>
+
+              <!-- Day 5: 18 أغسطس (x=430) -->
+              <g class="chart-day-col" transform="translate(430, 0)">
+                <rect class="bar-red" x="-14" y="95" width="12" height="100" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="65" width="12" height="130" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">18 أغسطس</text>
+              </g>
+
+              <!-- Day 6: 19 أغسطس (x=515) -->
+              <g class="chart-day-col" transform="translate(515, 0)">
+                <rect class="bar-red" x="-14" y="50" width="12" height="145" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="55" width="12" height="140" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">19 أغسطس</text>
+              </g>
+
+              <!-- Day 7: 20 أغسطس (x=600) -->
+              <g class="chart-day-col" transform="translate(600, 0)">
+                <rect class="bar-red" x="-14" y="70" width="12" height="125" rx="2" fill="#ef4444"/>
+                <rect class="bar-blue" x="2" y="80" width="12" height="115" rx="2" fill="#3b82f6"/>
+                <text y="215" font-size="11" font-family="'Tajawal', sans-serif" font-weight="700" fill="#475569" text-anchor="middle">20 أغسطس</text>
+              </g>
+
+              <!-- Overlaid Trend Line Path (Donations in EGP) -->
+              <path id="chartLinePathReplica"
+                    d="M 90 140 Q 130 110, 175 125 T 260 95 T 345 55 T 430 80 T 515 45 T 600 65"
+                    fill="none" stroke="#ea580c" stroke-width="3.5"
+                    style="filter: drop-shadow(0 4px 8px rgba(234, 88, 12, 0.3));" />
+
+              <!-- Vertex Dots -->
+              <circle cx="90" cy="140" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="175" cy="125" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="260" cy="95" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="345" cy="55" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="430" cy="80" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="515" cy="45" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+              <circle cx="600" cy="65" r="4.5" fill="#ea580c" stroke="#ffffff" stroke-width="2"/>
+            </svg>
+          </div>
+
+          <!-- Legends -->
+          <div class="chart-legends-bar">
+            <div class="chart-legend-badge">
+              <span class="legend-glyph-bar" style="background:#ef4444;"></span>
+              <span>العملاء الجدد (New Leads)</span>
+            </div>
+            <div class="chart-legend-badge">
+              <span class="legend-glyph-bar" style="background:#3b82f6;"></span>
+              <span>المتبرعون (Donors)</span>
+            </div>
+            <div class="chart-legend-badge">
+              <span class="legend-glyph-line" style="background:#ea580c;"></span>
+              <span>قيمة التبرعات (Donations - EGP)</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. Individual Animation Concepts Showcase (Glowing Bar & Line Draw with Arrows) -->
+      <div class="concept-showcase-grid">
+        
+        <!-- Concept A: Glowing Blue Vertical Bar with Grow Effect & Vector Arrow -->
+        <div class="concept-card concept-card-blue">
+          <div class="concept-header">
+            <span class="concept-title">نمو العمود الرأسي (Bar Grow)</span>
+            <span class="card-tech-tag" style="background:#dbeafe; color:#1d4ed8;">scaleY(0 &rarr; 1)</span>
+          </div>
+
+          <div class="concept-stage-view">
+            <div class="bar-axis-ground"></div>
+            <!-- Live Animated Bar -->
+            <div class="animated-bar-entity"></div>
+
+            <div class="vector-arrow-up">
+              <span>100%</span>
+              <svg width="14" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 19V5M5 12l7-7 7 7"/></svg>
+              <span>0%</span>
+            </div>
+
+            <!-- Coordinate Marker -->
+            <div style="position:absolute; top:10px; left:10px; font-size:10px; font-family:'Fira Code', monospace; color:#38bdf8;">
+              #bar-entity &uarr; Grow Effect
+            </div>
+          </div>
+
+          <div class="concept-meta-tags">
+            <span class="meta-tag">ease: back.out(1.7)</span>
+            <span class="meta-tag">duration: 650ms</span>
+          </div>
+        </div>
+
+        <!-- Concept B: Isolated Red Line Section with Draw Effect & Vector Arrow -->
+        <div class="concept-card concept-card-red">
+          <div class="concept-header">
+            <span class="concept-title">رسم مسار الخط (Line Draw)</span>
+            <span class="card-tech-tag" style="background:#fee2e2; color:#b91c1c;">stroke-dashoffset</span>
+          </div>
+
+          <div class="concept-stage-view">
+            <svg width="100%" height="100%" viewBox="0 0 200 120">
+              <!-- Coordinate Grid -->
+              <line x1="20" y1="20" x2="180" y2="20" stroke="#1e293b" stroke-width="1" stroke-dasharray="2 2"/>
+              <line x1="20" y1="60" x2="180" y2="60" stroke="#1e293b" stroke-width="1" stroke-dasharray="2 2"/>
+              <line x1="20" y1="100" x2="180" y2="100" stroke="#1e293b" stroke-width="1" stroke-dasharray="2 2"/>
+
+              <!-- Animated Drawing Line Section -->
+              <path class="line-path-entity"
+                    d="M 30 90 Q 75 30, 120 70 T 170 35"
+                    fill="none" stroke="#f43f5e" stroke-width="4"
+                    stroke-linecap="round" />
+
+              <!-- Vertex Anchor Rings -->
+              <circle class="line-point-ping" cx="30" cy="90" r="5" />
+              <circle class="line-point-ping" cx="170" cy="35" r="5" />
+            </svg>
+
+            <div style="position:absolute; bottom:8px; right:10px; font-size:10px; font-family:'Fira Code', monospace; color:#f43f5e; display:flex; align-items:center; gap:4px;">
+              <span>Draw Effect</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+            </div>
+          </div>
+
+          <div class="concept-meta-tags">
+            <span class="meta-tag">dasharray: 220</span>
+            <span class="meta-tag">duration: 800ms</span>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- 3. Targeting Code Blocks (GSAP & Selector Logic) -->
+      <div class="target-code-stack">
+        
+        <!-- Block 1: animateBar targeting #chartPieSlices -->
+        <div class="code-block-card">
+          <div class="code-header">
+            <div class="code-header-left">
+              <span class="traffic-dot dot-red"></span>
+              <span class="traffic-dot dot-yellow"></span>
+              <span class="traffic-dot dot-green"></span>
+              <span class="code-title">function animateBar(barId)</span>
+            </div>
+            <span class="code-tag">GSAP TARGET: #chartPieSlices</span>
+          </div>
+          <pre class="code-body"><code><span class="comm">// Targeting: function animateBar(barId) targeting #chartPieSlices</span>
+<span class="kw">function</span> <span class="fn">animateBar</span>(<span class="prop">barId</span>) {
+  <span class="kw">const</span> <span class="prop">targetSelector</span> = <span class="str">`#chartPieSlices #bar-${barId}`</span>;
+  
+  <span class="fn">gsap</span>.<span class="fn">fromTo</span>(<span class="prop">targetSelector</span>, {
+    <span class="prop">scaleY</span>: <span class="num">0</span>,
+    <span class="prop">transformOrigin</span>: <span class="str">"bottom center"</span>,
+    <span class="prop">opacity</span>: <span class="num">0.3</span>
+  }, {
+    <span class="prop">scaleY</span>: <span class="num">1</span>,
+    <span class="prop">opacity</span>: <span class="num">1</span>,
+    <span class="prop">duration</span>: <span class="num">0.65</span>,
+    <span class="prop">ease</span>: <span class="str">"back.out(1.7)"</span>,
+    <span class="prop">stagger</span>: <span class="num">0.08</span>
+  });
+}</code></pre>
+        </div>
+
+        <!-- Block 2: Target: #chartLinePath -->
+        <div class="code-block-card">
+          <div class="code-header">
+            <div class="code-header-left">
+              <span class="traffic-dot dot-red"></span>
+              <span class="traffic-dot dot-yellow"></span>
+              <span class="traffic-dot dot-green"></span>
+              <span class="code-title">Target: #chartLinePath</span>
+            </div>
+            <span class="code-tag">SVG PATH SYNCHRONIZER</span>
+          </div>
+          <pre class="code-body"><code><span class="comm">// Target: #chartLinePath</span>
+<span class="kw">function</span> <span class="fn">animateLinePath</span>(<span class="prop">pathSelector</span> = <span class="str">"#chartLinePath"</span>) {
+  <span class="kw">const</span> <span class="prop">path</span> = document.<span class="fn">querySelector</span>(<span class="prop">pathSelector</span>);
+  <span class="kw">const</span> <span class="prop">length</span> = <span class="prop">path</span>.<span class="fn">getTotalLength</span>();
+  
+  <span class="fn">gsap</span>.<span class="fn">set</span>(<span class="prop">path</span>, { 
+    <span class="prop">strokeDasharray</span>: <span class="prop">length</span>, 
+    <span class="prop">strokeDashoffset</span>: <span class="prop">length</span> 
+  });
+  
+  <span class="fn">gsap</span>.<span class="fn">to</span>(<span class="prop">path</span>, {
+    <span class="prop">strokeDashoffset</span>: <span class="num">0</span>,
+    <span class="prop">duration</span>: <span class="num">1.2</span>,
+    <span class="prop">ease</span>: <span class="str">"power2.out"</span>,
+    <span class="prop">delay</span>: <span class="num">0.25</span>
+  });
+}</code></pre>
+        </div>
+
+      </div>
+
+    </div>
+
+    <!-- ========================================================
+         BOTTOM ROW: ARCHITECTURAL INTEGRITY & FINAL SUMMARY CARD
+         (Summary Card placed at very bottom right)
+         ======================================================== -->
+    <div class="bottom-summary-section">
+      
+      <!-- Architectural Notes & Isolation Card (Bottom Left) -->
+      <div class="architecture-notes-card">
+        <div>
+          <div class="section-card-title" style="margin-bottom:12px;">
+            <div class="heading-group">
+              <h2 style="font-size:16px;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2.5"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+                <span>دقة الاستهداف والعزل التشغيلي (Target Precision)</span>
+              </h2>
+            </div>
+            <span class="card-tech-tag">ZERO PAINT BLEED</span>
+          </div>
+
+          <p style="font-size:13px; color:var(--text-secondary); line-height:1.6; margin-bottom:14px; direction:rtl; text-align:right;">
+            تضمن بنية الرسوم المتحركة المستهدفة حصر كافة التحولات (Transforms) والمرشحات (Filters) داخل نطاق عناصر الـ SVG والـ Canvas المعنية دون إحداث إعادة رسم (Repaint) أو تغيير في التخطيط (Reflow) للمنطقة المحيطة في لوحة التحكم (CRM Dashboard).
+          </p>
+        </div>
+
+        <div style="display:flex; gap:10px; flex-wrap:wrap; direction:ltr;">
+          <span class="param-badge" style="flex:1;">
+            <span class="param-name">DOM Isolation</span>
+            <span class="param-val">Shadow Bounds</span>
+          </span>
+          <span class="param-badge" style="flex:1;">
+            <span class="param-name">Composite Layer</span>
+            <span class="param-val">GPU Accelerated</span>
+          </span>
+        </div>
+      </div>
+
+      <!-- FINAL SUMMARY CARD (At very bottom right) -->
+      <div class="final-summary-card">
+        <div>
+          <div class="summary-header-row">
+            <div class="summary-connector-tag">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17l9.2-9.2M17 17V8H8"/></svg>
+              <span>CONVERGING FROM RADIAL & BAR/LINE PIPELINES</span>
+            </div>
+            <span class="card-tech-tag" style="background:rgba(255,255,255,0.1); color:#ffffff; border-color:rgba(255,255,255,0.2);">SYNC ENGINE</span>
+          </div>
+
+          <!-- English Statement -->
+          <div class="summary-text-en ltr">
+            &ldquo;Layered Animations: Pie slice scale, bar height grow, line draw, all synchronized.&rdquo;
+          </div>
+
+          <!-- Arabic Statement -->
+          <div class="summary-text-ar rtl">
+            &laquo;رسوم متحركة متعددة الطبقات: مقياس شريحة الكعكة، نمو ارتفاع العمود، رسم الخط، كلها متزامنة&raquo;
+          </div>
+        </div>
+
+        <!-- Telemetry Matrix -->
+        <div class="sync-timeline-matrix">
+          <div class="sync-col">
+            <div class="sync-col-title">PIE SLICE SCALE</div>
+            <div class="sync-col-val"><span class="sync-col-pill" style="background:#38bdf8;"></span> 0ms &rarr; 300ms</div>
+          </div>
+          <div class="sync-col">
+            <div class="sync-col-title">BAR HEIGHT GROW</div>
+            <div class="sync-col-val"><span class="sync-col-pill" style="background:#3b82f6;"></span> 150ms &rarr; 750ms</div>
+          </div>
+          <div class="sync-col">
+            <div class="sync-col-title">LINE PATH DRAW</div>
+            <div class="sync-col-val"><span class="sync-col-pill" style="background:#ea580c;"></span> 250ms &rarr; 1200ms</div>
+          </div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+</div>
+
+<script>
+  // Animation Controller Script
+  let currentSpeed = 1;
+
+  function setSpeed(speed) {
+    currentSpeed = speed;
+    document.querySelectorAll('.speed-pill').forEach(btn => {
+      btn.classList.toggle('active', btn.textContent.includes(speed + 'x'));
+    });
+    
+    const isolatedSlice = document.querySelector('.isolated-wedge-slice');
+    if (isolatedSlice) {
+      isolatedSlice.style.animationDuration = (2 / speed) + 's';
+    }
+    const animatedBar = document.querySelector('.animated-bar-entity');
+    if (animatedBar) {
+      animatedBar.style.animationDuration = (2 / speed) + 's';
+    }
+    const linePath = document.querySelector('.line-path-entity');
+    if (linePath) {
+      linePath.style.animationDuration = (2 / speed) + 's';
+    }
+  }
+
+  function restartAllAnimations() {
+    const animElements = document.querySelectorAll('.isolated-wedge-slice, .animated-bar-entity, .line-path-entity, .ripple-circle, .line-point-ping');
+    animElements.forEach(el => {
+      const currentAnim = el.style.animation;
+      el.style.animation = 'none';
+      void el.offsetHeight; // trigger reflow
+      el.style.animation = '';
+    });
+    
+    // Flash sync badge
+    const badge = document.querySelector('.final-summary-card');
+    if (badge) {
+      badge.style.boxShadow = '0 0 45px rgba(56, 189, 248, 0.6)';
+      setTimeout(() => {
+        badge.style.boxShadow = '0 15px 35px -5px rgba(15, 23, 42, 0.3), 0 0 30px rgba(59, 130, 246, 0.25)';
+      }, 400);
+    }
+  }
+
+  // Interactive Hover on Replica Donut Slices
+  ['pieSlice1', 'pieSlice2', 'pieSlice3', 'pieSlice4'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) {
+      el.addEventListener('mouseenter', () => {
+        el.style.transform = 'scale(1.05)';
+      });
+      el.addEventListener('mouseleave', () => {
+        el.style.transform = 'scale(1)';
+      });
+    }
+  });
+</script>
+
+</body>
+</html>

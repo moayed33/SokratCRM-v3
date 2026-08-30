@@ -5,8 +5,9 @@ declare(strict_types=1);
 namespace App\Http\Controllers;
 
 use App\Models\Campaign;
+use App\Models\Donation;
 use App\Models\Lead;
-use App\Models\LeadStatus;
+use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Support\BranchContext;
@@ -116,32 +117,41 @@ class CampaignReportController extends Controller
 
         $totalLeads = (clone $leadQuery)->count();
         $donorLeads = (clone $leadQuery)
-            ->whereHas('status', static fn (Builder $query) => $query->where('code', 'donor'))
+            ->whereHas('status.stage', static fn (Builder $query) => $query->where('code', 'donor'))
             ->count();
 
-        $statusCounts = (clone $leadQuery)
-            ->selectRaw('lead_status_id, COUNT(*) as aggregate')
-            ->groupBy('lead_status_id')
-            ->pluck('aggregate', 'lead_status_id');
+        $recordedDonationValue = (float) Donation::query()
+            ->whereIn('lead_id', (clone $leadQuery)->select('leads.id'))
+            ->sum('amount');
+        $legacyDonationValue = (float) ((clone $leadQuery)
+            ->whereDoesntHave('donations')
+            ->whereNotNull('donation_value')
+            ->where('donation_value', '>', 0)
+            ->sum('donation_value') ?? 0.0);
 
-        $statusDistribution = LeadStatus::query()
-            ->with('stage:id,name_ar,color,is_active')
+        $stageCounts = (clone $leadQuery)
+            ->join('lead_statuses', 'lead_statuses.id', '=', 'leads.lead_status_id')
+            ->selectRaw('lead_statuses.pipeline_stage_id, COUNT(DISTINCT leads.id) as aggregate')
+            ->groupBy('lead_statuses.pipeline_stage_id')
+            ->pluck('aggregate', 'lead_statuses.pipeline_stage_id');
+
+        $stageDistribution = PipelineStage::query()
             ->orderBy('position')
             ->orderBy('id')
             ->get()
-            ->filter(static fn (LeadStatus $status) => (int) ($statusCounts[$status->id] ?? 0) > 0
-                || (bool) $status->stage?->is_active)
-            ->map(static function (LeadStatus $status) use ($statusCounts, $totalLeads): array {
-                $count = (int) ($statusCounts[$status->id] ?? 0);
+            ->filter(static fn (PipelineStage $stage) => (int) ($stageCounts[$stage->id] ?? 0) > 0
+                || (bool) $stage->is_active)
+            ->map(static function (PipelineStage $stage) use ($stageCounts, $totalLeads): array {
+                $count = (int) ($stageCounts[$stage->id] ?? 0);
 
                 return [
-                    'code' => $status->code,
-                    'label' => $status->localizedName(),
+                    'code' => $stage->code,
+                    'label' => $stage->localizedName(),
                     'count' => $count,
                     'percentage' => $totalLeads > 0
                         ? round(($count / $totalLeads) * 100, 1)
                         : 0.0,
-                    'color' => $status->color ?: ($status->stage?->color ?: '#64748b'),
+                    'color' => $stage->color ?: '#64748b',
                 ];
             })
             ->values();
@@ -151,6 +161,7 @@ class CampaignReportController extends Controller
             'ended_campaigns' => $endedCampaigns,
             'current_leads' => $totalLeads,
             'donor_leads' => $donorLeads,
+            'total_donation_value' => round($recordedDonationValue + $legacyDonationValue, 2),
             'total_campaign_cost' => round($totalCampaignCost, 2),
             'lead_cost' => $totalLeads > 0
                 ? round($totalCampaignCost / $totalLeads, 2)
@@ -173,8 +184,10 @@ class CampaignReportController extends Controller
             'employees' => $employees,
             'filters' => $filters,
             'metrics' => $metrics,
-            'statusDistribution' => $statusDistribution,
-            'timeline' => $this->buildTimeline($campaignIds, $from, $to),
+            'stageDistribution' => $stageDistribution,
+            'timeline' => $selectedCampaignId === null
+                ? $this->buildTimeline($campaignIds, $from, $to)
+                : [],
             'selectedCampaign' => $selectedCampaignId !== null
                 ? $campaigns->firstWhere('id', $selectedCampaignId)
                 : null,

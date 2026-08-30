@@ -18,6 +18,7 @@
  const list = document.getElementById('crmNotificationList');
  const readAll = document.getElementById('crmNotificationReadAll');
  const loadMore = document.getElementById('crmNotificationLoadMore');
+ const feedback = document.getElementById('crmNotificationFeedback');
  const toast = document.getElementById('crmNotificationToast');
  const toastTitle = document.getElementById('crmNotificationToastTitle');
  const toastBody = document.getElementById('crmNotificationToastBody');
@@ -31,6 +32,10 @@
  let unreadCount = null;
  let loading = false;
  let toastTimer = null;
+ let feedbackTimer = null;
+ let eventSource = null;
+ let streamConnected = false;
+ let realtimeSignature = null;
 
  const request = async (url, options = {}) => {
   const response = await fetch(url, {
@@ -55,6 +60,59 @@
   return response.status === 204 ? {} : response.json();
  };
 
+ const announce = (message, type = 'success', retry = null) => {
+  if (!feedback) return;
+  clearTimeout(feedbackTimer);
+  feedback.replaceChildren();
+  feedback.className = `crm-notification-feedback ${type}`;
+  const text = document.createElement('span');
+  text.textContent = message;
+  feedback.append(text);
+  if (typeof retry === 'function') {
+   const retryButton = document.createElement('button');
+   retryButton.type = 'button';
+   retryButton.textContent = config.labelRetry;
+   retryButton.addEventListener('click', retry, { once: true });
+   feedback.append(retryButton);
+  }
+  feedback.hidden = false;
+  if (type !== 'working') {
+   feedbackTimer = setTimeout(() => { feedback.hidden = true; }, 5000);
+  }
+ };
+
+ const setItemBusy = (article, busy) => {
+  if (!article) return;
+  article.classList.toggle('is-busy', busy);
+  article.setAttribute('aria-busy', busy ? 'true' : 'false');
+  article.querySelectorAll('.crm-notification-actions button, .crm-notification-actions select')
+   .forEach(control => { control.disabled = busy; });
+  article.querySelectorAll('.crm-notification-actions a').forEach(link => {
+   link.classList.toggle('is-disabled', busy);
+   link.setAttribute('aria-disabled', busy ? 'true' : 'false');
+  });
+ };
+
+ const clearItemError = article => {
+  article?.querySelector('.crm-notification-action-error')?.remove();
+ };
+
+ const showItemError = (article, message, retry) => {
+  if (!article) return;
+  clearItemError(article);
+  const error = document.createElement('div');
+  error.className = 'crm-notification-action-error';
+  error.setAttribute('role', 'alert');
+  const text = document.createElement('span');
+  text.textContent = message;
+  const retryButton = document.createElement('button');
+  retryButton.type = 'button';
+  retryButton.textContent = config.labelRetry;
+  retryButton.addEventListener('click', retry, { once: true });
+  error.append(text, retryButton);
+  article.append(error);
+ };
+
  const setBadge = count => {
   const safeCount = Math.max(0, Number(count || 0));
   badges().forEach(badgeNode => {
@@ -69,7 +127,8 @@
  const showToast = item => {
   if (!item || center.classList.contains('is-open')) return;
   toastTitle.textContent = item.title;
-  toastBody.textContent = item.body;
+  const stageSuffix = item.stage_name ? ` (${locale === 'ar' ? 'المرحلة: ' : 'Stage: '}${item.stage_name})` : '';
+  toastBody.textContent = (item.body || '') + stageSuffix;
   toast.hidden = false;
   clearTimeout(toastTimer);
   toastTimer = setTimeout(() => { toast.hidden = true; }, 5500);
@@ -115,7 +174,7 @@
   return formatter.format(Math.round(hours / 24), 'day');
  };
 
- const stateNode = (icon, title, body = '') => {
+ const stateNode = (icon, title, body = '', action = null) => {
   const state = document.createElement('div');
   state.className = 'crm-notification-state';
   const wrap = document.createElement('div');
@@ -130,22 +189,59 @@
    span.textContent = body;
    wrap.append(span);
   }
+  if (typeof action === 'function') {
+   const retry = document.createElement('button');
+   retry.type = 'button';
+   retry.className = 'crm-notification-state-action';
+   retry.textContent = config.labelRetry;
+   retry.addEventListener('click', action, { once: true });
+   wrap.append(retry);
+  }
   state.append(wrap);
   return state;
  };
 
- const mutate = async (item, action, method = 'PATCH', body = null) => {
-  await request(`${baseUrl}/${encodeURIComponent(item.id)}${action}`, {
-   method,
-   body: body ? JSON.stringify(body) : undefined,
-  });
-  await Promise.all([loadNotifications(1), refreshCount()]);
+ const mutate = async (
+  item,
+  action,
+  method = 'PATCH',
+  body = null,
+  context = {},
+ ) => {
+  const article = context.article || null;
+  const retry = () => mutate(item, action, method, body, context);
+  clearItemError(article);
+  setItemBusy(article, true);
+  announce(config.labelActionWorking, 'working');
+
+  try {
+   await request(`${baseUrl}/${encodeURIComponent(item.id)}${action}`, {
+    method,
+    body: body ? JSON.stringify(body) : undefined,
+   });
+   if (context.successMessage) {
+    announce(context.successMessage);
+   }
+   await Promise.all([loadNotifications(1), refreshCount()]);
+   if (typeof context.onSuccess === 'function') {
+    context.onSuccess();
+   }
+  } catch (error) {
+   const message = `${config.labelActionFailed} ${error.message}`.trim();
+   showItemError(article, message, retry);
+   announce(message, 'error', retry);
+  } finally {
+   if (article?.isConnected) {
+    setItemBusy(article, false);
+   }
+  }
  };
 
  const createItem = item => {
   const article = document.createElement('article');
   article.className = `crm-notification-item${item.read_at ? '' : ' is-unread'}`;
   article.dataset.priority = item.priority;
+  article.dataset.notificationId = item.id;
 
   const main = document.createElement('div');
   main.className = 'crm-notification-item-main';
@@ -158,10 +254,42 @@
   title.textContent = item.title;
   const body = document.createElement('p');
   body.textContent = item.body;
+
+  let stageNode = null;
+  if (item.stage_name) {
+   stageNode = document.createElement('div');
+   stageNode.className = 'crm-notification-stage';
+   const stageLabel = document.createElement('span');
+   stageLabel.className = 'crm-notification-stage-label';
+   stageLabel.textContent = locale === 'ar' ? 'المرحلة: ' : 'Stage: ';
+
+   const stageBadge = document.createElement('span');
+   stageBadge.className = 'crm-notification-stage-badge';
+   if (item.stage_color) {
+    stageBadge.style.color = item.stage_color;
+    stageBadge.style.borderColor = `${item.stage_color}40`;
+    stageBadge.style.backgroundColor = `${item.stage_color}14`;
+   }
+   if (item.stage_icon) {
+    const icon = document.createElement('i');
+    icon.className = `bi ${item.stage_icon}`;
+    icon.setAttribute('aria-hidden', 'true');
+    stageBadge.append(icon);
+   }
+   const stageText = document.createElement('span');
+   stageText.textContent = item.stage_name;
+   stageBadge.append(stageText);
+   stageNode.append(stageLabel, stageBadge);
+  }
+
   const meta = document.createElement('div');
   meta.className = 'crm-notification-meta';
   meta.textContent = relativeTime(item.created_at);
-  copy.append(title, body, meta);
+  if (stageNode) {
+   copy.append(title, body, stageNode, meta);
+  } else {
+   copy.append(title, body, meta);
+  }
   main.append(dot, copy);
   article.append(main);
 
@@ -174,13 +302,33 @@
    open.href = resolvedUrl;
    open.textContent = config.labelOpen;
    open.addEventListener('click', event => {
+    if (article.classList.contains('is-busy')) {
+     event.preventDefault();
+     return;
+    }
     if (!item.read_at) {
      event.preventDefault();
-     mutate(item, '/read').then(() => { window.location.assign(resolvedUrl); });
+     void mutate(item, '/read', 'PATCH', null, {
+      article,
+      successMessage: config.labelMarkedRead,
+      onSuccess: () => { window.location.assign(resolvedUrl); },
+     });
     }
    });
    actions.append(open);
   }
+
+  const readToggle = document.createElement('button');
+  readToggle.type = 'button';
+  readToggle.textContent = item.read_at ? config.labelMarkUnread : config.labelMarkRead;
+  readToggle.addEventListener('click', () => {
+   const markUnread = Boolean(item.read_at);
+   void mutate(item, markUnread ? '/unread' : '/read', 'PATCH', null, {
+    article,
+    successMessage: markUnread ? config.labelMarkedUnread : config.labelMarkedRead,
+   });
+  });
+  actions.append(readToggle);
 
   if (item.can_snooze) {
    const snooze = document.createElement('select');
@@ -198,14 +346,25 @@
     option.selected = value === '';
     snooze.append(option);
    });
-   snooze.addEventListener('change', () => mutate(item, '/snooze', 'POST', { minutes: Number(snooze.value) }));
+   snooze.addEventListener('change', () => {
+    const minutes = Number(snooze.value);
+    void mutate(item, '/snooze', 'POST', { minutes }, {
+     article,
+     successMessage: config.labelSnoozed,
+    });
+   });
    actions.append(snooze);
   }
 
   const dismiss = document.createElement('button');
   dismiss.type = 'button';
   dismiss.textContent = config.labelDismiss;
-  dismiss.addEventListener('click', () => mutate(item, '', 'DELETE'));
+  dismiss.addEventListener('click', () => {
+   void mutate(item, '', 'DELETE', null, {
+    article,
+    successMessage: config.labelDismissed,
+   });
+  });
   actions.append(dismiss);
   article.append(actions);
   return article;
@@ -215,6 +374,7 @@
   if (loading) return;
   loading = true;
   page = requestedPage;
+  loadMore.disabled = true;
   if (page === 1) list.replaceChildren(stateNode('bi-arrow-repeat', config.labelLoading));
 
   try {
@@ -231,9 +391,15 @@
    }
    loadMore.hidden = page >= lastPage;
   } catch (error) {
-   if (page === 1) list.replaceChildren(stateNode('bi-exclamation-circle', config.labelError, error.message));
+   const retry = () => { void loadNotifications(requestedPage); };
+   if (page === 1) {
+    list.replaceChildren(stateNode('bi-exclamation-circle', config.labelError, error.message, retry));
+   } else {
+    announce(`${config.labelError} ${error.message}`.trim(), 'error', retry);
+   }
   } finally {
    loading = false;
+   loadMore.disabled = false;
   }
  };
 
@@ -260,6 +426,43 @@
   }
  };
 
+ const applyRealtimeState = async state => {
+  const nextCount = Math.max(0, Number(state.count || 0));
+  const signature = `${nextCount}:${Number(state.total || 0)}:${state.latest_id || ''}`;
+  if (signature === realtimeSignature) return;
+  realtimeSignature = signature;
+  if (unreadCount !== null && nextCount > unreadCount) {
+   try {
+    const latest = await request(`${config.indexUrl}?filter=unread&per_page=1`);
+    showToast(latest.data && latest.data[0]);
+   } catch (_) {}
+  }
+  unreadCount = nextCount;
+  setBadge(nextCount);
+  if (center.classList.contains('is-open')) {
+   void loadNotifications(1);
+  }
+ };
+
+ const stopStream = () => {
+  eventSource?.close();
+  eventSource = null;
+  streamConnected = false;
+ };
+
+ const startStream = () => {
+  if (!config.streamUrl || !('EventSource' in window) || document.hidden || eventSource) return;
+  const source = new EventSource(config.streamUrl, { withCredentials: true });
+  eventSource = source;
+  source.addEventListener('open', () => { streamConnected = true; });
+  source.addEventListener('notifications', event => {
+   try {
+    void applyRealtimeState(JSON.parse(event.data));
+   } catch (_) {}
+  });
+  source.addEventListener('error', () => { streamConnected = false; });
+ };
+
  document.addEventListener('click', event => {
   const target = event.target.closest('.crm-notification-trigger, #crmNotificationTrigger');
   if (target) {
@@ -280,11 +483,23 @@
    loadNotifications(1);
   });
  });
- readAll.addEventListener('click', async () => {
-  await request(config.readAllUrl, { method: 'PATCH' });
-  await Promise.all([loadNotifications(1), refreshCount()]);
+ readAll.addEventListener('click', () => {
+  const run = async () => {
+   readAll.disabled = true;
+   announce(config.labelActionWorking, 'working');
+   try {
+    await request(config.readAllUrl, { method: 'PATCH' });
+    announce(config.labelAllRead);
+    await Promise.all([loadNotifications(1), refreshCount()]);
+   } catch (error) {
+    announce(`${config.labelActionFailed} ${error.message}`.trim(), 'error', run);
+   } finally {
+    readAll.disabled = false;
+   }
+  };
+  void run();
  });
- loadMore.addEventListener('click', () => loadNotifications(page + 1));
+ loadMore.addEventListener('click', () => { void loadNotifications(page + 1); });
  document.addEventListener('keydown', event => {
   if (!center.classList.contains('is-open')) return;
   if (event.key === 'Escape') {
@@ -305,8 +520,19 @@
    first.focus();
   }
  });
- document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshCount(); });
+ document.addEventListener('visibilitychange', () => {
+  if (document.hidden) {
+   stopStream();
+   return;
+  }
+  void refreshCount();
+  startStream();
+ });
+ window.addEventListener('pagehide', stopStream);
 
- refreshCount();
- setInterval(refreshCount, pollMs);
+ void refreshCount();
+ startStream();
+ setInterval(() => {
+  if (!streamConnected) void refreshCount();
+ }, pollMs);
 })();

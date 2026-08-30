@@ -20,15 +20,16 @@ use App\Services\Notifications\NotificationDispatcher;
 use App\Services\Notifications\ReminderPlanner;
 use App\Services\Notifications\TwilioMessageSender;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Str;
 use Tests\TestCase;
 
 class NotificationSystemTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function tearDown(): void
     {
@@ -228,6 +229,129 @@ class NotificationSystemTest extends TestCase
                 'channel' => 'database',
             ])
             ->assertTooManyRequests();
+    }
+
+    public function test_channel_test_dispatches_only_its_own_occurrence(): void
+    {
+        config([
+            'crm_notifications.enabled' => true,
+            'crm_notifications.channels.database' => true,
+        ]);
+        $now = Carbon::parse('2026-08-16 09:00:00', 'UTC');
+        Carbon::setTestNow($now);
+        $user = $this->userWithPermissions([]);
+        $rule = NotificationRule::query()
+            ->where('event_key', NotificationRule::EVENT_SYSTEM_TEST)
+            ->firstOrFail();
+        $unrelated = NotificationOccurrence::query()->create([
+            'notification_rule_id' => $rule->getKey(),
+            'event_key' => NotificationRule::EVENT_SYSTEM_TEST,
+            'source_kind' => 'user',
+            'source_id' => $user->getKey(),
+            'recipient_user_id' => $user->getKey(),
+            'trigger_at' => $now->copy()->subMinute(),
+            'priority' => 'important',
+            'status' => NotificationOccurrence::STATUS_PENDING,
+            'payload' => [
+                'title' => 'Unrelated pending notification',
+                'body' => 'Must remain pending during a channel test.',
+                'action_url' => '/dashboard',
+            ],
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('v2.notifications.preferences.test'), [
+                'channel' => 'database',
+            ])
+            ->assertOk()
+            ->assertJsonPath('delivery.channel', 'database')
+            ->assertJsonPath('delivery.status', NotificationDelivery::STATUS_DELIVERED);
+
+        $this->assertSame(NotificationOccurrence::STATUS_PENDING, $unrelated->fresh()->status);
+        $testOccurrence = NotificationOccurrence::query()
+            ->where('notification_rule_id', $rule->getKey())
+            ->where('recipient_user_id', $user->getKey())
+            ->where('trigger_at', $now)
+            ->firstOrFail();
+        $this->assertSame(NotificationOccurrence::STATUS_DISPATCHED, $testOccurrence->status);
+        $this->assertNotNull($testOccurrence->notification_id);
+        $this->assertCount(1, $user->fresh()->notifications);
+    }
+
+    public function test_users_can_mark_one_notification_read_and_unread(): void
+    {
+        $user = $this->userWithPermissions([]);
+        $otherUser = $this->userWithPermissions([]);
+        $notification = $user->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'TestNotification',
+            'data' => ['title' => 'Read state', 'body' => 'Toggle me'],
+            'read_at' => now(),
+        ]);
+
+        $this->actingAs($otherUser)
+            ->patchJson(route('v2.notifications.unread', $notification->id))
+            ->assertNotFound();
+        $this->actingAs($user)
+            ->patchJson(route('v2.notifications.unread', $notification->id))
+            ->assertOk();
+        $this->assertNull($notification->fresh()->read_at);
+
+        $this->actingAs($user)
+            ->patchJson(route('v2.notifications.read', $notification->id))
+            ->assertOk();
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
+
+    public function test_notification_stream_emits_the_current_state(): void
+    {
+        config(['crm_notifications.stream_interval_milliseconds' => 500]);
+        $user = $this->userWithPermissions([]);
+        $user->notifications()->create([
+            'id' => (string) Str::uuid(),
+            'type' => 'TestNotification',
+            'data' => ['title' => 'Realtime', 'body' => 'Stream me'],
+            'read_at' => null,
+        ]);
+
+        $response = $this->actingAs($user)
+            ->get(route('v2.notifications.stream'))
+            ->assertOk();
+        $this->assertStringContainsString(
+            'text/event-stream',
+            (string) $response->headers->get('Content-Type'),
+        );
+        $content = $response->streamedContent();
+        $this->assertStringContainsString('event: notifications', $content);
+        $this->assertStringContainsString('"count":1', $content);
+        $this->assertStringContainsString('"total":1', $content);
+    }
+
+    public function test_channel_test_returns_suppression_diagnostics_in_preferences(): void
+    {
+        config([
+            'crm_notifications.enabled' => true,
+            'crm_notifications.channels.mail' => true,
+        ]);
+        $user = $this->userWithPermissions([]);
+
+        $this->actingAs($user)
+            ->postJson(route('v2.notifications.preferences.test'), [
+                'channel' => 'mail',
+            ])
+            ->assertOk()
+            ->assertJsonPath('delivery.channel', 'mail')
+            ->assertJsonPath('delivery.status', NotificationDelivery::STATUS_SUPPRESSED)
+            ->assertJsonPath(
+                'delivery.reason',
+                __('crm.notification_suppressed_preference_disabled'),
+            );
+
+        $this->actingAs($user)
+            ->get(route('v2.notifications.preferences.edit'))
+            ->assertOk()
+            ->assertSee(__('crm.notification_recent_deliveries'))
+            ->assertSee(__('crm.notification_suppressed_preference_disabled'));
     }
 
     public function test_calendar_reminders_honor_long_offsets_and_completion_cancels_pending_delivery(): void
@@ -669,12 +793,9 @@ class NotificationSystemTest extends TestCase
             'code' => fake()->unique()->slug(),
             'is_system' => false,
         ]);
-        foreach ($permissionCodes as $code) {
-            $permission = Permission::query()->firstOrCreate(
-                ['code' => $code],
-                ['module' => explode('.', $code, 2)[0], 'name_ar' => $code],
-            );
-            $group->permissions()->syncWithoutDetaching($permission);
+        if (! empty($permissionCodes)) {
+            $permissionIds = Permission::query()->whereIn('code', $permissionCodes)->pluck('id')->all();
+            $group->permissions()->syncWithoutDetaching($permissionIds);
         }
         $user = User::factory()->create(['is_active' => true, 'timezone' => 'UTC', 'locale' => 'en']);
         $user->groups()->attach($group);

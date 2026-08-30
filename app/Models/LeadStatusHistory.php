@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class LeadStatusHistory extends Model
@@ -50,6 +51,14 @@ class LeadStatusHistory extends Model
         return $this->belongsTo(
             LeadStatus::class,
             'to_status_id'
+        );
+    }
+
+    public function stageFieldValues(): HasMany
+    {
+        return $this->hasMany(
+            LeadStageFieldValue::class,
+            'lead_status_history_id'
         );
     }
 }

@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
 <style>
 :root {
   --red: #dc2637;
@@ -101,7 +101,9 @@ a { color: inherit; text-decoration: none; }
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  padding: 10px 20px;
+  height: 42px;
+  min-height: 42px;
+  padding: 0 18px;
   border-radius: 12px;
   background: var(--red);
   color: #fff;
@@ -110,6 +112,7 @@ a { color: inherit; text-decoration: none; }
   cursor: pointer;
   box-shadow: 0 8px 20px rgba(220, 38, 55, 0.25);
   transition: all .2s ease;
+  box-sizing: border-box;
 }
 .btn-primary:hover {
   background: var(--red-hover);
@@ -597,7 +600,27 @@ html.dark-mode .lead-info-card {
   background: rgba(255, 255, 255, 0.04);
   border-color: rgba(255, 255, 255, 0.1);
 }
-.lead-info-header {
+ .quick-reschedule-box {
+   background: var(--bg, #f1f5f9);
+   border: 1px solid var(--line, #e2e8f0);
+   border-radius: 12px;
+   padding: 12px;
+   margin-bottom: 16px;
+ }
+ .quick-reschedule-heading {
+   font-weight: 700;
+   font-size: 13px;
+   margin-bottom: 8px;
+   color: var(--dark, #334155);
+ }
+ html.dark-mode .quick-reschedule-box {
+   background: rgba(255, 255, 255, 0.04) !important;
+   border-color: rgba(255, 255, 255, 0.08) !important;
+ }
+ html.dark-mode .quick-reschedule-heading {
+   color: #f4f4f5 !important;
+ }
+ .lead-info-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -729,9 +752,12 @@ html.dark-mode .cal-tooltip {
     <div class="page-header">
       <div class="page-title">
         <h1 data-ar-label="{{ __('crm.calendar_and_events', [], 'ar') }}">{{ __('crm.calendar_and_events') }}</h1>
-        <p>{{ __('crm.calendar_subtitle') }}</p>
       </div>
-      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <button class="btn-secondary" id="openIcalFeedModalBtn" type="button" style="display:inline-flex;align-items:center;gap:6px;">
+          <i class="bi bi-cloud-arrow-down-fill"></i>
+          <span>{{ __('crm.sync_external_calendar') ?? 'اشتراك التقويم (iCal)' }}</span>
+        </button>
         @can('calendar.manage')
         <button class="btn-primary" id="openCreateModalBtn" type="button">
           <i class="bi bi-plus-lg"></i>
@@ -770,7 +796,8 @@ html.dark-mode .cal-tooltip {
             <span class="filter-label">{{ __('crm.type_label') }}</span>
             <select class="filter-select" id="filterType">
               <option value="">{{ __('crm.all') }}</option>
-              <option value="lead_followup">📌 {{ __('crm.leads_donors_followup_dates') }}</option>
+              <option value="lead_followup">{{ __('crm.leads_donors_followup_dates') }}</option>
+              <option value="collection">{{ __('crm.collections') ?? 'تحصيلات ميدانية' }}</option>
               <option value="meeting">{{ __('crm.meeting') }}</option>
               <option value="call">{{ __('crm.call') }}</option>
               <option value="task">{{ __('crm.task') }}</option>
@@ -791,12 +818,12 @@ html.dark-mode .cal-tooltip {
           </div>
 
           {{-- Responsible User Filter --}}
-          @if($assignableUsers->count() > 1)
+          @if(!empty($managedStaff) && $managedStaff->count() > 1)
           <div class="filter-group">
-            <span class="filter-label">{{ __('crm.responsible_label') }}</span>
+            <span class="filter-label"><i class="bi bi-person-badge"></i> {{ __('crm.responsible_label') }}</span>
             <select class="filter-select" id="filterUser">
-              <option value="">{{ __('crm.all_users') }}</option>
-              @foreach($assignableUsers as $u)
+              <option value="">{{ __('crm.all_supervised_staff') ?? 'جميع الموظفين' }}</option>
+              @foreach($managedStaff as $u)
               <option value="{{ $u->id }}">{{ $u->name }}</option>
               @endforeach
             </select>
@@ -839,7 +866,7 @@ html.dark-mode .cal-tooltip {
           <span id="previewDonorName">—</span>
         </div>
         <div class="lead-badges-row">
-          <span class="crm-badge crm-badge-branch" id="previewBranchBadge"><i class="bi bi-building"></i> —</span>
+          <span class="crm-badge crm-badge-branch" id="previewBranchBadge"><i class="bi bi-geo-alt-fill"></i> —</span>
           <span class="crm-badge crm-badge-status" id="previewStageBadge">—</span>
         </div>
       </div>
@@ -878,6 +905,18 @@ html.dark-mode .cal-tooltip {
         </div>
       </div>
 
+      {{-- Quick Communications Tray --}}
+      <div id="modalQuickCommsTray" style="display:flex;align-items:center;gap:8px;margin:12px 0;padding:10px 14px;background:var(--bg);border:1px solid var(--line);border-radius:12px;flex-wrap:wrap;">
+        <span style="font-size:12px;font-weight:800;color:var(--muted);display:flex;align-items:center;gap:5px;">
+          <i class="bi bi-broadcast"></i> {{ __('crm.quick_contact') ?? 'تواصل مباشر:' }}
+        </span>
+        <a href="#" id="modalSipDialBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="{{ __('crm.call_via_microsip') }}">
+          <i class="bi bi-telephone-outbound-fill"></i> MicroSIP
+        </a>
+        <a href="#" id="modalWhatsappBtn" target="_blank" rel="noopener" class="btn-secondary" style="padding:6px 12px;font-size:12px;border-radius:8px;background:#16a34a;border-color:#16a34a;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="{{ __('crm.whatsapp_chat') }}">
+          <i class="bi bi-whatsapp"></i> WhatsApp
+        </a>
+      </div>
       <div class="lead-data-item">
         <span class="lead-data-label"><i class="bi bi-chat-left-text-fill"></i> {{ __('crm.notes_and_contact_details') }}</span>
         <div class="lead-notes-box" id="previewNotesText">—</div>
@@ -886,8 +925,8 @@ html.dark-mode .cal-tooltip {
 
     {{-- Quick Reschedule Inline Form --}}
     @can('calendar.manage')
-    <div id="quickRescheduleBox" style="background:#f1f5f9;border-radius:12px;padding:12px;margin-bottom:16px;display:none;">
-      <div style="font-weight:700;font-size:13px;margin-bottom:8px;color:#334155;">
+    <div id="quickRescheduleBox" class="quick-reschedule-box" style="display:none;">
+      <div class="quick-reschedule-heading">
         <i class="bi bi-calendar-event"></i> {{ __('crm.set_new_followup_date') }}
       </div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;">
@@ -922,6 +961,9 @@ html.dark-mode .cal-tooltip {
     <div class="modal-head">
       <h3 id="modalTitleText">{{ __('crm.add_event') }}</h3>
       <button class="modal-close" id="closeModalBtn" type="button">&times;</button>
+    </div>
+    <div id="eventConflictWarning" class="alert warning" style="display:none;margin:0 24px 16px;padding:10px 14px;border-radius:10px;background:rgba(245,158,11,0.1);border:1px solid rgba(245,158,11,0.3);color:#b45309;font-size:12px;font-weight:700;">
+      <i class="bi bi-exclamation-triangle-fill"></i> <span id="conflictWarningText"></span>
     </div>
 
     <form id="eventForm">
@@ -1039,9 +1081,48 @@ html.dark-mode .cal-tooltip {
     </form>
   </div>
 </div>
+<!-- 3. iCal / External Calendar Subscription Modal -->
+<div class="modal-backdrop" id="icalFeedModal">
+  <div class="modal-dialog">
+    <div class="modal-head">
+      <h3><i class="bi bi-cloud-arrow-down-fill" style="color:var(--red);"></i> {{ __('crm.sync_external_calendar') ?? 'الاشتراك في تقويم iCal' }}</h3>
+      <button class="modal-close" id="closeIcalModalBtn" type="button">&times;</button>
+    </div>
+
+    <div style="padding:20px 24px;display:flex;flex-direction:column;gap:16px;">
+      <p style="margin:0;font-size:13px;color:var(--muted);line-height:1.6;">
+        {{ __('crm.ical_subscription_description') ?? 'يمكنك مزامنة أحداثك ومواعيد المتابعة والتحصيلات تلقائياً مع تطبيق التقويم على هاتفك (Apple Calendar أو Google Calendar أو Microsoft Outlook).' }}
+      </p>
+
+      <div class="form-group full">
+        <label class="form-label">{{ __('crm.calendar_feed_url') ?? 'رابط تغذية التقويم الخاص بك (iCal Feed URL)' }}</label>
+        <div style="display:flex;gap:8px;">
+          <input class="form-control" id="icalFeedUrlInput" type="text" value="{{ $iCalFeedUrl ?? '' }}" readonly dir="ltr" style="font-family:monospace;font-size:11px;">
+          <button type="button" id="copyIcalFeedUrlBtn" class="btn-primary" style="padding:0 14px;white-space:nowrap;">
+            <i class="bi bi-clipboard-check"></i> {{ __('crm.copy') ?? 'نسخ' }}
+          </button>
+        </div>
+      </div>
+
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:12px 14px;background:var(--bg);border:1px solid var(--line);border-radius:10px;">
+        <span style="font-size:12px;font-weight:700;color:var(--dark);"><i class="bi bi-file-earmark-arrow-down"></i> {{ __('crm.direct_download_ics') ?? 'تحميل ملف التقويم مباشرة' }}</span>
+        <a href="{{ $iCalFeedUrl ?? '#' }}" download class="btn-secondary" style="font-size:12px;padding:6px 12px;text-decoration:none;">
+          <i class="bi bi-download"></i> .ICS
+        </a>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <div class="modal-actions-end">
+        <button class="btn-secondary" id="closeIcalModalActionBtn" type="button">{{ __('crm.close') }}</button>
+      </div>
+    </div>
+  </div>
+</div>
 
 <!-- FullCalendar JS CDN -->
 <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/locales-all.global.min.js"></script>
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -1213,19 +1294,53 @@ document.addEventListener('DOMContentLoaded', function() {
     const props = fcEvent.extendedProps || {};
     activeLeadIdForReschedule = props.lead_id || props.raw_id;
 
+    const isCollection = props.is_collection || props.type === 'collection' || String(fcEvent.id).startsWith('collection_case_');
+    const modalHeaderTitle = document.getElementById('leadModalHeaderTitle');
+
+    if (isCollection) {
+      if (modalHeaderTitle) modalHeaderTitle.innerHTML = '<i class="bi bi-box-seam" style="color:#8b5cf6;"></i> @json(__('crm.collection_details') ?? 'تفاصيل زيارة التحصيل')';
+    } else {
+      if (modalHeaderTitle) modalHeaderTitle.innerHTML = '<i class="bi bi-person-badge" style="color:#3b82f6;"></i> @json(__('crm.lead_followup_details_title'))';
+    }
+
     document.getElementById('previewDonorName').textContent = props.lead_name || @json(__('crm.donor'));
-    document.getElementById('previewBranchBadge').textContent = props.branch_name ? '📍 ' + props.branch_name : '📍 ' + @json(__('crm.main_branch'));
-    document.getElementById('previewStageBadge').textContent = props.stage_name || props.status_name || @json(__('crm.scheduled'));
+    document.getElementById('previewBranchBadge').innerHTML = props.branch_name ? '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(props.branch_name) : '<i class="bi bi-geo-alt-fill"></i> ' + escapeHtml(@json(__('crm.main_branch')));
+    document.getElementById('previewStageBadge').textContent = isCollection ? (@json(__('crm.collection_case') ?? 'حالة تحصيل') + ' (' + (props.status || '') + ')') : (props.stage_name || props.status_name || @json(__('crm.scheduled')));
     
     const phone = props.lead_phone || '—';
     document.getElementById('previewPhoneText').textContent = phone;
     document.getElementById('previewPhoneLink').href = phone !== '—' ? 'tel:' + phone.replace(/\s+/g, '') : '#';
+
+    // Quick Comms Tray (MicroSIP & WhatsApp)
+    const phoneDigits = String(phone).replace(/[^0-9]/g, '');
+    const modalSipBtn = document.getElementById('modalSipDialBtn');
+    const modalWaBtn = document.getElementById('modalWhatsappBtn');
+    if (modalSipBtn) {
+      if (phoneDigits) {
+        modalSipBtn.href = 'sip:' + phoneDigits;
+        modalSipBtn.style.display = 'inline-flex';
+      } else {
+        modalSipBtn.style.display = 'none';
+      }
+    }
+    if (modalWaBtn) {
+      if (phoneDigits) {
+        let waPhone = phoneDigits;
+        if (waPhone.startsWith('01') && waPhone.length === 11) waPhone = '20' + waPhone.substring(1);
+        modalWaBtn.href = 'https://wa.me/' + waPhone;
+        modalWaBtn.style.display = 'inline-flex';
+      } else {
+        modalWaBtn.style.display = 'none';
+      }
+    }
     
     document.getElementById('previewAssignedUser').textContent = props.user_name || '—';
     document.getElementById('previewDonationTarget').textContent = props.donation_target || '—';
     
     let donationInfo = '—';
-    if (props.donation_value) {
+    if (isCollection && props.expected_amount) {
+      donationInfo = props.expected_amount + ' ' + @json(__('crm.currency_egp')) + ' (' + @json(__('crm.expected_collection_amount') ?? 'قيمة متوقعة') + ')';
+    } else if (props.donation_value) {
       donationInfo = props.donation_value + ' ' + @json(__('crm.currency_egp'));
       if (props.donation_type) donationInfo += ' (' + props.donation_type + ')';
       if (props.donation_cycle) donationInfo += ' / ' + props.donation_cycle;
@@ -1239,7 +1354,16 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('previewFollowupTime').textContent = dt;
     document.getElementById('previewNotesText').textContent = props.description || props.notes || props.response_details || @json(__('crm.no_notes_recorded'));
 
-    document.getElementById('previewLeadFullProfileBtn').href = props.lead_url || ('/leads/' + activeLeadIdForReschedule);
+    const fullProfileBtn = document.getElementById('previewLeadFullProfileBtn');
+    if (fullProfileBtn) {
+      if (isCollection && props.collection_url) {
+        fullProfileBtn.href = props.collection_url;
+        fullProfileBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> @json(__('crm.view_collection_case') ?? 'عرض حالة التحصيل')';
+      } else {
+        fullProfileBtn.href = props.lead_url || ('/leads/' + activeLeadIdForReschedule);
+        fullProfileBtn.innerHTML = '<i class="bi bi-box-arrow-up-right"></i> @json(__('crm.view_full_lead_profile'))';
+      }
+    }
 
     if (quickRescheduleBox) quickRescheduleBox.style.display = 'none';
 
@@ -1437,6 +1561,76 @@ document.addEventListener('DOMContentLoaded', function() {
     let tzoffset = (new Date()).getTimezoneOffset() * 60000;
     let localISOTime = (new Date(dateObj - tzoffset)).toISOString().slice(0, 16);
     return localISOTime;
+  }
+  // Real-time Conflict Detection on Event Modal
+  const conflictBanner = document.getElementById('eventConflictWarning');
+  const conflictText = document.getElementById('conflictWarningText');
+  let conflictTimer = null;
+
+  const triggerConflictCheck = () => {
+    clearTimeout(conflictTimer);
+    conflictTimer = setTimeout(async () => {
+      const userVal = document.getElementById('eventUserId')?.value || @json(auth()->id());
+      const startVal = document.getElementById('eventStartTime')?.value;
+      const endVal = document.getElementById('eventEndTime')?.value;
+      const eventIdVal = document.getElementById('eventId')?.value;
+
+      if (!userVal || !startVal || !endVal) {
+        if (conflictBanner) conflictBanner.style.display = 'none';
+        return;
+      }
+
+      try {
+        const res = await fetch('/calendar/check-conflict', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+            'Accept': 'application/json'
+          },
+          body: JSON.stringify({
+            user_id: userVal,
+            start_time: startVal,
+            end_time: endVal,
+            ignore_id: eventIdVal || null
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data.has_conflict && data.conflicting_event) {
+            if (conflictText) conflictText.textContent = `تنبيه تعارض مواعيد: يتداخل مع (${data.conflicting_event.title}) في ${data.conflicting_event.start_time}`;
+            if (conflictBanner) conflictBanner.style.display = 'block';
+          } else {
+            if (conflictBanner) conflictBanner.style.display = 'none';
+          }
+        }
+      } catch (e) {}
+    }, 300);
+  };
+
+  document.getElementById('eventStartTime')?.addEventListener('change', triggerConflictCheck);
+  document.getElementById('eventEndTime')?.addEventListener('change', triggerConflictCheck);
+  document.getElementById('eventUserId')?.addEventListener('change', triggerConflictCheck);
+
+  // iCal Feed Modal Handlers
+  const icalModal = document.getElementById('icalFeedModal');
+  const openIcalBtn = document.getElementById('openIcalFeedModalBtn');
+  const closeIcalBtn = document.getElementById('closeIcalModalBtn');
+  const closeIcalActionBtn = document.getElementById('closeIcalModalActionBtn');
+  const copyIcalBtn = document.getElementById('copyIcalFeedUrlBtn');
+  const icalUrlInput = document.getElementById('icalFeedUrlInput');
+
+  if (openIcalBtn && icalModal) {
+    openIcalBtn.addEventListener('click', () => icalModal.classList.add('open'));
+    closeIcalBtn?.addEventListener('click', () => icalModal.classList.remove('open'));
+    closeIcalActionBtn?.addEventListener('click', () => icalModal.classList.remove('open'));
+    copyIcalBtn?.addEventListener('click', () => {
+      if (icalUrlInput) {
+        navigator.clipboard.writeText(icalUrlInput.value).then(() => {
+          showToast(@json(__('crm.copied_to_clipboard') ?? 'تم النسخ إلى الحافظة بنجاح.'));
+        });
+      }
+    });
   }
 
   // Submit handler (Store or Update)
@@ -1641,5 +1835,6 @@ document.addEventListener('DOMContentLoaded', function() {
   initCalendar();
 });
 </script>
+<script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 </body>
 </html>

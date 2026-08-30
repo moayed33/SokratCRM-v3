@@ -67,6 +67,19 @@ class Lead extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Lead $lead): void {
+            if (empty($lead->lead_status_id)) {
+                $defaultStatus = LeadStatus::query()->where('code', 'new')->first()
+                    ?? LeadStatus::query()->first();
+                if ($defaultStatus) {
+                    $lead->lead_status_id = $defaultStatus->id;
+                }
+            }
+        });
+    }
+
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
@@ -106,13 +119,17 @@ class Lead extends Model
         }
 
         return $query->where(
-            static function (Builder $accessQuery) use (
-                $user,
-                $groupIds,
-            ): void {
+            static function (Builder $accessQuery) use ($user, $groupIds): void {
                 $accessQuery
                     ->where('assigned_user_id', $user->getKey())
                     ->orWhere('created_by_user_id', $user->getKey());
+
+                if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
+                    $accessQuery->orWhereHas(
+                        'assignedUser',
+                        static fn (Builder $uq): Builder => $uq->where('users.manager_id', $user->getKey()),
+                    );
+                }
 
                 if ($groupIds !== []) {
                     $accessQuery->orWhereHas(
@@ -176,6 +193,19 @@ class Lead extends Model
         )->orderByDesc('followed_up_at');
     }
 
+    public function donations(): HasMany
+    {
+        return $this->hasMany(Donation::class)
+            ->orderByDesc('donated_at')
+            ->orderByDesc('id');
+    }
+
+    public function collectionCases(): HasMany
+    {
+        return $this->hasMany(CollectionCase::class)
+            ->orderByDesc('created_at');
+    }
+
     public function phones(): HasMany
     {
         return $this->hasMany(LeadPhone::class);
@@ -191,10 +221,6 @@ class Lead extends Model
         return $this->hasMany(LeadPhone::class)->where('is_primary', false);
     }
 
-    public function relatedPeople(): HasMany
-    {
-        return $this->hasMany(LeadRelatedPerson::class);
-    }
 
     public function donationTypeRel(): BelongsTo
     {
@@ -209,5 +235,11 @@ class Lead extends Model
     public function respondingUser(): BelongsTo
     {
         return $this->belongsTo(User::class, 'responding_user_id');
+    }
+
+    public function stageFieldValues(): HasMany
+    {
+        return $this->hasMany(LeadStageFieldValue::class, 'lead_id')
+            ->orderByDesc('id');
     }
 }

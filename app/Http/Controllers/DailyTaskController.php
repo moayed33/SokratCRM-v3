@@ -18,7 +18,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Validation\Rule;
 
 class DailyTaskController extends Controller
 {
@@ -127,6 +126,12 @@ class DailyTaskController extends Controller
             });
         }
 
+        if ($stageId !== null && $stageId > 0) {
+            $completedTodayQuery->where(static function (Builder $q) use ($stageId): void {
+                $q->whereHas('toStatus', static fn (Builder $sq): Builder => $sq->where('pipeline_stage_id', $stageId))
+                    ->orWhereHas('lead.status', static fn (Builder $lq): Builder => $lq->where('pipeline_stage_id', $stageId));
+            });
+        }
         if ($employeeId !== null && $employeeId > 0) {
             $completedTodayQuery->where(static function (Builder $q) use ($employeeId): void {
                 $q->where('user_id', $employeeId)
@@ -169,59 +174,33 @@ class DailyTaskController extends Controller
             };
         };
 
-        // Separate collections for 'all' scope vs paginated query for specific scopes
-        $overdueTasks = collect();
-        $todayTasks = collect();
-        $upcomingTasks = collect();
-        $noDateTasks = collect();
+        // Build unified paginated query based on selected scope
+        $query = clone $leadsBase;
         $paginatedTasks = null;
         $completedTodayFollowups = null;
 
-        if ($scope === 'all') {
-            $overdueQuery = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
-                ->where('next_follow_up_at', '<', $todayStart);
-            $applySorting($overdueQuery);
-            $overdueTasks = $overdueQuery->limit(50)->get();
-
-            $todayQuery = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
-                ->whereBetween('next_follow_up_at', [$todayStart, $todayEnd]);
-            $applySorting($todayQuery);
-            $todayTasks = $todayQuery->limit(50)->get();
-
-            $upcomingQuery = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
-                ->where('next_follow_up_at', '>', $todayEnd);
-            $applySorting($upcomingQuery);
-            $upcomingTasks = $upcomingQuery->limit(25)->get();
-
-            $noDateQuery = (clone $leadsBase)
-                ->whereNull('next_follow_up_at')
-                ->orderByDesc('created_at');
-            $noDateTasks = $noDateQuery->limit(25)->get();
-        } elseif ($scope === 'overdue') {
-            $query = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
+        if ($scope === 'overdue') {
+            $query->whereNotNull('next_follow_up_at')
                 ->where('next_follow_up_at', '<', $todayStart);
             $applySorting($query);
             $paginatedTasks = $query->paginate(self::PER_PAGE)->withQueryString();
         } elseif ($scope === 'today') {
-            $query = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
+            $query->whereNotNull('next_follow_up_at')
                 ->whereBetween('next_follow_up_at', [$todayStart, $todayEnd]);
             $applySorting($query);
             $paginatedTasks = $query->paginate(self::PER_PAGE)->withQueryString();
         } elseif ($scope === 'upcoming') {
-            $query = (clone $leadsBase)
-                ->whereNotNull('next_follow_up_at')
+            $query->whereNotNull('next_follow_up_at')
                 ->where('next_follow_up_at', '>', $todayEnd);
             $applySorting($query);
             $paginatedTasks = $query->paginate(self::PER_PAGE)->withQueryString();
         } elseif ($scope === 'no_date') {
-            $query = (clone $leadsBase)
-                ->whereNull('next_follow_up_at')
-                ->orderByDesc('created_at');
+            $query->whereNull('next_follow_up_at');
+            $query->orderByDesc('created_at');
+            $paginatedTasks = $query->paginate(self::PER_PAGE)->withQueryString();
+        } elseif ($scope === 'all') {
+            // Default scope: paginate all actionable tasks sorted by urgency or custom sort
+            $applySorting($query);
             $paginatedTasks = $query->paginate(self::PER_PAGE)->withQueryString();
         } elseif ($scope === 'completed') {
             $completedQuery = LeadFollowup::query()
@@ -242,6 +221,20 @@ class DailyTaskController extends Controller
                     $q->where('name', 'like', "%{$search}%")
                         ->orWhere('phone', 'like', "%{$search}%")
                         ->orWhere('company_name', 'like', "%{$search}%");
+                });
+            }
+
+            if ($statusId !== null && $statusId > 0) {
+                $completedQuery->where(static function (Builder $q) use ($statusId): void {
+                    $q->where('to_status_id', $statusId)
+                        ->orWhereHas('lead', static fn (Builder $lq): Builder => $lq->where('lead_status_id', $statusId));
+                });
+            }
+
+            if ($stageId !== null && $stageId > 0) {
+                $completedQuery->where(static function (Builder $q) use ($stageId): void {
+                    $q->whereHas('toStatus', static fn (Builder $sq): Builder => $sq->where('pipeline_stage_id', $stageId))
+                        ->orWhereHas('lead.status', static fn (Builder $lq): Builder => $lq->where('pipeline_stage_id', $stageId));
                 });
             }
 
@@ -295,10 +288,6 @@ class DailyTaskController extends Controller
             'completedTodayCount' => $completedTodayCount,
             'totalDueToday' => $totalDueToday,
             'completionRate' => $completionRate,
-            'overdueTasks' => $overdueTasks,
-            'todayTasks' => $todayTasks,
-            'upcomingTasks' => $upcomingTasks,
-            'noDateTasks' => $noDateTasks,
             'paginatedTasks' => $paginatedTasks,
             'completedTodayFollowups' => $completedTodayFollowups,
             'statuses' => $statuses,
@@ -357,51 +346,6 @@ class DailyTaskController extends Controller
         return back()->with('status', __('crm.task_rescheduled_success'));
     }
 
-    public function quickFollowup(Request $request, Lead $lead): JsonResponse|RedirectResponse
-    {
-        $this->assertCrmDatabase();
-        $user = $request->user();
-
-        abort_unless(
-            $user !== null && $lead->isAccessibleTo($user) && ($user->hasPermission(CrmPermission::LEADS_FOLLOWUPS_CREATE) || $user->hasPermission(CrmPermission::TASKS_VIEW)),
-            403
-        );
-
-        $validated = $request->validate([
-            'communication_type' => ['required', 'string', 'in:call,whatsapp,email,meeting,other'],
-            'outcome' => ['required', 'string', 'max:3000'],
-            'lead_status_id' => ['nullable', 'integer', Rule::exists('lead_statuses', 'id')],
-            'next_follow_up_at' => ['nullable', 'date'],
-        ]);
-
-        $toStatusId = !empty($validated['lead_status_id']) ? (int) $validated['lead_status_id'] : (int) $lead->lead_status_id;
-        $toStatus = LeadStatus::query()->findOrFail($toStatusId);
-
-        app(\App\Services\LeadTransitionService::class)->transition(
-            $lead,
-            $toStatus,
-            $user,
-            [
-                'record_followup' => true,
-                'communication_type' => $validated['communication_type'],
-                'outcome' => $validated['outcome'],
-                'next_follow_up_at' => $validated['next_follow_up_at'] ?? null,
-                'employee_name' => $user->name ?? 'System',
-                'history_note' => 'متابعة سريعة - '.$validated['outcome'],
-            ]
-        );
-
-        if ($request->wantsJson() || $request->ajax()) {
-            return response()->json([
-                'success' => true,
-                'message' => __('crm.task_followup_saved_success'),
-                'lead_id' => $lead->id,
-                'status_id' => $toStatusId,
-            ]);
-        }
-
-        return back()->with('status', __('crm.task_followup_saved_success'));
-    }
 
     private function assertCrmDatabase(): void
     {

@@ -49,7 +49,7 @@ class CalendarEventNotificationObserver
                 return;
             }
 
-            if ($eventChanged) {
+            if ($eventChanged && $freshEvent->status === 'scheduled') {
                 $planner->planImmediate(
                     NotificationRule::EVENT_CALENDAR_UPDATED,
                     $freshEvent,

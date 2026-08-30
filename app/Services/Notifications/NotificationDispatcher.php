@@ -6,6 +6,7 @@ namespace App\Services\Notifications;
 
 use App\Jobs\SendNotificationDelivery;
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Lead;
 use App\Models\NotificationDelivery;
 use App\Models\NotificationOccurrence;
@@ -23,19 +24,25 @@ class NotificationDispatcher
         private readonly NotificationRecipientResolver $recipientResolver,
     ) {}
 
-    public function dispatchDueOccurrences(?CarbonInterface $at = null): int
-    {
+    public function dispatchDueOccurrences(
+        ?CarbonInterface $at = null,
+        ?int $occurrenceId = null,
+    ): int {
         if (! config('crm_notifications.enabled')) {
             return 0;
         }
 
         $now = ($at ?? now())->copy();
         $dispatched = 0;
-
-        NotificationOccurrence::query()
+        $query = NotificationOccurrence::query()
             ->pending()
-            ->where('trigger_at', '<=', $now)
-            ->orderBy('id')
+            ->where('trigger_at', '<=', $now);
+
+        if ($occurrenceId !== null) {
+            $query->whereKey($occurrenceId);
+        }
+
+        $query->orderBy('id')
             ->chunkById(100, function ($occurrences) use ($now, &$dispatched): void {
                 foreach ($occurrences as $occurrence) {
                     $dispatched += $this->dispatchOccurrence((int) $occurrence->getKey(), $now);
@@ -45,28 +52,39 @@ class NotificationDispatcher
         return $dispatched;
     }
 
-    public function queueDueDeliveries(?CarbonInterface $at = null): int
-    {
+    public function queueDueDeliveries(
+        ?CarbonInterface $at = null,
+        ?int $occurrenceId = null,
+    ): int {
         $now = ($at ?? now())->copy();
         $queued = 0;
-
-        NotificationDelivery::query()
+        $staleQuery = NotificationDelivery::query()
             ->where('status', NotificationDelivery::STATUS_PROCESSING)
             ->where('claim_type', 'delivery')
-            ->where('processing_started_at', '<=', $now->copy()->subMinutes(20))
-            ->update([
-                'status' => NotificationDelivery::STATUS_QUEUED,
-                'claim_token' => null,
-                'claim_type' => null,
-                'processing_started_at' => null,
-            ]);
+            ->where('processing_started_at', '<=', $now->copy()->subMinutes(20));
 
-        NotificationDelivery::query()
+        if ($occurrenceId !== null) {
+            $staleQuery->where('notification_occurrence_id', $occurrenceId);
+        }
+
+        $staleQuery->update([
+            'status' => NotificationDelivery::STATUS_QUEUED,
+            'claim_token' => null,
+            'claim_type' => null,
+            'processing_started_at' => null,
+        ]);
+
+        $deliveryQuery = NotificationDelivery::query()
             ->where('status', NotificationDelivery::STATUS_QUEUED)
             ->where(function ($query) use ($now): void {
                 $query->whereNull('scheduled_at')->orWhere('scheduled_at', '<=', $now);
-            })
-            ->orderBy('id')
+            });
+
+        if ($occurrenceId !== null) {
+            $deliveryQuery->where('notification_occurrence_id', $occurrenceId);
+        }
+
+        $deliveryQuery->orderBy('id')
             ->chunkById(100, function ($deliveries) use ($now, &$queued): void {
                 foreach ($deliveries as $delivery) {
                     $claimToken = (string) Str::uuid();
@@ -227,11 +245,12 @@ class NotificationDispatcher
         }
     }
 
-    private function resolveSource(NotificationOccurrence $occurrence): Lead|CalendarEvent|User|null
+    private function resolveSource(NotificationOccurrence $occurrence): Lead|CalendarEvent|CollectionCase|User|null
     {
         return match ($occurrence->source_kind) {
             'lead_followup' => Lead::query()->find($occurrence->source_id),
             'calendar_event' => CalendarEvent::query()->find($occurrence->source_id),
+            'collection_case' => CollectionCase::query()->find($occurrence->source_id),
             'user' => User::query()->find($occurrence->source_id),
             default => null,
         };

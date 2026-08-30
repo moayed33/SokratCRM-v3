@@ -47,88 +47,24 @@ return new class extends Migration
             'quotation_file_path',
         ];
 
-        foreach ($columns as $column) {
-            if (Schema::hasColumn('leads', $column)) {
-                throw new RuntimeException(
-                    "leads.{$column} already exists."
-                );
-            }
+        if (Schema::hasTable('leads') && ! Schema::hasColumn('leads', 'first_name')) {
+            Schema::table('leads', function (Blueprint $table): void {
+                $table->string('first_name', 75)->nullable()->after('name');
+                $table->string('last_name', 75)->nullable()->after('name');
+                $table->string('activity', 150)->nullable()->after('company_name');
+                $table->string('governorate', 100)->nullable()->after('company_name');
+                $table->string('address', 255)->nullable()->after('company_name');
+                $table->unsignedInteger('users_count')->nullable();
+                $table->unsignedInteger('branches_count')->nullable();
+                $table->string('job_title', 150)->nullable();
+                $table->text('disinterest_reason')->nullable();
+                $table->string('solution_type', 20)->nullable();
+                $table->unsignedInteger('lines_count')->nullable();
+                $table->text('extensions')->nullable();
+                $table->text('departments')->nullable();
+                $table->string('quotation_file_path', 500)->nullable();
+            });
         }
-
-        Schema::table(
-            'leads',
-            function (Blueprint $table): void {
-                $table
-                    ->string('first_name', 75)
-                    ->nullable()
-                    ->after('name');
-
-                $table
-                    ->string('last_name', 75)
-                    ->nullable()
-                    ->after('first_name');
-
-                $table
-                    ->string('activity', 150)
-                    ->nullable()
-                    ->after('company_name');
-
-                $table
-                    ->string('governorate', 100)
-                    ->nullable()
-                    ->after('activity');
-
-                $table
-                    ->string('address', 255)
-                    ->nullable()
-                    ->after('governorate');
-
-                $table
-                    ->unsignedInteger('users_count')
-                    ->nullable()
-                    ->after('address');
-
-                $table
-                    ->unsignedInteger('branches_count')
-                    ->nullable()
-                    ->after('users_count');
-
-                $table
-                    ->string('job_title', 150)
-                    ->nullable()
-                    ->after('branches_count');
-
-                $table
-                    ->text('disinterest_reason')
-                    ->nullable()
-                    ->after('job_title');
-
-                $table
-                    ->string('solution_type', 20)
-                    ->nullable()
-                    ->after('disinterest_reason');
-
-                $table
-                    ->unsignedInteger('lines_count')
-                    ->nullable()
-                    ->after('solution_type');
-
-                $table
-                    ->text('extensions')
-                    ->nullable()
-                    ->after('lines_count');
-
-                $table
-                    ->text('departments')
-                    ->nullable()
-                    ->after('extensions');
-
-                $table
-                    ->string('quotation_file_path', 500)
-                    ->nullable()
-                    ->after('departments');
-            }
-        );
     }
 
     public function down(): void
@@ -151,6 +87,10 @@ return new class extends Migration
             'last_name',
             'first_name',
         ];
+
+        if (! Schema::hasTable('leads')) {
+            return;
+        }
 
         $existing = array_values(
             array_filter(

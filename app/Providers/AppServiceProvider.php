@@ -3,18 +3,20 @@
 namespace App\Providers;
 
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
 use App\Models\PipelineStage;
-use App\Models\Quotation;
 use App\Models\User;
 use App\Observers\CalendarEventNotificationObserver;
+use App\Observers\CollectionCaseNotificationObserver;
 use App\Observers\LeadNotificationObserver;
 use App\Policies\CalendarEventPolicy;
+use App\Policies\CollectionCasePolicy;
+use App\Policies\GroupPolicy;
 use App\Policies\LeadFollowupPolicy;
 use App\Policies\LeadPolicy;
-use App\Policies\QuotationPolicy;
 use App\Policies\UserPolicy;
 use App\Security\CrmPermission;
 use Illuminate\Support\Facades\Gate;
@@ -32,13 +34,14 @@ class AppServiceProvider extends ServiceProvider
     {
         Gate::policy(Lead::class, LeadPolicy::class);
         Gate::policy(LeadFollowup::class, LeadFollowupPolicy::class);
-        Gate::policy(Quotation::class, QuotationPolicy::class);
         Gate::policy(User::class, UserPolicy::class);
         Gate::policy(Group::class, GroupPolicy::class);
         Gate::policy(CalendarEvent::class, CalendarEventPolicy::class);
+        Gate::policy(CollectionCase::class, CollectionCasePolicy::class);
 
         Lead::observe(LeadNotificationObserver::class);
         CalendarEvent::observe(CalendarEventNotificationObserver::class);
+        CollectionCase::observe(CollectionCaseNotificationObserver::class);
 
         foreach (CrmPermission::cases() as $permission) {
             Gate::define(

@@ -2,7 +2,6 @@
 
 @section('title', __('crm.settings'))
 @section('heading', __('crm.system_settings'))
-@section('subheading', __('crm.manage_access_from_one_place'))
 
 @section('content')
 <section class="grid stats-grid">
@@ -47,17 +46,17 @@
             <b style="font-size:20px">{{ __('crm.lead_fields_manage') }}</b>
         </a>
         @can('users.view')
-            <a class="stat-card action-card" href="{{ route('v2.settings.users.index') }}">
+            <a class="stat-card action-card" href="{{ route('v2.settings.users.index', ['tab' => 'users']) }}">
                 <span>{{ __('crm.users') }}</span>
                 <b style="font-size:20px">{{ __('crm.manage_accounts') }}</b>
             </a>
         @endcan
         @can('groups.view')
-            <a class="stat-card action-card" href="{{ route('v2.settings.groups.index') }}">
+            <a class="stat-card action-card" href="{{ route('v2.settings.users.index', ['tab' => 'groups']) }}">
                 <span>{{ __('crm.groups') }}</span>
                 <b style="font-size:20px">{{ __('crm.manage_groups') }}</b>
             </a>
-            <a class="stat-card action-card" href="{{ route('v2.settings.permissions.index') }}">
+            <a class="stat-card action-card" href="{{ route('v2.settings.users.index', ['tab' => 'permissions']) }}">
                 <span>{{ __('crm.permissions_matrix') }}</span>
                 <b style="font-size:20px">{{ __('crm.access_distribution') }}</b>
             </a>
@@ -85,7 +84,7 @@
             style="border-radius: 14px; border: 2px solid {{ app()->getLocale() === 'ar' ? 'var(--red)' : 'var(--line)' }}; background: {{ app()->getLocale() === 'ar' ? '#fff5f6' : '#fff' }}; text-decoration: none; padding: 18px;"
         >
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-size: 22px;">🇸🇦</span>
+                <span style="font-size: 22px; color: var(--red);"><i class="bi bi-translate"></i></span>
                 @if (app()->getLocale() === 'ar')
                     <span class="badge active">{{ __('crm.active_now') }}</span>
                 @endif
@@ -100,7 +99,7 @@
             style="border-radius: 14px; border: 2px solid {{ app()->getLocale() === 'en' ? 'var(--red)' : 'var(--line)' }}; background: {{ app()->getLocale() === 'en' ? '#fff5f6' : '#fff' }}; text-decoration: none; padding: 18px;"
         >
             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px;">
-                <span style="font-size: 22px;">🇬🇧</span>
+                <span style="font-size: 22px; color: #0284c7;"><i class="bi bi-globe"></i></span>
                 @if (app()->getLocale() === 'en')
                     <span class="badge active">{{ __('crm.active_now') }}</span>
                 @endif

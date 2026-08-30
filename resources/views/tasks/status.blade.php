@@ -25,14 +25,6 @@
  __('اختار نوع المتابعة لعرض العملاء المطلوب متابعتهم في هذه الحالة.')
 )
 
-@section('top-actions')
- <a
-  class="btn soft"
-  href="{{ route('v2.leads') }}"
- >
-  {{ __('crm.view_leads') }}
- </a>
-@endsection
 
 @push('styles')
 <style>
@@ -1422,7 +1414,7 @@
          <strong
           class="task-card-time {{ $activeScope }}"
          >
-          ◷
+          <i class="bi bi-clock"></i>
           {{
            $lead
             ->next_follow_up_at
@@ -1436,51 +1428,40 @@
        </div>
 
        <div class="task-card-actions">
-        @if ($lead->phone)
+        @can('createFollowup', $lead)
+         @if ($lead->phone)
+          @php
+           $taskPhone = preg_replace('/[^0-9+]/', '', (string) $lead->phone);
+          @endphp
+          <a
+           class="btn task-call-btn"
+           href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+           data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+           data-lead-name="{{ $lead->name }}"
+           data-sip-href="tel:{{ $taskPhone }}"
+           title="{{ __('crm.call_and_followup') }}"
+           aria-label="{{ __('اتصال بالعميل') }} {{ $lead->name }} {{ __('وفتح تسجيل المتابعة') }}"
+          >
+           {{ __('crm.call_action') }}
+          </a>
+         @else
+          <span
+           class="btn task-call-btn task-call-btn-disabled"
+           aria-disabled="true"
+           title="{{ __('crm.no_phone_registered') }}"
+          >
+           {{ __('crm.no_phone_action') }}
+          </span>
+         @endif
          <a
-          class="btn task-call-btn"
-          data-call-and-followup="1"
-          data-followup-url="{{ route(
-           'v2.leads.followups.index',
-           $lead
-          ) }}"
-          href="tel:{{
-           preg_replace(
-            '/[^0-9+]/',
-            '',
-            (string) $lead->phone
-           )
-          }}"
-          onclick="
-           window.open(
-            this.dataset.followupUrl,
-            '_blank',
-            'noopener,noreferrer'
-           );
-          "
-          title="{{ __('crm.call_and_followup') }}"
-          aria-label="{{ __('اتصال بالعميل') }} {{ $lead->name }} {{ __('وفتح تسجيل المتابعة') }}"
+          class="btn task-follow-btn"
+          href="{{ route('v2.leads.followups.index', $lead) }}"
+          data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+          data-lead-name="{{ $lead->name }}"
          >
-          {{ __('crm.call_action') }}
+          {{ __('crm.log_followup') }}
          </a>
-        @else
-         <span
-          class="btn task-call-btn task-call-btn-disabled"
-          aria-disabled="true"
-          title="{{ __('crm.no_phone_registered') }}"
-         >
-          {{ __('crm.no_phone_action') }}
-         </span>
-        @endif
-        <a
-         class="btn task-follow-btn"
-         href="{{ route(
-          'v2.leads.followups.index',
-          $lead
-         ) }}"
-        >
-         {{ __('crm.log_followup') }}
-        </a>
+        @endcan
 
         <a
          class="btn soft"

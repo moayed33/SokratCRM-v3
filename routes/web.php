@@ -6,15 +6,18 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CampaignController;
 use App\Http\Controllers\CampaignReportController;
+use App\Http\Controllers\CollectionController;
 use App\Http\Controllers\DailyTaskController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmployeeAnalyticsController;
+use App\Http\Controllers\DonationReceiptController;
+use App\Http\Controllers\InstantDonationMethodController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadFollowupController;
 use App\Http\Controllers\LeadTransferController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\PushSubscriptionController;
-use App\Http\Controllers\QuotationController;
 use App\Http\Controllers\Settings\BranchController;
 use App\Http\Controllers\Settings\GroupController;
 use App\Http\Controllers\Settings\LeadFieldController;
@@ -23,10 +26,12 @@ use App\Http\Controllers\Settings\OptionSetController;
 use App\Http\Controllers\Settings\PermissionController;
 use App\Http\Controllers\Settings\PipelineStageController;
 use App\Http\Controllers\Settings\SettingsController;
+use App\Http\Controllers\Settings\StageFieldController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\TaskStatusController;
 use App\Http\Controllers\TwilioNotificationStatusController;
 use App\Http\Controllers\VoipController;
+use App\Http\Controllers\VoipInsightsController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -53,6 +58,10 @@ Route::post('/webhooks/twilio/notification-status', TwilioNotificationStatusCont
     ->middleware('throttle:120,1')
     ->name('webhooks.twilio.notification-status');
 
+Route::get('/calendar/feed/{user}.ics', [CalendarController::class, 'feed'])
+    ->whereNumber('user')
+    ->name('v2.calendar.feed');
+
 Route::middleware(['auth', 'active'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
@@ -64,10 +73,14 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->name('v2.notifications.index');
     Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount'])
         ->name('v2.notifications.unread-count');
+    Route::get('/notifications/stream', [NotificationController::class, 'stream'])
+        ->name('v2.notifications.stream');
     Route::patch('/notifications/read-all', [NotificationController::class, 'readAll'])
         ->name('v2.notifications.read-all');
     Route::patch('/notifications/{notification}/read', [NotificationController::class, 'read'])
         ->name('v2.notifications.read');
+    Route::patch('/notifications/{notification}/unread', [NotificationController::class, 'unread'])
+        ->name('v2.notifications.unread');
     Route::post('/notifications/{notification}/snooze', [NotificationController::class, 'snooze'])
         ->name('v2.notifications.snooze');
     Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy'])
@@ -91,12 +104,55 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->middleware('can:dashboard.view')
         ->name('dashboard');
 
+    Route::middleware('can:collections.view')->group(function (): void {
+        Route::get('/collections', [CollectionController::class, 'index'])
+            ->name('v2.collections.index');
+        Route::get('/collections/{collectionCase}', [CollectionController::class, 'show'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.show');
+        Route::patch('/collections/{collectionCase}/assign', [CollectionController::class, 'assign'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.assign');
+        Route::patch('/collections/{collectionCase}/reschedule', [CollectionController::class, 'reschedule'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.reschedule');
+        Route::patch('/collections/{collectionCase}/fail', [CollectionController::class, 'fail'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.fail');
+        Route::post('/collections/{collectionCase}/complete', [CollectionController::class, 'complete'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.complete');
+        Route::patch('/collections/{collectionCase}/cancel', [CollectionController::class, 'cancel'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.cancel');
+        Route::get('/collections/{collectionCase}/receipt', [CollectionController::class, 'receipt'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.receipt');
+        Route::get('/collections/{collectionCase}/receipt/download', [CollectionController::class, 'downloadReceipt'])
+            ->whereNumber('collectionCase')
+            ->name('v2.collections.receipt.download');
+    });
+    Route::middleware('can:collections.methods.manage')->group(function (): void {
+        Route::match(['get'], '/collections/methods', [InstantDonationMethodController::class, 'index']);
+        Route::get('/collections/methods/settings', [InstantDonationMethodController::class, 'index'])
+            ->name('v2.collections.methods.index');
+        Route::post('/collections/methods', [InstantDonationMethodController::class, 'store'])
+            ->name('v2.collections.methods.store');
+        Route::patch('/collections/methods/{instantDonationMethod}', [InstantDonationMethodController::class, 'update'])
+            ->whereNumber('instantDonationMethod')
+            ->name('v2.collections.methods.update');
+    });
+
     Route::get('/voip/live', [VoipController::class, 'livePanel'])
         ->middleware('can:voip.live_panel')
         ->name('v2.voip.live');
 
+    Route::get('/voip/live/data', [VoipController::class, 'liveData'])
+        ->middleware('can:voip.live_panel')
+        ->name('v2.voip.live.data');
+
     Route::get('/voip/recordings/{mediaId}', [VoipController::class, 'streamRecording'])
-        ->middleware('can:voip.recordings')
+        ->middleware(['can:voip.recordings', 'signed'])
         ->name('v2.voip.recordings.stream');
 
     Route::get('/leads/{lead}/calls', [VoipController::class, 'leadCalls'])
@@ -108,6 +164,10 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->middleware('can:voip.view')
         ->name('v2.voip.stats');
 
+    Route::get('/my/calls', [VoipInsightsController::class, 'profile'])
+        ->middleware('can:voip.view')
+        ->name('v2.voip.profile');
+
     Route::middleware('can:calendar.view')->group(function (): void {
         Route::get('/calendar', [CalendarController::class, 'index'])
             ->name('v2.calendar.index');
@@ -118,6 +178,8 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         Route::get('/calendar/events/{event}', [CalendarController::class, 'show'])
             ->whereNumber('event')
             ->name('v2.calendar.show');
+        Route::post('/calendar/check-conflict', [CalendarController::class, 'checkConflict'])
+            ->name('v2.calendar.conflict');
     });
 
     Route::middleware('can:calendar.manage')->group(function (): void {
@@ -149,7 +211,7 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             ->name('v2.leads.show');
     });
 
-    Route::middleware('can:leads.create')->group(function (): void {
+    Route::middleware('can:create,App\Models\Lead')->group(function (): void {
         Route::get('/leads/create', [LeadController::class, 'create'])
             ->name('v2.leads.create');
         Route::post('/leads', [LeadController::class, 'store'])
@@ -187,6 +249,17 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         ->middleware('can:leads.followups.create')
         ->name('v2.leads.followups.store');
 
+    Route::get(
+        '/leads/{lead}/donations/{donation}/receipt',
+        [DonationReceiptController::class, 'preview'],
+    )->whereNumber(['lead', 'donation'])
+        ->name('v2.leads.donations.receipt.preview');
+    Route::get(
+        '/leads/{lead}/donations/{donation}/receipt/download',
+        [DonationReceiptController::class, 'download'],
+    )->whereNumber(['lead', 'donation'])
+        ->name('v2.leads.donations.receipt.download');
+
     Route::middleware('can:leads.import')->group(function (): void {
         Route::get('/leads/import', [LeadTransferController::class, 'importIndex'])
             ->name('v2.leads.import');
@@ -217,14 +290,6 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         )->name('v2.leads.export.download');
     });
 
-    Route::get(
-        '/leads/{lead}/quotation-preview',
-        [LeadController::class, 'quotationPreview'],
-    )
-        ->whereNumber('lead')
-        ->middleware('can:quotations.view')
-        ->name('v2.leads.quotation.preview');
-
     Route::middleware('can:tasks.view')->group(function (): void {
         Route::get(
             '/followups',
@@ -250,10 +315,6 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             '/tasks/leads/{lead}/reschedule',
             [DailyTaskController::class, 'reschedule'],
         )->whereNumber('lead')->name('v2.tasks.reschedule');
-        Route::post(
-            '/tasks/leads/{lead}/quick-followup',
-            [DailyTaskController::class, 'quickFollowup'],
-        )->whereNumber('lead')->name('v2.tasks.quick_followup');
 
         Route::get(
             '/tasks/status/{status}',
@@ -281,6 +342,9 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     });
 
     Route::middleware('can:reports.view')->group(function (): void {
+        Route::get('/reports/voip', [VoipInsightsController::class, 'team'])
+            ->middleware('can:voip.view')
+            ->name('v2.reports.voip');
         Route::get(
             '/reports/leads',
             static fn () => view('placeholder', ['title' => 'تقرير العملاء']),
@@ -289,12 +353,13 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             '/reports/tasks',
             static fn () => view('placeholder', ['title' => 'تقرير المهام']),
         )->name('v2.reports.tasks');
-        Route::get(
-            '/reports/employees',
-            static fn () => view('placeholder', ['title' => 'أداء الموظفين']),
-        )->name('v2.reports.employees');
     });
-
+    Route::get('/reports/employees', [EmployeeAnalyticsController::class, 'index'])
+        ->middleware('can:reports.employees.view')
+        ->name('v2.reports.employees');
+    Route::get('/reports/employees/{user}', [EmployeeAnalyticsController::class, 'show'])
+        ->middleware('can:reports.employees.view')
+        ->name('v2.reports.employees.show');
     Route::get('/campaigns', [CampaignController::class, 'index'])
         ->middleware('can:campaigns.view')
         ->name('v2.campaigns.index');
@@ -330,22 +395,6 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     )->whereNumber('campaign')
         ->middleware('can:campaigns.create')
         ->name('v2.campaigns.leads.assign');
-
-    Route::middleware('can:quotations.view')->group(function (): void {
-        Route::get('/quotations', [QuotationController::class, 'index'])
-            ->name('v2.quotations.index');
-        Route::get(
-            '/quotations/{quotation}',
-            [QuotationController::class, 'show'],
-        )->whereNumber('quotation')
-            ->name('v2.quotations.show');
-    });
-    Route::middleware('can:quotations.create')->group(function (): void {
-        Route::get('/quotations/create', [QuotationController::class, 'create'])
-            ->name('v2.quotations.create');
-        Route::post('/quotations', [QuotationController::class, 'store'])
-            ->name('v2.quotations.store');
-    });
 
     Route::prefix('settings')
         ->name('v2.settings')
@@ -425,6 +474,30 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             Route::delete('/stages/{stage}', [PipelineStageController::class, 'destroy'])
                 ->whereNumber('stage')
                 ->name('.stages.destroy');
+            Route::get('/stages/{stage}/fields', [StageFieldController::class, 'index'])
+                ->whereNumber('stage')
+                ->name('.stages.fields.index');
+            Route::post('/stages/{stage}/fields', [StageFieldController::class, 'store'])
+                ->whereNumber('stage')
+                ->name('.stages.fields.store');
+            Route::patch('/stages/{stage}/fields/{field}', [StageFieldController::class, 'update'])
+                ->whereNumber('stage')
+                ->whereNumber('field')
+                ->name('.stages.fields.update');
+            Route::delete('/stages/{stage}/fields/{field}', [StageFieldController::class, 'destroy'])
+                ->whereNumber('stage')
+                ->whereNumber('field')
+                ->name('.stages.fields.destroy');
+            Route::patch('/stages/{stage}/fields/{field}/toggle', [StageFieldController::class, 'toggle'])
+                ->whereNumber('stage')
+                ->whereNumber('field')
+                ->name('.stages.fields.toggle');
+            Route::post('/stages/{stage}/fields/reorder', [StageFieldController::class, 'reorder'])
+                ->whereNumber('stage')
+                ->name('.stages.fields.reorder');
+            Route::post('/stages/{stage}/fields/preset', [StageFieldController::class, 'applyPreset'])
+                ->whereNumber('stage')
+                ->name('.stages.fields.preset');
             Route::post('/stages/donation-types', [PipelineStageController::class, 'storeDonationType'])
                 ->name('.stages.donation-types.store');
             Route::patch('/stages/donation-types/{type}', [PipelineStageController::class, 'toggleDonationType'])

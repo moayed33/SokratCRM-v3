@@ -28,22 +28,6 @@
    {{ __('العودة للحملة') }}
   </a>
  @endisset
-
- @can('leads.export')
- <a
-  class="btn soft"
-  href="{{ route('v2.leads.export') }}"
- >
-  {{ __('↓ تصدير العملاء') }}
- </a>
- @endcan
-
- <a
-  class="btn soft"
-  href="{{ route('v2.leads') }}"
- >
-  {{ __('crm.view_leads') }}
- </a>
 @endsection
 
 @section('content')

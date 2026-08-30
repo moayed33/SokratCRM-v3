@@ -38,8 +38,26 @@
  .campaign-stat{padding:14px;border:1px solid var(--line);border-radius:13px;background:#fafbfc}
  .campaign-stat span{display:block;color:var(--muted);font-size:10px;font-weight:900}
  .campaign-stat strong{display:block;margin-top:7px;color:var(--dark);font-size:14px;overflow-wrap:anywhere}
+ html.dark-mode .campaign-stat,
+ html.dark .campaign-stat {
+  background: var(--bg-card, rgba(24, 24, 27, 0.75)) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+ }
+ html.dark-mode .campaign-stat span,
+ html.dark .campaign-stat span {
+  color: var(--text-muted, #a1a1aa) !important;
+ }
+ html.dark-mode .campaign-stat strong,
+ html.dark .campaign-stat strong {
+  color: var(--text-primary, #f4f4f5) !important;
+ }
  .campaign-team{display:flex;flex-wrap:wrap;gap:6px;padding:0 18px 18px}
  .campaign-team span{display:inline-flex;padding:6px 9px;border-radius:999px;background:#eef3fa;color:#42516a;font-size:10px;font-weight:900}
+ html.dark-mode .campaign-team span {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #e4e4e7 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+ }
  .campaign-filter-card{padding:17px}
  .campaign-filter-card h3{margin:0 0 5px;font-size:14px}
  .campaign-filter-card p{margin:0 0 14px;color:var(--muted);font-size:10px}
@@ -47,6 +65,18 @@
  .campaign-filter label{display:block;margin:0 3px 6px;color:#757f91;font-size:10px;font-weight:900}
  .campaign-filter select{width:100%;height:44px;padding:0 11px;border:1px solid #dfe3ea;border-radius:10px;background:#fafbfc;color:#3f4b5e;font-size:12px;font-weight:800;outline:none}
  .campaign-filter select:focus{border-color:#e98692;background:#fff;box-shadow:0 0 0 3px #dc263710}
+ html.dark-mode .campaign-filter label {
+  color: var(--text-muted, #a1a1aa) !important;
+ }
+ html.dark-mode .campaign-filter select {
+  background: var(--bg-input, rgba(39, 39, 42, 0.65)) !important;
+  border-color: rgba(255, 255, 255, 0.14) !important;
+  color: #f4f4f5 !important;
+ }
+ html.dark-mode .campaign-filter select option {
+  background: #18181b !important;
+  color: #f4f4f5 !important;
+ }
  .campaign-status-section{padding:17px}
  .campaign-status-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:13px}
  .campaign-status-head h3{margin:0;font-size:14px}
@@ -79,6 +109,10 @@
  .campaign-result-count{padding:7px 10px;border-radius:9px;background:#f1f3f6;color:#667184;font-size:10px;font-weight:900}
  .campaign-note{margin:16px 18px 0}
  .campaign-assignment{display:flex;align-items:end;gap:10px;padding:16px 18px;border-bottom:1px solid var(--line);background:#fafbfc}
+ html.dark-mode .campaign-assignment {
+  background: rgba(255, 255, 255, 0.02) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+ }
  .campaign-assignment .field{min-width:240px;max-width:390px;flex:1}
  .campaign-table-wrap{overflow-x:auto}
  .campaign-table{width:100%;min-width:1120px;border-collapse:collapse}
@@ -86,6 +120,18 @@
  .campaign-table td{padding:14px;border-bottom:1px solid #eef0f4;color:#3f4b5e;font-size:13px;font-weight:800;line-height:1.65;vertical-align:middle}
  .campaign-table tbody tr{transition:background .18s}
  .campaign-table tbody tr:hover{background:#fff9fa}
+ html.dark-mode .campaign-table th {
+  background: rgba(255, 255, 255, 0.04) !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  color: var(--text-muted, #a1a1aa) !important;
+ }
+ html.dark-mode .campaign-table td {
+  border-color: rgba(255, 255, 255, 0.06) !important;
+  color: var(--text-primary, #f4f4f5) !important;
+ }
+ html.dark-mode .campaign-table tbody tr:hover {
+  background: rgba(255, 255, 255, 0.04) !important;
+ }
  .campaign-checkbox{width:17px;height:17px;accent-color:var(--red)}
  .campaign-customer{display:flex;align-items:center;gap:9px;color:inherit;text-decoration:none}
  .campaign-customer-avatar{width:38px;height:38px;display:grid;place-items:center;flex:0 0 38px;border-radius:11px;background:var(--dark);color:#fff;font-weight:900}
@@ -96,9 +142,12 @@
  .campaign-contact a{color:#566174;text-decoration:none}
  .campaign-contact a:hover{color:var(--red)}
  .campaign-status{--status-color:#64748b;display:inline-flex;align-items:center;gap:6px;padding:7px 9px;border:1px solid var(--line);border-radius:9px;background:#fff;color:var(--status-color);font-size:11px;font-weight:900;white-space:nowrap}
+ html.dark-mode .campaign-status{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.1)!important}
  .campaign-status-dot{width:8px;height:8px;border-radius:50%;background:var(--status-color)}
  .campaign-stage{display:block;margin-top:5px;color:#667286;font-size:11px;font-weight:800}
+ html.dark-mode .campaign-stage{color:var(--text-muted,#a1a1aa)!important}
  .campaign-follow-up{display:inline-flex;padding:7px 9px;border-radius:9px;background:#f3f5f8;color:#536075;font-weight:800;white-space:nowrap}
+ html.dark-mode .campaign-follow-up{background:rgba(255,255,255,.06)!important;color:#d4d4d8!important}
  .campaign-muted{color:#748094;font-weight:800}
  .lead-actions-cell{min-width:365px}
  .lead-actions{display:flex;align-items:center;gap:6px;white-space:nowrap}
@@ -107,18 +156,25 @@
  .lead-action.call-action{border-color:#b8cceb;background:#f3f7fd;color:#275a9c}
  .lead-action.followup-action{border-color:#e2c993;background:#fff9ed;color:#8d6515}
  .lead-action.whatsapp-action{border-color:#a9dbbd;background:#effaf3;color:#167744}
- .lead-action.quotation-action{border-color:#b8cceb;background:#f3f7fd;color:#275a9c}
  .lead-action.is-disabled{opacity:.42;cursor:not-allowed;transform:none;box-shadow:none}
+ html.dark-mode .lead-action{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.1)!important;color:#f4f4f5!important}
+ html.dark-mode .lead-action.call-action{background:rgba(59,130,246,.15)!important;border-color:rgba(59,130,246,.3)!important;color:#60a5fa!important}
+ html.dark-mode .lead-action.followup-action{background:rgba(245,158,11,.15)!important;border-color:rgba(245,158,11,.3)!important;color:#fbbf24!important}
+ html.dark-mode .lead-action.whatsapp-action{background:rgba(34,197,94,.15)!important;border-color:rgba(34,197,94,.3)!important;color:#4ade80!important}
  .lead-more{position:relative;flex:0 0 auto}
  .lead-more summary{width:36px;height:36px;display:grid;place-items:center;padding:0;border:1px solid var(--line);border-radius:9px;background:#fff;color:#596477;list-style:none;cursor:pointer;font-size:20px;font-weight:900;line-height:1}
  .lead-more summary::-webkit-details-marker{display:none}
  .lead-more summary:hover,.lead-more[open] summary{border-color:#d9a4ab;background:#fff4f5;color:var(--red)}
+ html.dark-mode .lead-more summary{background:rgba(255,255,255,.06)!important;border-color:rgba(255,255,255,.1)!important;color:#f4f4f5!important}
  .lead-menu{position:fixed;z-index:1000;width:165px;padding:6px;border:1px solid var(--line);border-radius:11px;background:#fff;box-shadow:0 17px 38px #17203328}
  .lead-menu a,.lead-menu button{width:100%;min-height:39px;display:flex;align-items:center;gap:8px;padding:7px 10px;border:0;border-radius:8px;background:transparent;color:#525e70;text-decoration:none;text-align:start;font-size:12px;font-weight:900;cursor:pointer}
  .lead-menu a:hover,.lead-menu button:hover{background:#f4f5f7}
  .lead-menu form{margin:4px 0 0;padding-top:4px;border-top:1px solid var(--line)}
  .lead-menu .delete-action{color:#c52233}
  .lead-menu .delete-action:hover{background:#fff0f2}
+ html.dark-mode .lead-menu{background:#18181b!important;border-color:rgba(255,255,255,.1)!important;box-shadow:0 17px 38px rgba(0,0,0,.5)!important}
+ html.dark-mode .lead-menu a,html.dark-mode .lead-menu button{color:#e4e4e7!important}
+ html.dark-mode .lead-menu a:hover,html.dark-mode .lead-menu button:hover{background:rgba(255,255,255,.08)!important}
  .campaign-empty{min-height:280px;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:35px;color:var(--muted);text-align:center}
  .campaign-empty-icon{width:68px;height:68px;display:grid;place-items:center;border-radius:20px;background:#f2f4f7;color:#8d96a5;font-size:27px}
  .campaign-empty h3{margin:16px 0 7px;color:var(--dark);font-size:16px}
@@ -126,7 +182,7 @@
  .campaign-pagination{padding:15px;border-top:1px solid var(--line)}
  @media(max-width:950px){.campaign-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-status-grid{grid-template-columns:repeat(4,minmax(115px,1fr))}}
  @media(max-width:700px){.campaign-status-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
- @media(max-width:700px){.campaign-hero{align-items:flex-start;flex-direction:column}.campaign-hero-copy{align-items:flex-start}.campaign-hero-image{width:68px;height:68px;flex-basis:68px;border-radius:16px}.campaign-hero-count{width:100%;min-height:90px}.campaign-summary{grid-template-columns:1fr}.campaign-filter{grid-template-columns:1fr}.campaign-filter .btn{width:100%}.campaign-assignment{align-items:stretch;flex-direction:column}.campaign-assignment .field{width:100%;max-width:none;min-width:0}.campaign-assignment .btn{width:100%}}
+ @media(max-width:700px){.campaign-hero,.transfer-hero{display:none!important}.campaign-summary{grid-template-columns:1fr}.campaign-filter{grid-template-columns:1fr}.campaign-filter .btn{width:100%}.campaign-assignment{align-items:stretch;flex-direction:column}.campaign-assignment .field{width:100%;max-width:none;min-width:0}.campaign-assignment .btn{width:100%}}
 </style>
 @endpush
 
@@ -396,31 +452,34 @@
          } elseif (preg_match('/^[1-9][0-9]{7,14}$/', $phoneDigits)) {
           $whatsappPhone = $phoneDigits;
          }
-
-         $quotationPath = trim((string) $lead->quotation_file_path);
-         $hasQuotation = $quotationPath !== ''
-          && str_starts_with($quotationPath, 'crm-v2/quotation-files/')
-          && ! str_contains($quotationPath, '..')
-          && \Illuminate\Support\Facades\Storage::disk('local')->exists($quotationPath);
         @endphp
         <div class="lead-actions">
-         @can('leads.followups.view')
+         @can('createFollowup', $lead)
           @if ($callPhone)
-           <a class="lead-action call-action js-call-followup" href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}" target="_blank" rel="noopener noreferrer" data-call-href="callto:{{ $callPhone }}" title="{{ __('crm.open_microsip_and_followup') }}">☎ {{ __('crm.call') }}</a>
+           <a
+            class="lead-action call-action"
+            href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+            data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+            data-lead-name="{{ $lead->name }}"
+            data-sip-href="callto:{{ $callPhone }}"
+            title="{{ __('crm.open_microsip_and_followup') }}"
+           ><i class="bi bi-telephone-outbound"></i> {{ __('crm.call') }}</a>
           @else
-           <span class="lead-action call-action is-disabled" aria-disabled="true" title="{{ __('crm.phone_invalid_for_call') }}">☎ {{ __('crm.call') }}</span>
+           <span class="lead-action call-action is-disabled" aria-disabled="true" title="{{ __('crm.phone_invalid_for_call') }}"><i class="bi bi-telephone-x"></i> {{ __('crm.call') }}</span>
           @endif
-          <a class="lead-action followup-action" href="{{ route('v2.leads.followups.index', $lead) }}" title="{{ __('crm.log_new_lead_followup_title') }}">◷ {{ __('crm.log_followup') }}</a>
+          <a
+           class="lead-action followup-action"
+           href="{{ route('v2.leads.followups.index', $lead) }}"
+           data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+           data-lead-name="{{ $lead->name }}"
+           title="{{ __('crm.log_new_lead_followup_title') }}"
+          ><i class="bi bi-clock-history"></i> {{ __('crm.log_followup') }}</a>
          @endcan
 
          @if ($whatsappPhone)
-          <a class="lead-action whatsapp-action" href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener noreferrer" title="{{ __('crm.open_whatsapp') }}">◉ {{ __('crm.phone_type_whatsapp') }}</a>
+          <a class="lead-action whatsapp-action" href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener noreferrer" title="{{ __('crm.open_whatsapp') }}"><i class="bi bi-whatsapp"></i> {{ __('crm.phone_type_whatsapp') }}</a>
          @else
-          <span class="lead-action whatsapp-action is-disabled" aria-disabled="true" title="{{ __('crm.invalid_whatsapp_number') }}">◉ {{ __('crm.phone_type_whatsapp') }}</span>
-         @endif
-
-         @if ($hasQuotation && auth()->user()->can('quotations.view'))
-          <a class="lead-action quotation-action" href="{{ route('v2.leads.quotation.preview', $lead) }}" target="_blank" rel="noopener noreferrer">👁 {{ __('crm.preview_quotation') }}</a>
+          <span class="lead-action whatsapp-action is-disabled" aria-disabled="true" title="{{ __('crm.invalid_whatsapp_number') }}"><i class="bi bi-whatsapp"></i> {{ __('crm.phone_type_whatsapp') }}</span>
          @endif
 
          @canany(['leads.update', 'leads.delete'])
@@ -513,13 +572,6 @@
    });
   });
 
-  document.querySelectorAll('.js-call-followup').forEach((link) => {
-   link.addEventListener('click', () => {
-    if (link.dataset.callHref) {
-     window.setTimeout(() => { window.location.href = link.dataset.callHref; }, 120);
-    }
-   });
-  });
 
   window.addEventListener('resize', () => closeLeadMenus());
   window.addEventListener('scroll', () => closeLeadMenus(), true);

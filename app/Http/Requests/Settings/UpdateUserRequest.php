@@ -25,6 +25,7 @@ class UpdateUserRequest extends FormRequest
 
         return [
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'manager_id' => ['nullable', 'integer', 'exists:users,id'],
             'name' => ['required', 'string', 'max:150'],
             'username' => [
                 'required',
@@ -39,12 +40,22 @@ class UpdateUserRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($managedUser),
             ],
-            'voip_extension' => ['nullable', 'string', 'max:50'],
+            'voip_extension' => [
+                'nullable',
+                'string',
+                'max:50',
+                Rule::unique('users', 'voip_extension')->ignore($managedUser),
+            ],
+            'collection_zone' => ['nullable', 'string', 'max:255'],
+            'group_ids' => ['required', 'array', 'min:1'],
             'group_ids.*' => [
                 'integer',
                 'distinct',
                 'exists:groups,id',
             ],
+            'subordinate_ids' => ['nullable', 'array'],
+            'subordinate_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'subordinates_section_rendered' => ['nullable', 'boolean'],
         ];
     }
 }

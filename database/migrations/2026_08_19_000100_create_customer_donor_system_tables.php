@@ -15,7 +15,7 @@ return new class extends Migration
     public function up(): void
     {
         // 1. Extend pipeline_stages with is_primary and icon
-        if (! Schema::hasColumn('pipeline_stages', 'is_primary')) {
+        if (Schema::hasTable('pipeline_stages') && ! Schema::hasColumn('pipeline_stages', 'is_primary')) {
             Schema::table('pipeline_stages', function (Blueprint $table): void {
                 $table->boolean('is_primary')->default(false)->after('position');
                 $table->string('icon', 50)->nullable()->after('color');
@@ -51,47 +51,26 @@ return new class extends Migration
         }
 
         // 4. Extend leads table with donor fields
-        if (Schema::hasTable('leads')) {
+        if (Schema::hasTable('leads') && ! Schema::hasColumn('leads', 'donation_type')) {
             Schema::table('leads', function (Blueprint $table): void {
-                if (! Schema::hasColumn('leads', 'donation_type')) {
-                    $table->string('donation_type', 100)->nullable()->after('quotation_file_path');
-                }
-                if (! Schema::hasColumn('leads', 'donation_type_id')) {
-                    $table->foreignId('donation_type_id')
-                        ->nullable()
-                        ->after('donation_type')
-                        ->constrained('donation_types')
-                        ->nullOnDelete();
-                }
-                if (! Schema::hasColumn('leads', 'donation_cycle')) {
-                    $table->string('donation_cycle', 50)->nullable()->after('donation_type_id');
-                }
-                if (! Schema::hasColumn('leads', 'donation_value')) {
-                    $table->decimal('donation_value', 14, 2)->nullable()->after('donation_cycle');
-                }
-                if (! Schema::hasColumn('leads', 'donation_purpose')) {
-                    $table->string('donation_purpose', 150)->nullable()->after('donation_value');
-                }
-                if (! Schema::hasColumn('leads', 'donation_purpose_id')) {
-                    $table->foreignId('donation_purpose_id')
-                        ->nullable()
-                        ->after('donation_purpose')
-                        ->constrained('donation_purposes')
-                        ->nullOnDelete();
-                }
-                if (! Schema::hasColumn('leads', 'response_details')) {
-                    $table->text('response_details')->nullable()->after('donation_purpose_id');
-                }
-                if (! Schema::hasColumn('leads', 'contact_date')) {
-                    $table->dateTime('contact_date')->nullable()->after('response_details');
-                }
-                if (! Schema::hasColumn('leads', 'responding_user_id')) {
-                    $table->foreignId('responding_user_id')
-                        ->nullable()
-                        ->after('assigned_user_id')
-                        ->constrained('users')
-                        ->nullOnDelete();
-                }
+                $table->string('donation_type', 100)->nullable();
+                $table->foreignId('donation_type_id')
+                    ->nullable()
+                    ->constrained('donation_types')
+                    ->nullOnDelete();
+                $table->string('donation_cycle', 50)->nullable();
+                $table->decimal('donation_value', 14, 2)->nullable();
+                $table->string('donation_purpose', 150)->nullable();
+                $table->foreignId('donation_purpose_id')
+                    ->nullable()
+                    ->constrained('donation_purposes')
+                    ->nullOnDelete();
+                $table->text('response_details')->nullable();
+                $table->date('contact_date')->nullable();
+                $table->foreignId('responding_user_id')
+                    ->nullable()
+                    ->constrained('users')
+                    ->nullOnDelete();
             });
         }
         // 5. Create lead_phones table

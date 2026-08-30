@@ -8,6 +8,7 @@ use App\Models\NotificationDelivery;
 use App\Models\NotificationOccurrence;
 use App\Models\NotificationPreference;
 use App\Models\NotificationRule;
+use App\Models\User;
 use App\Services\Notifications\NotificationDispatcher;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -24,12 +25,22 @@ class NotificationPreferenceController extends Controller
             'user_id' => $user->getKey(),
         ])->refresh();
 
+        $recentDeliveries = NotificationDelivery::query()
+            ->with('occurrence')
+            ->whereHas('occurrence', fn ($query) => $query
+                ->where('recipient_user_id', $user->getKey()))
+            ->orderByDesc('id')
+            ->limit(8)
+            ->get()
+            ->map(fn (NotificationDelivery $delivery): array => $this->presentDelivery($delivery, $user));
+
         return view('notifications.preferences', [
             'preference' => $preference,
             'vapidPublicKey' => (string) config('crm_notifications.web_push.public_key'),
             'systemChannels' => config('crm_notifications.channels'),
             'timezones' => timezone_identifiers_list(),
             'pushSubscriptionsCount' => $user->pushSubscriptions()->count(),
+            'recentDeliveries' => $recentDeliveries,
         ]);
     }
 
@@ -110,6 +121,12 @@ class NotificationPreferenceController extends Controller
         $validated = $request->validate([
             'channel' => ['required', Rule::in(NotificationRule::CHANNELS)],
         ]);
+        abort_unless(
+            config('crm_notifications.enabled')
+                && (bool) config('crm_notifications.channels.'.$validated['channel'], false),
+            422,
+            __('crm.notification_channel_unavailable_hint'),
+        );
         $user = $request->user();
         $rule = NotificationRule::withTrashed()
             ->where('event_key', NotificationRule::EVENT_SYSTEM_TEST)
@@ -141,22 +158,91 @@ class NotificationPreferenceController extends Controller
             ],
         ]);
 
-        if (! $occurrence->wasRecentlyCreated && $occurrence->status !== NotificationOccurrence::STATUS_PENDING) {
-            $occurrence->update([
-                'status' => NotificationOccurrence::STATUS_PENDING,
-                'notification_id' => null,
-                'dispatched_at' => null,
-                'payload->test_channel' => $validated['channel'],
-            ]);
-            $occurrence->deliveries()->delete();
+        if (! $occurrence->wasRecentlyCreated) {
+            $payload = $occurrence->payload;
+            $payload['test_channel'] = $validated['channel'];
+            $updates = ['payload' => $payload];
+
+            if ($occurrence->status !== NotificationOccurrence::STATUS_PENDING) {
+                $updates += [
+                    'status' => NotificationOccurrence::STATUS_PENDING,
+                    'notification_id' => null,
+                    'dispatched_at' => null,
+                ];
+                $occurrence->deliveries()->delete();
+            }
+
+            $occurrence->update($updates);
         }
 
-        $dispatcher->dispatchDueOccurrences();
-        $dispatcher->queueDueDeliveries();
+        $dispatcher->dispatchDueOccurrences($now, (int) $occurrence->getKey());
+        $dispatcher->queueDueDeliveries($now, (int) $occurrence->getKey());
+
+        $delivery = $occurrence->deliveries()
+            ->where('channel', $validated['channel'])
+            ->latest('id')
+            ->firstOrFail();
+        $presentedDelivery = $this->presentDelivery($delivery, $user);
 
         return response()->json([
             'success' => true,
-            'message' => __('crm.notification_test_queued'),
+            'message' => __('crm.notification_test_completed', [
+                'status' => $presentedDelivery['status_label'],
+            ]),
+            'delivery' => $presentedDelivery,
         ]);
+    }
+
+    /** @return array<string, mixed> */
+    private function presentDelivery(NotificationDelivery $delivery, User $user): array
+    {
+        $delivery->loadMissing('occurrence');
+        $statusLabel = match ($delivery->status) {
+            NotificationDelivery::STATUS_QUEUED => __('crm.notification_status_queued'),
+            NotificationDelivery::STATUS_PROCESSING => __('crm.notification_status_processing'),
+            NotificationDelivery::STATUS_DIGEST_PENDING => __('crm.notification_status_digest_pending'),
+            NotificationDelivery::STATUS_SENT => __('crm.notification_status_sent'),
+            NotificationDelivery::STATUS_DELIVERED => __('crm.notification_status_delivered'),
+            NotificationDelivery::STATUS_FAILED => __('crm.notification_status_failed'),
+            NotificationDelivery::STATUS_SUPPRESSED => __('crm.notification_status_suppressed'),
+            default => $delivery->status,
+        };
+        $channelLabel = match ($delivery->channel) {
+            'database' => __('crm.notification_channel_in_app'),
+            'mail' => __('crm.email'),
+            'push' => __('crm.notification_channel_push'),
+            'sms' => __('crm.notification_channel_sms'),
+            'whatsapp' => __('crm.whatsapp'),
+            default => $delivery->channel,
+        };
+        $reason = match ($delivery->last_error) {
+            'Channel is disabled by system configuration.' => __('crm.notification_suppressed_system_disabled'),
+            'Channel is disabled in user preferences.' => __('crm.notification_suppressed_preference_disabled'),
+            'Notification priority is below the user threshold.' => __('crm.notification_suppressed_priority'),
+            'The user has no email address.' => __('crm.notification_suppressed_missing_email'),
+            'The user has no E.164 mobile number.' => __('crm.notification_suppressed_missing_mobile'),
+            'The user has not opted in to WhatsApp notifications.' => __('crm.notification_suppressed_whatsapp_consent'),
+            'Per-user channel rate limit reached.' => __('crm.notification_suppressed_rate_limit'),
+            null, '' => null,
+            default => __('crm.notification_delivery_error_generic'),
+        };
+        $occurredAt = $delivery->delivered_at
+            ?? $delivery->sent_at
+            ?? $delivery->scheduled_at
+            ?? $delivery->created_at;
+        $timezone = $user->timezone ?: 'UTC';
+        $payload = $delivery->occurrence?->payload ?? [];
+
+        return [
+            'id' => $delivery->getKey(),
+            'channel' => $delivery->channel,
+            'channel_label' => $channelLabel,
+            'status' => $delivery->status,
+            'status_label' => $statusLabel,
+            'title' => (string) ($payload['title'] ?? $delivery->occurrence?->event_key ?? ''),
+            'reason' => $reason,
+            'occurred_at' => $occurredAt?->toIso8601String(),
+            'occurred_at_label' => $occurredAt?->copy()->setTimezone($timezone)->format('Y-m-d H:i'),
+        ];
     }
 }

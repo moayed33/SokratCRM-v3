@@ -9,13 +9,13 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Security\CrmPermission;
 use Database\Seeders\CrmAccessControlSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Hash;
 use Tests\TestCase;
 
 class AuthenticationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_installer_user_is_seeded_as_the_default_super_admin(): void
     {
@@ -99,6 +99,6 @@ class AuthenticationTest extends TestCase
     {
         $this->get('/dashboard')->assertRedirect(route('login'));
         $this->get('/settings')->assertRedirect(route('login'));
-        $this->get('/quotations')->assertRedirect(route('login'));
+        $this->get('/campaigns')->assertRedirect(route('login'));
     }
 }

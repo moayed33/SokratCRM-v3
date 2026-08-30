@@ -4,11 +4,15 @@ declare(strict_types=1);
 
 namespace App\Http\Controllers;
 
+use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
+use App\Models\Lead;
 use App\Models\NotificationOccurrence;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Facades\DB;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class NotificationController extends Controller
 {
@@ -40,9 +44,114 @@ class NotificationController extends Controller
             ->get()
             ->keyBy('notification_id');
 
-        $items = collect($paginator->items())->map(function (DatabaseNotification $notification) use ($occurrences): array {
+        $locale = in_array($user->locale, ['ar', 'en'], true)
+            ? $user->locale
+            : (string) config('app.locale', 'ar');
+
+        $directLeadIds = collect();
+        $calendarEventIds = collect();
+        $collectionCaseIds = collect();
+
+        foreach ($paginator->items() as $notification) {
             $data = $notification->data;
             $occurrence = $occurrences->get($notification->id);
+            $sourceKind = (string) ($data['source_kind'] ?? ($occurrence?->source_kind ?? ''));
+            $sourceId = isset($data['source_id']) ? (int) $data['source_id'] : ($occurrence ? (int) $occurrence->source_id : null);
+
+            if ($sourceKind === 'collection_case' && $sourceId) {
+                $collectionCaseIds->push($sourceId);
+            } elseif ($sourceKind === 'calendar_event' && $sourceId) {
+                $calendarEventIds->push($sourceId);
+            } elseif ($sourceKind === 'lead_followup' && $sourceId) {
+                $directLeadIds->push($sourceId);
+            } elseif (isset($data['lead_id']) && is_numeric($data['lead_id'])) {
+                $directLeadIds->push((int) $data['lead_id']);
+            } elseif (isset($occurrence->payload['lead_id']) && is_numeric($occurrence->payload['lead_id'])) {
+                $directLeadIds->push((int) $occurrence->payload['lead_id']);
+            } elseif (preg_match('#/(?:leads|v2/leads)/(\d+)#', (string) ($data['action_url'] ?? ''), $matches)) {
+                $directLeadIds->push((int) $matches[1]);
+            }
+        }
+
+        $accessibleLeads = collect();
+
+        if ($directLeadIds->isNotEmpty()) {
+            $directQuery = Lead::query()->whereIn('id', $directLeadIds->unique());
+            if (! $user->isSuperAdmin()) {
+                $directQuery->accessibleTo($user);
+            }
+            foreach ($directQuery->with(['status.stage'])->get() as $lead) {
+                $accessibleLeads->put($lead->id, $lead);
+            }
+        }
+
+        $calendarEventLeadIds = collect();
+        if ($calendarEventIds->isNotEmpty()) {
+            $eventsQuery = CalendarEvent::query()
+                ->whereIn('id', $calendarEventIds->unique());
+            if (! $user->isSuperAdmin()) {
+                $eventsQuery->accessibleTo($user);
+            }
+            $accessibleEvents = $eventsQuery->with(['lead.status.stage'])->get();
+            foreach ($accessibleEvents as $event) {
+                if ($event->lead) {
+                    $calendarEventLeadIds->put($event->id, $event->lead_id);
+                    $accessibleLeads->put($event->lead_id, $event->lead);
+                }
+            }
+        }
+
+        $collectionCaseLeadIds = collect();
+        if ($collectionCaseIds->isNotEmpty()) {
+            $casesQuery = CollectionCase::query()
+                ->whereIn('id', $collectionCaseIds->unique());
+            if (! $user->isSuperAdmin()) {
+                $casesQuery->accessibleTo($user);
+            }
+            $accessibleCases = $casesQuery->with(['lead.status.stage'])->get();
+            foreach ($accessibleCases as $case) {
+                if ($case->lead) {
+                    $collectionCaseLeadIds->put($case->id, $case->lead_id);
+                    $accessibleLeads->put($case->lead_id, $case->lead);
+                }
+            }
+        }
+        $items = collect($paginator->items())->map(function (DatabaseNotification $notification) use ($occurrences, $calendarEventLeadIds, $collectionCaseLeadIds, $accessibleLeads, $locale): array {
+            $data = $notification->data;
+            $occurrence = $occurrences->get($notification->id);
+
+            $leadId = null;
+            if (isset($data['lead_id']) && is_numeric($data['lead_id'])) {
+                $leadId = (int) $data['lead_id'];
+            } elseif (isset($occurrence->payload['lead_id']) && is_numeric($occurrence->payload['lead_id'])) {
+                $leadId = (int) $occurrence->payload['lead_id'];
+            } else {
+                $sourceKind = $data['source_kind'] ?? ($occurrence?->source_kind ?? null);
+                $sourceId = isset($data['source_id']) ? (int) $data['source_id'] : ($occurrence ? (int) $occurrence->source_id : null);
+                if ($sourceKind === 'lead_followup' && $sourceId) {
+                    $leadId = $sourceId;
+                } elseif ($sourceKind === 'calendar_event' && $sourceId) {
+                    $leadId = $calendarEventLeadIds->get($sourceId);
+                } elseif ($sourceKind === 'collection_case' && $sourceId) {
+                    $leadId = $collectionCaseLeadIds->get($sourceId);
+                } elseif (preg_match('#/(?:leads|v2/leads)/(\d+)#', (string) ($data['action_url'] ?? ''), $matches)) {
+                    $leadId = (int) $matches[1];
+                }
+            }
+
+            $lead = $leadId ? $accessibleLeads->get($leadId) : null;
+            $stage = $lead?->status?->stage;
+            $stageName = null;
+            $stageId = null;
+            $stageColor = null;
+            $stageIcon = null;
+
+            if ($lead !== null) {
+                $stageName = $stage ? $stage->localizedName($locale) : trans('crm.stage_not_set', [], $locale);
+                $stageId = $stage?->id;
+                $stageColor = $stage?->color;
+                $stageIcon = $stage?->icon;
+            }
 
             $rawUrl = (string) ($data['action_url'] ?? '');
             $actionUrl = $rawUrl;
@@ -62,7 +171,16 @@ class NotificationController extends Controller
                 'body' => (string) ($data['body'] ?? ''),
                 'priority' => (string) ($data['priority'] ?? 'normal'),
                 'event_key' => (string) ($data['event_key'] ?? ''),
+                'source_kind' => (string) ($data['source_kind'] ?? ($occurrence?->source_kind ?? '')),
+                'source_id' => isset($data['source_id']) ? (int) $data['source_id'] : ($occurrence ? (int) $occurrence->source_id : null),
                 'source_name' => (string) ($data['source_name'] ?? ''),
+                'lead_id' => $lead ? (int) $lead->getKey() : null,
+                'lead_name' => $lead ? (string) $lead->name : null,
+                'stage_id' => $stageId,
+                'stage_name' => $stageName,
+                'stage_color' => $stageColor,
+                'stage_icon' => $stageIcon,
+                'due_at' => $data['due_at'] ?? null,
                 'action_url' => $actionUrl,
                 'created_at' => $notification->created_at?->toIso8601String(),
                 'read_at' => $notification->read_at?->toIso8601String(),
@@ -94,10 +212,58 @@ class NotificationController extends Controller
         return response()->json(['count' => $count]);
     }
 
+    public function stream(Request $request): StreamedResponse
+    {
+        $user = $request->user();
+        $baseQuery = DB::table('notifications')
+            ->where('notifiable_type', $user->getMorphClass())
+            ->where('notifiable_id', $user->getKey())
+            ->whereNotExists(function ($subQuery): void {
+                $subQuery->selectRaw('1')
+                    ->from('notification_occurrences')
+                    ->whereColumn('notification_occurrences.notification_id', 'notifications.id')
+                    ->whereNotNull('notification_occurrences.dismissed_at');
+            });
+        $counts = (clone $baseQuery)
+            ->selectRaw('COUNT(*) AS total')
+            ->selectRaw('SUM(CASE WHEN read_at IS NULL THEN 1 ELSE 0 END) AS unread')
+            ->first();
+        $state = [
+            'count' => (int) ($counts->unread ?? 0),
+            'total' => (int) ($counts->total ?? 0),
+            'latest_id' => (clone $baseQuery)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->value('id'),
+        ];
+        $retryMilliseconds = (int) config(
+            'crm_notifications.stream_interval_milliseconds',
+            2000,
+        );
+
+        return response()->stream(function () use ($state, $retryMilliseconds): void {
+            echo 'retry: '.$retryMilliseconds."\n";
+            echo 'event: notifications'."\n";
+            echo 'data: '.json_encode($state, JSON_THROW_ON_ERROR)."\n\n";
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache, no-transform',
+            'X-Accel-Buffering' => 'no',
+        ]);
+    }
+
     public function read(Request $request, string $notification): JsonResponse
     {
         $record = $this->findNotification($request, $notification);
         $record->markAsRead();
+
+        return response()->json(['success' => true]);
+    }
+
+    public function unread(Request $request, string $notification): JsonResponse
+    {
+        $record = $this->findNotification($request, $notification);
+        $record->forceFill(['read_at' => null])->save();
 
         return response()->json(['success' => true]);
     }

@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace App\Repositories;
 
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Lead;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Collection;
-
 class CalendarEventRepository
 {
     /**
@@ -167,6 +167,74 @@ class CalendarEventRepository
         ])
             ->orderBy('contact_date', 'asc')
             ->get();
+    }
+
+    /**
+     * Get accessible scheduled collection cases as calendar items.
+     *
+     * @return Collection<int, CollectionCase>
+     */
+    public function getScheduledCollectionCasesForUser(
+        User $user,
+        ?string $start = null,
+        ?string $end = null,
+        array $filters = []
+    ): Collection {
+        $query = CollectionCase::query()
+            ->accessibleTo($user)
+            ->whereNotNull('due_at')
+            ->whereIn('status', ['pending', 'assigned', 'scheduled', 'completed', 'failed'])
+            ->with([
+                'lead:id,name,first_name,last_name,company_name,phone,branch_id,lead_status_id',
+                'lead.status.stage',
+                'assignedCollector:id,name,username',
+                'branch:id,name_ar,name_en,code',
+                'donationType:id,name_ar',
+            ]);
+        if (! empty($filters['branch_id']) && $filters['branch_id'] !== 'all') {
+            $query->where('branch_id', (int) $filters['branch_id']);
+        }
+
+        if (! empty($filters['user_id']) && $filters['user_id'] !== 'all') {
+            $query->where('assigned_collector_user_id', (int) $filters['user_id']);
+        }
+
+        if ($start !== null && $end !== null) {
+            $query->whereBetween('due_at', [$start, $end]);
+        } elseif ($start !== null) {
+            $query->where('due_at', '>=', $start);
+        } elseif ($end !== null) {
+            $query->where('due_at', '<=', $end);
+        }
+
+        return $query->orderBy('due_at')->get();
+    }
+
+    /**
+     * Check if a user has an overlapping scheduled meeting or call.
+     */
+    public function findConflictingEvent(
+        int $userId,
+        string|\DateTimeInterface $startTime,
+        string|\DateTimeInterface $endTime,
+        ?int $ignoreEventId = null
+    ): ?CalendarEvent {
+        $query = CalendarEvent::query()
+            ->where('user_id', $userId)
+            ->whereIn('type', ['meeting', 'call', 'task'])
+            ->whereNotIn('status', ['canceled', 'completed'])
+            ->where(function ($q) use ($startTime, $endTime): void {
+                $q->where(function ($sub) use ($startTime, $endTime): void {
+                    $sub->where('start_time', '<', $endTime)
+                        ->where('end_time', '>', $startTime);
+                });
+            });
+
+        if ($ignoreEventId !== null) {
+            $query->where('id', '!=', $ignoreEventId);
+        }
+
+        return $query->first();
     }
 
     /**

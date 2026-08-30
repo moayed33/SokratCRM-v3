@@ -13,12 +13,12 @@ use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Security\LeadAssignment;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LeadScopeAndAssignmentTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private Group $actorGroup;
 
@@ -62,7 +62,6 @@ class LeadScopeAndAssignmentTest extends TestCase
                 CrmPermission::LEADS_EXPORT->value,
                 CrmPermission::LEADS_FOLLOWUPS_VIEW->value,
                 CrmPermission::TASKS_VIEW->value,
-                CrmPermission::QUOTATIONS_VIEW->value,
             ],
         );
         $this->targetGroup = $this->createGroup('scope-target');
@@ -149,9 +148,6 @@ class LeadScopeAndAssignmentTest extends TestCase
             ->assertForbidden();
         $this->actingAs($this->actor)
             ->get(route('v2.leads.followups.index', $foreignLead))
-            ->assertForbidden();
-        $this->actingAs($this->actor)
-            ->get(route('v2.leads.quotation.preview', $foreignLead))
             ->assertForbidden();
         $this->actingAs($this->actor)
             ->post(route('v2.leads.export-selected'), [
@@ -355,11 +351,12 @@ class LeadScopeAndAssignmentTest extends TestCase
         array $permissions = [],
         bool $isSystem = false,
     ): Group {
-        $group = Group::query()->create([
-            'name' => $code,
-            'code' => $code,
-            'is_system' => $isSystem,
-        ]);
+        $group = Group::query()->where('code', $code)->first()
+            ?? Group::query()->create([
+                'name' => $code,
+                'code' => $code,
+                'is_system' => $isSystem,
+            ]);
 
         $this->grantPermissions($group, $permissions);
 

@@ -30,18 +30,76 @@
  --shadow:var(--shadow-card);
 }
 
+/*
+ * CRM MONOCHROME THEME (GLOBAL)
+ * Applies the monochrome palette on every CRM page, not just the dashboard.
+ * Values mirror the dashboard's canonical monochrome definitions.
+ */
+html.crm-monochrome {
+ --red:#171717;
+ --red-hover:#000;
+ --red-dark:#000;
+ --dark:#171717;
+ --text:#525252;
+ --muted:#737373;
+ --line:#e5e5e5;
+ --bg:#fafafa;
+ --card:#fff;
+ --shadow:none;
+ --radius:5px;
+ --bg-page:#fafafa;
+ --bg-card:#fff;
+ --bg-elevated:#fff;
+ --bg-hover:#f5f5f5;
+ --bg-input:#fff;
+ --text-main:#171717;
+ --text-secondary:#525252;
+ --text-muted:#737373;
+ --text-disabled:#a3a3a3;
+ --border-color:#e5e5e5;
+ --border-hover:#d4d4d4;
+ --glass-highlight:transparent;
+ --shadow-card:none;
+ --shadow-dropdown:none;
+ --backdrop-blur:none;
+}
+
+html.crm-monochrome.dark-mode {
+ --dark:#f5f5f5;
+ --text:#d4d4d4;
+ --muted:#a3a3a3;
+ --line:#404040;
+ --bg:#111;
+ --card:#1c1c1c;
+ --shadow:none;
+ --bg-page:#111;
+ --bg-card:#1c1c1c;
+ --bg-elevated:#1c1c1c;
+ --bg-hover:#262626;
+ --bg-input:#1c1c1c;
+ --text-main:#f5f5f5;
+ --text-secondary:#d4d4d4;
+ --text-muted:#a3a3a3;
+ --text-disabled:#737373;
+ --border-color:#404040;
+ --border-hover:#525252;
+ --glass-highlight:transparent;
+ --shadow-card:none;
+ --shadow-dropdown:none;
+}
+
 #crmSidebar{
- --red:#dc2637;
- --red-dark:#b81829;
- --dark:var(--text-main);
- --text:var(--text-secondary);
- --muted:var(--text-muted);
- --line:var(--border-color);
- --bg:var(--bg-page);
- --card:var(--bg-card);
- --shadow:var(--shadow-card);
- font-family:var(--font-primary);
- font-size:15px;
+  --red:#dc2637;
+  --red-dark:#b81829;
+  --dark:var(--text-main);
+  --text:var(--text-secondary);
+  --muted:var(--text-muted);
+  --line:var(--border-color);
+  --bg:var(--bg-page);
+  --card:var(--bg-card);
+  --shadow:var(--shadow-card);
+  font-family:var(--font-primary);
+  font-size:15px;
 }
 
 #crmSidebar a,
@@ -51,45 +109,61 @@
 
 .crm-side{
 position:sticky;
- top:0;
- flex:0 0 288px;
- width:288px;
- height:100vh;
- overflow:auto;
- padding:24px 17px;
- border-inline-end:1px solid var(--line);
- background:#fff;
- z-index:80
+  top:0;
+  flex:0 0 288px;
+  width:288px;
+  height:100vh;
+  overflow:auto;
+  padding:24px 17px;
+  border-inline-end:1px solid var(--line);
+  background:#fff;
+  z-index:80;
+  -ms-overflow-style:none!important;
+  scrollbar-width:none!important
+}
+
+.crm-side::-webkit-scrollbar,
+.side::-webkit-scrollbar,
+#crmSidebar::-webkit-scrollbar,
+aside.crm-side::-webkit-scrollbar{
+  display:none!important;
+  width:0!important;
+  height:0!important;
+  background:transparent!important
+}
+
+.side,
+#crmSidebar,
+aside.crm-side{
+  -ms-overflow-style:none!important;
+  scrollbar-width:none!important
 }
 
 .crm-side-brand{
-display:flex;
- align-items:center;
- gap:11px;
- padding:4px 8px 20px;
- margin-bottom:17px;
- border-bottom:1px solid var(--line);
- text-decoration:none
+  display:flex;
+  align-items:center;
+  gap:12px;
+  padding:4px 8px 18px;
+  margin-bottom:17px;
+  border-bottom:1px solid var(--line);
+  text-decoration:none;
 }
 
 .crm-side-brand .logo{
-width:58px;
- height:58px
+  width:44px;
+  height:44px;
+  flex:0 0 44px;
+  object-fit:contain;
 }
 
 .crm-side-brand strong{
-display:block;
- color:var(--red);
- font:900 22px var(--font-primary)
+  display:flex;
+  align-items:center;
+  color:var(--red);
+  font:900 22px var(--font-primary);
+  line-height:1;
+  letter-spacing:-0.3px;
 }
-
-.crm-side-brand small{
-display:block;
- margin-top:5px;
- color:var(--muted);
- font-size:10px
-}
-
 .crm-side-caption{
 margin:0 10px 10px;
  color:#9aa2b0;
@@ -181,32 +255,49 @@ color:#fff;
 }
 
 .crm-arrow{
-color:#a2a9b5;
- font-size:11px;
- transition:.2s
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  width:18px;
+  height:18px;
+  color:#94a3b8;
+  font-size:11px;
+  line-height:1;
+  transition:transform .28s cubic-bezier(0.34, 1.56, 0.64, 1), color .2s ease;
+  margin-inline-start:auto
 }
 
 .crm-toggle.active .crm-arrow{
-color:#fff
+  color:#fff
 }
 
 .crm-toggle[aria-expanded=true] .crm-arrow{
-transform:rotate(180deg)
+  transform:rotate(180deg)
 }
 
 .crm-sub{
-display:grid;
- grid-template-rows:0fr;
- transition:.22s
+  display:grid;
+  grid-template-rows:0fr;
+  opacity:0;
+  transform:translateY(-5px);
+  transition:grid-template-rows .3s cubic-bezier(0.16, 1, 0.3, 1),
+             opacity .24s cubic-bezier(0.16, 1, 0.3, 1),
+             transform .28s cubic-bezier(0.16, 1, 0.3, 1)
 }
 
 .crm-sub.open{
-grid-template-rows:1fr
+  grid-template-rows:1fr;
+  opacity:1;
+  transform:translateY(0)
 }
 
 .crm-sub-inner{
-min-height:0;
- overflow:hidden
+  min-height:0;
+  overflow:hidden
+}
+
+.crm-sub a{
+  transition:all .18s cubic-bezier(0.16, 1, 0.3, 1)
 }
 
 .crm-sub nav{
@@ -356,11 +447,6 @@ font-size:11px
   width:288px!important;
   min-width:288px!important;
   max-width:288px!important;
-  transition:width 200ms cubic-bezier(.4,0,.2,1),
-             min-width 200ms cubic-bezier(.4,0,.2,1),
-             max-width 200ms cubic-bezier(.4,0,.2,1),
-             flex-basis 200ms cubic-bezier(.4,0,.2,1),
-             padding 200ms cubic-bezier(.4,0,.2,1)!important;
  }
 
  .main,
@@ -372,8 +458,6 @@ font-size:11px
   flex:1 1 auto!important;
   width:calc(100% - 288px)!important;
   min-width:0!important;
-  transition:width 200ms cubic-bezier(.4,0,.2,1),
-             padding 200ms cubic-bezier(.4,0,.2,1)!important;
  }
 
  html.crm-sidebar-collapsed .crm-side,
@@ -417,6 +501,7 @@ font-size:11px
   object-fit:contain
  }
 
+ html.crm-sidebar-collapsed .crm-side-brand strong,
  html.crm-sidebar-collapsed .crm-side-brand span,
  html.crm-sidebar-collapsed .crm-side-caption,
  html.crm-sidebar-collapsed .crm-label,
@@ -460,14 +545,6 @@ font-size:11px
 
  html.crm-sidebar-collapsed .crm-sidebar-collapse-btn i{
   font-size:17px
- }
-
- html.crm-sidebar-animating .crm-side,
- html.crm-sidebar-animating .side{
-  transition:width 200ms cubic-bezier(.4,0,.2,1),
-             flex-basis 200ms cubic-bezier(.4,0,.2,1),
-             min-width 200ms cubic-bezier(.4,0,.2,1),
-             max-width 200ms cubic-bezier(.4,0,.2,1);
  }
 
  html.crm-sidebar-animating .crm-sidebar-collapse-btn i{
@@ -661,10 +738,7 @@ html.dark-mode .card,
 html.dark-mode .stat-card,
 html.dark-mode .ext-card,
 html.dark-mode .hero,
-html.dark-mode .panel,
 html.dark-mode .stat,
-html.dark-mode .top,
-html.dark-mode .topbar,
 html.dark-mode .section,
 html.dark-mode .settings-tabs,
 html.dark-mode .current-user,
@@ -698,7 +772,6 @@ html.dark-mode .crm-choice {
  color:var(--text-secondary);
 }
 
-html.dark-mode .panel-head,
 html.dark-mode .card-head,
 html.dark-mode .details-card-head,
 html.dark-mode .voip-card-head {
@@ -803,10 +876,7 @@ html.dark-mode .card,
 html.dark-mode .stat-card,
 html.dark-mode .ext-card,
 html.dark-mode .hero,
-html.dark-mode .panel,
 html.dark-mode .stat,
-html.dark-mode .top,
-html.dark-mode .topbar,
 html.dark-mode .section,
 html.dark-mode .settings-tabs,
 html.dark-mode .current-user,
@@ -829,7 +899,6 @@ html.dark-mode .hero {
  background:linear-gradient(145deg,rgba(28,28,32,.92),rgba(13,13,15,.82))!important;
 }
 
-html.dark-mode .panel-head,
 html.dark-mode .card-head,
 html.dark-mode .details-card-head,
 html.dark-mode .voip-card-head {
@@ -978,18 +1047,22 @@ html.dark-mode .dashboard-launch-icon {
 }
 
 .crm-profile-trigger {
- display:flex;
+ display:inline-flex;
  align-items:center;
- gap:10px;
- min-inline-size:190px;
- padding:7px 10px;
+ gap:8px;
+ min-inline-size:160px;
+ height:42px;
+ min-height:42px;
+ max-height:42px;
+ padding:0 12px;
  border:1px solid var(--line);
- border-radius:14px;
+ border-radius:12px;
  background:var(--card,#fff);
  color:var(--dark,var(--text,#172033));
  cursor:pointer;
  font:inherit;
  text-align:start;
+ box-sizing:border-box;
  transition:background .2s ease,border-color .2s ease,transform .2s ease;
 }
 
@@ -1002,13 +1075,16 @@ html.dark-mode .dashboard-launch-icon {
 .crm-profile-avatar {
  display:grid;
  place-items:center;
- flex:0 0 38px;
- inline-size:38px;
- block-size:38px;
- border-radius:12px;
+ flex:0 0 28px;
+ inline-size:28px;
+ block-size:28px;
+ width:28px;
+ height:28px;
+ border-radius:8px;
  background:#fff0f1;
  color:var(--red);
  font-weight:900;
+ font-size:13px;
 }
 
 .crm-profile-details,
@@ -1027,9 +1103,10 @@ html.dark-mode .dashboard-launch-icon {
 
 .crm-profile-details small,
 .crm-profile-identity small {
- margin-block-start:3px;
+ margin-block-start:1px;
  color:var(--muted);
- font-size:12px;
+ font-size:10px;
+ line-height:1;
 }
 
 .crm-profile-chevron {
@@ -1094,7 +1171,7 @@ html.dark-mode .dashboard-launch-icon {
 }
 
 .crm-profile-themes {
- grid-template-columns:repeat(3,minmax(0,1fr));
+ grid-template-columns:repeat(2,minmax(0,1fr));
 }
 
 .crm-profile-locale-option,
@@ -1139,6 +1216,34 @@ html.dark-mode .dashboard-launch-icon {
  margin-block-start:14px;
 }
 
+.crm-profile-call-link {
+ display:flex;
+ align-items:center;
+ justify-content:center;
+ gap:8px;
+ inline-size:100%;
+ min-block-size:38px;
+ height:38px;
+ border:1px solid var(--line,#e2e8f0);
+ border-radius:10px;
+ background:var(--bg,#f8fafc);
+ color:var(--dark,#334155);
+ font:inherit;
+ font-weight:800;
+ font-size:13px;
+ text-decoration:none;
+ cursor:pointer;
+ transition:all .15s ease;
+ box-sizing:border-box;
+ margin-bottom:6px;
+}
+
+.crm-profile-call-link:hover {
+ background:#f1f5f9;
+ border-color:#cbd5e1;
+ color:var(--red,#dc2637);
+}
+
 .crm-profile-logout {
  display:flex;
  align-items:center;
@@ -1146,17 +1251,64 @@ html.dark-mode .dashboard-launch-icon {
  gap:8px;
  inline-size:100%;
  min-block-size:38px;
+ height:38px;
  border:1px solid #f1bbc1;
  border-radius:10px;
  background:#fff0f1;
  color:#b42332;
  font:inherit;
- font-weight:900;
+ font-weight:800;
+ font-size:13px;
  cursor:pointer;
+ transition:all .15s ease;
+ box-sizing:border-box;
 }
 
 .crm-profile-logout:hover {
  background:#ffe4e7;
+ border-color:#fca5a5;
+ color:#9f1239;
+}
+
+html.dark-mode .crm-profile-call-link {
+ background:var(--bg-input,#27272a)!important;
+ border-color:var(--line,rgba(255,255,255,0.12))!important;
+ color:var(--text-primary,#f4f4f5)!important;
+}
+
+html.dark-mode .crm-profile-call-link:hover {
+ background:rgba(255,255,255,0.12)!important;
+ border-color:rgba(255,255,255,0.22)!important;
+ color:#ffffff!important;
+}
+
+html.dark-mode .crm-profile-logout {
+ background:rgba(220,38,55,0.14)!important;
+ border-color:rgba(220,38,55,0.35)!important;
+ color:#fca5a5!important;
+}
+
+html.dark-mode .crm-profile-logout:hover {
+ background:rgba(220,38,55,0.25)!important;
+ border-color:rgba(220,38,55,0.55)!important;
+ color:#ffffff!important;
+}
+
+html.crm-monochrome .crm-profile-call-link {
+ border-radius:4px;
+ border-color:#d4d4d4;
+ background:#f5f5f5;
+ color:#171717;
+}
+
+html.crm-monochrome .crm-profile-call-link:hover {
+ background:#ededed;
+}
+
+html.crm-monochrome.dark-mode .crm-profile-call-link {
+ background:#292929!important;
+ border-color:#525252!important;
+ color:#f5f5f5!important;
 }
 
 html.dark-mode .crm-profile-trigger,
@@ -1635,6 +1787,31 @@ html.dark-mode .campaign-all-statuses.active {
  box-shadow:0 4px 15px rgba(239,68,68,.2)!important;
 }
 
+/* Campaign Stats Cards Dark Mode */
+html.dark-mode .campaign-stat,
+html.dark .campaign-stat {
+ background:var(--bg-card,rgba(24,24,27,.75))!important;
+ border:var(--border-glass,1px solid rgba(255,255,255,.08))!important;
+}
+html.dark-mode .campaign-stat span,
+html.dark .campaign-stat span {
+ color:var(--text-muted,#a1a1aa)!important;
+}
+html.dark-mode .campaign-stat strong,
+html.dark .campaign-stat strong {
+ color:var(--text-primary,#f4f4f5)!important;
+}
+
+html.crm-monochrome.dark-mode .campaign-stat {
+ background:#1c1c1c!important;
+ border:1px solid #404040!important;
+}
+html.crm-monochrome.dark-mode .campaign-stat span {
+ color:#a3a3a3!important;
+}
+html.crm-monochrome.dark-mode .campaign-stat strong {
+ color:#f5f5f5!important;
+}
 /* ==========================================================================
    Leads List View & Filter Box-in-Box Dark Mode Overhaul
    ========================================================================== */
@@ -2049,10 +2226,11 @@ html.dark-mode .error-summary {
    Import / Export Leads & Transfer Layout Dark Mode Overhaul
    ========================================================================== */
 html.dark-mode .transfer-topbar {
- background:var(--bg-card,rgba(24,24,27,.75))!important;
- backdrop-filter:var(--glass-blur,blur(16px))!important;
- -webkit-backdrop-filter:var(--glass-blur,blur(16px))!important;
- border-bottom:1px solid var(--border-color,rgba(255,255,255,.08))!important;
+ background:transparent!important;
+ backdrop-filter:none!important;
+ -webkit-backdrop-filter:none!important;
+ border:0!important;
+ box-shadow:none!important;
  color:var(--text-primary,#f4f4f5)!important;
 }
 
@@ -2185,19 +2363,37 @@ html.dark-mode .stat strong {
  color:var(--text-primary,#f4f4f5)!important;
 }
 
-html.dark-mode .btn.soft {
+html.dark-mode .btn:not(.primary):not(.danger):not(.success):not(.future),
+html.dark-mode .btn.soft,
+html.dark-mode .btn.secondary,
+html.dark-mode .btn.light {
  background:rgba(255,255,255,.08)!important;
  border:1px solid rgba(255,255,255,.14)!important;
  color:var(--text-primary,#f4f4f5)!important;
  font-weight:700!important;
 }
 
-html.dark-mode .btn.soft:hover {
+html.dark-mode .btn:not(.primary):not(.danger):not(.success):not(.future):hover,
+html.dark-mode .btn.soft:hover,
+html.dark-mode .btn.secondary:hover,
+html.dark-mode .btn.light:hover {
  background:rgba(255,255,255,.16)!important;
  border-color:rgba(255,255,255,.25)!important;
  color:#ffffff!important;
 }
 
+html.dark-mode .btn.danger {
+ background:rgba(220,38,55,.15)!important;
+ border:1px solid rgba(220,38,55,.35)!important;
+ color:#f87171!important;
+ font-weight:700!important;
+}
+
+html.dark-mode .btn.danger:hover {
+ background:rgba(220,38,55,.25)!important;
+ border-color:rgba(220,38,55,.55)!important;
+ color:#fca5a5!important;
+}
 html.dark-mode .btn.primary {
  background:linear-gradient(135deg,#e83243,#c91d2e)!important;
  border-color:#ef4444!important;
@@ -2229,6 +2425,24 @@ html.dark-mode .badge.error {
  background:rgba(239,68,68,.15)!important;
  border:1px solid rgba(239,68,68,.35)!important;
  color:#f87171!important;
+}
+
+html.dark-mode .collection-status {
+ background:rgba(16,185,129,.16)!important;
+ color:#6ee7b7!important;
+ border:1px solid rgba(16,185,129,.3)!important;
+}
+
+html.dark-mode .collection-status.is-closed {
+ background:rgba(255,255,255,.08)!important;
+ color:#a1a1aa!important;
+ border:1px solid rgba(255,255,255,.14)!important;
+}
+
+html.dark-mode .collection-status.is-failed {
+ background:rgba(245,158,11,.16)!important;
+ color:#fcd34d!important;
+ border:1px solid rgba(245,158,11,.3)!important;
 }
 
 html.dark-mode .row-errors {
@@ -2715,4 +2929,1581 @@ html.dark-mode .task-scope-btn:hover {
 html.dark-mode .task-scope-btn strong {
  background:rgba(255,255,255,.1)!important;
  color:#f4f4f5!important;
+}
+
+/* Monochrome CRM preview */
+html.crm-monochrome #crmSidebar{
+ --red:#171717;
+ --red-dark:#000;
+}
+
+html.crm-monochrome .crm-side{
+ padding:20px 14px;
+ border-color:#e5e5e5;
+ background:#fff;
+}
+
+html.crm-monochrome .crm-side-brand{
+ padding:2px 7px 16px;
+ margin-bottom:14px;
+ border-color:#e5e5e5;
+}
+
+html.crm-monochrome .crm-side-brand .logo{
+ width:48px;
+ height:48px;
+ filter:grayscale(1) contrast(1.15);
+}
+
+html.crm-monochrome .crm-side-brand strong{color:#171717}
+html.crm-monochrome .crm-side-caption{color:#a3a3a3;font-weight:700}
+html.crm-monochrome .crm-side-nav{gap:2px}
+
+html.crm-monochrome .crm-link,
+html.crm-monochrome .crm-toggle{
+ min-height:42px;
+ padding:6px 9px;
+ border-radius:4px;
+ color:#525252;
+ transition:background .15s ease,color .15s ease;
+}
+
+html.crm-monochrome .crm-link:hover,
+html.crm-monochrome .crm-toggle:hover{
+ color:#171717;
+ background:#f5f5f5;
+ transform:none!important;
+}
+
+html.crm-monochrome .crm-link.active,
+html.crm-monochrome .crm-toggle.active,
+html.crm-monochrome.dark-mode .crm-link.active,
+html.crm-monochrome.dark-mode .crm-toggle.active{
+ border-color:#171717!important;
+ background:#171717!important;
+ background-image:none!important;
+ color:#fff!important;
+ box-shadow:none!important;
+}
+
+html.crm-monochrome .crm-ico{
+ width:27px;
+ height:27px;
+ flex-basis:27px;
+ border-radius:3px;
+ background:transparent;
+ font-size:15px;
+}
+
+html.crm-monochrome .crm-link.active .crm-ico,
+html.crm-monochrome .crm-toggle.active .crm-ico,
+html.crm-monochrome.dark-mode .crm-link.active .crm-ico,
+html.crm-monochrome.dark-mode .crm-toggle.active .crm-ico{
+ background:#ffffff18!important;
+}
+
+html.crm-monochrome .crm-count{background:#f0f0f0;color:#737373}
+html.crm-monochrome .crm-sub a.active,
+html.crm-monochrome .crm-task-status-link.active,
+html.crm-monochrome.dark-mode .crm-sub a.active,
+html.crm-monochrome.dark-mode .crm-task-status-link.active{
+ background:#ededed!important;
+ border-color:#d4d4d4!important;
+ color:#171717!important;
+}
+
+html.crm-monochrome .crm-sidebar-collapse-btn{
+ border-radius:4px;
+ background:#fafafa;
+ color:#525252;
+}
+
+html.crm-monochrome .crm-sidebar-collapse-btn:hover{
+ color:#171717;
+ border-color:#a3a3a3;
+ background:#f5f5f5;
+}
+
+html.crm-monochrome .crm-profile-trigger{border-radius:4px}
+html.crm-monochrome .crm-profile-trigger:hover,
+html.crm-monochrome .crm-profile.is-open .crm-profile-trigger{
+ background:#f5f5f5;
+ border-color:#a3a3a3;
+ transform:none;
+}
+html.crm-monochrome .crm-profile-avatar{
+ border-radius:4px;
+ background:#ededed;
+ color:#171717;
+}
+html.crm-monochrome .crm-profile-dropdown{
+ border-radius:5px;
+ box-shadow:0 12px 30px #00000014;
+}
+html.crm-monochrome .crm-profile-locale-option,
+html.crm-monochrome .crm-profile-theme,
+html.crm-monochrome .crm-profile-logout{border-radius:4px}
+html.crm-monochrome .crm-profile-locale-option:hover,
+html.crm-monochrome .crm-profile-locale-option.active,
+html.crm-monochrome .crm-profile-theme:hover,
+html.crm-monochrome .crm-profile-theme.active{
+ border-color:#a3a3a3;
+ background:#ededed;
+ color:#171717;
+}
+html.crm-monochrome .crm-profile-logout{
+ border-color:#d4d4d4;
+ background:#f5f5f5;
+ color:#404040;
+}
+html.crm-monochrome .crm-profile-logout:hover{background:#ededed}
+html.crm-monochrome .crm-notification-trigger .crm-notification-badge{
+ background:#171717!important;
+ color:#fff!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .btn.primary,
+html.crm-monochrome:not(.dark-mode) body button.primary,
+html.crm-monochrome.dark-mode body .btn.primary,
+html.crm-monochrome.dark-mode body button.primary{
+ background:#171717!important;
+ background-image:none!important;
+ border-color:#171717!important;
+ color:#fff!important;
+ box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .btn.primary:hover,
+html.crm-monochrome:not(.dark-mode) body button.primary:hover,
+html.crm-monochrome.dark-mode body .btn.primary:hover,
+html.crm-monochrome.dark-mode body button.primary:hover{
+ background:#000!important;
+ border-color:#000!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body input:focus,
+html.crm-monochrome:not(.dark-mode) body textarea:focus,
+html.crm-monochrome:not(.dark-mode) body select:focus,
+html.crm-monochrome.dark-mode body input:focus,
+html.crm-monochrome.dark-mode body textarea:focus,
+html.crm-monochrome.dark-mode body select:focus{
+ border-color:#737373!important;
+ box-shadow:0 0 0 3px #17171714!important;
+}
+
+html.crm-monochrome.dark-mode .crm-side{background:#171717!important;border-color:#333!important}
+html.crm-monochrome.dark-mode .crm-side-brand strong{color:#f5f5f5!important}
+html.crm-monochrome.dark-mode .crm-link:hover,
+html.crm-monochrome.dark-mode .crm-toggle:hover{background:#262626!important;color:#f5f5f5!important}
+html.crm-monochrome.dark-mode .crm-count{background:#2f2f2f!important;color:#b8b8b8!important}
+html.crm-monochrome.dark-mode .crm-profile-trigger:hover,
+html.crm-monochrome.dark-mode .crm-profile.is-open .crm-profile-trigger,
+html.crm-monochrome.dark-mode .crm-profile-locale-option:hover,
+html.crm-monochrome.dark-mode .crm-profile-locale-option.active,
+html.crm-monochrome.dark-mode .crm-profile-theme:hover,
+html.crm-monochrome.dark-mode .crm-profile-theme.active,
+html.crm-monochrome.dark-mode .crm-profile-logout{
+ background:#292929!important;
+ border-color:#525252!important;
+ color:#f5f5f5!important;
+}
+html.crm-monochrome.dark-mode .crm-profile-avatar{background:#333!important;color:#f5f5f5!important}
+
+@media(min-width:901px){
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .crm-side,
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .side{
+  flex-basis:248px!important;
+  width:248px!important;
+  min-width:248px!important;
+  max-width:248px!important;
+ }
+
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .main,
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .crm-main,
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .settings-main,
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .crm-quote-main,
+ html.crm-monochrome:not(.crm-sidebar-collapsed) .main-content{width:calc(100% - 248px)!important}
+}
+
+@media(max-width:900px){
+ html.crm-monochrome .crm-side,
+ html.crm-monochrome .side{width:min(248px,calc(100vw - 36px))!important}
+}
+
+/* Monotone Sidebar Collapsed State */
+html.crm-monochrome.crm-sidebar-collapsed .crm-side,
+html.crm-monochrome.crm-sidebar-collapsed .side{
+ flex:0 0 88px!important;
+ width:88px!important;
+ min-width:88px!important;
+ max-width:88px!important;
+}
+
+html.crm-monochrome.crm-sidebar-collapsed .main,
+html.crm-monochrome.crm-sidebar-collapsed .crm-main,
+html.crm-monochrome.crm-sidebar-collapsed .settings-main,
+html.crm-monochrome.crm-sidebar-collapsed .crm-quote-main,
+html.crm-monochrome.crm-sidebar-collapsed .main-content{
+ width:calc(100% - 88px)!important;
+}
+
+html.crm-monochrome.crm-sidebar-collapsed .crm-side-brand strong,
+html.crm-monochrome.crm-sidebar-collapsed .crm-side-caption,
+html.crm-monochrome.crm-sidebar-collapsed .crm-label,
+html.crm-monochrome.crm-sidebar-collapsed .crm-count,
+html.crm-monochrome.crm-sidebar-collapsed .crm-arrow,
+html.crm-monochrome.crm-sidebar-collapsed .crm-sub{
+ display:none!important;
+}
+
+/* ==========================================================================
+   CRM THEME MATRIX V4 — UNIFIED SHELL RHYTHM
+   One identical page rhythm for every shell variant so all CRM pages
+   share the same spacing, topbar alignment and content width.
+   ========================================================================== */
+@media(min-width:901px){
+  .main,
+  .crm-main,
+  .crm-list-main,
+  .main-content,
+  .kanban-main,
+  .placeholder-main{
+    padding:24px clamp(20px,2.4vw,32px) 56px!important;
+  }
+
+  .settings-main{
+    padding:24px clamp(20px,2.4vw,32px) 56px!important;
+  }
+
+  .transfer-content{
+    width:min(1320px,calc(100% - 48px))!important;
+    margin:24px auto 56px!important;
+  }
+}
+
+@media(max-width:900px){
+  .main,
+  .crm-main,
+  .crm-list-main,
+  .main-content,
+  .kanban-main,
+  .placeholder-main,
+  .settings-main{
+    padding:16px 16px 44px!important;
+  }
+
+  .transfer-content{
+    width:calc(100% - 24px)!important;
+    margin:16px auto 40px!important;
+  }
+
+  .hero,
+  .transfer-hero,
+  .campaign-hero,
+  .form-hero,
+  .collection-hero,
+  #crm-page-loader{
+    display:none!important;
+    visibility:hidden!important;
+    opacity:0!important;
+    pointer-events:none!important;
+  }
+  .crm-loading,
+  .crm-loading body{
+    overflow:visible!important;
+  }
+}
+
+/* Shared topbar rhythm (page headers across shells). */
+.topbar,
+.crm-topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  flex-wrap:wrap;
+  min-height:56px;
+  margin-bottom:24px;
+}
+
+.topbar h1,
+.transfer-page-title h1,
+.placeholder-topbar h1{
+  font-size:24px;
+  font-weight:900;
+}
+
+.topbar p,
+.transfer-page-title p,
+.placeholder-topbar p{
+  margin:4px 0 0;
+  font-size:13px;
+}
+
+/* ==========================================================================
+   STANDARDIZED TOPBAR / TOP SECTION BUTTON HEIGHTS (42px Rhythm)
+   Ensures every button, action, trigger, and control in the top section
+.topbar .btn,
+.topbar .btn-leads-pill,
+.crm-topbar .btn,
+.transfer-topbar .btn,
+.transfer-top-actions .btn,
+.settings-top .btn,
+.page-header .btn,
+.page-header .btn-primary,
+.page-header .btn-secondary,
+.top-actions .btn,
+.topbar-actions .btn,
+.topbar-actions .btn-leads-pill,
+.header-action,
+.topbar a.btn,
+.topbar button.btn,
+.transfer-topbar a.btn,
+.transfer-topbar button.btn,
+.settings-top a.btn,
+.settings-top button.btn,
+.crm-topbar a.btn,
+.crm-topbar button.btn,
+.crm-branch-pill-trigger,
+.crm-branch-pill-static,
+.crm-topbar-notification-btn,
+.crm-profile-trigger,
+.transfer-menu,
+.settings-menu,
+.menu-button,
+.dashboard-search input {
+  box-sizing: border-box !important;
+  height: 42px !important;
+  min-height: 42px !important;
+  max-height: 42px !important;
+  line-height: 1 !important;
+}
+/* Icon / square buttons in top section */
+.topbar .btn.small,
+.topbar-left .btn,
+.topbar-left a.btn,
+.transfer-menu,
+.settings-menu,
+.menu-button,
+.crm-topbar-notification-btn {
+  width: 42px !important;
+  min-width: 42px !important;
+  padding: 0 !important;
+  display: inline-grid !important;
+  place-items: center !important;
+}
+
+/* Standard padding and typography for text buttons in top section */
+.topbar .btn:not(.small),
+.crm-topbar .btn:not(.small),
+.transfer-top-actions .btn,
+.top-actions .btn:not(.small),
+.topbar-actions .btn:not(.small),
+.settings-top .btn:not(.small),
+.page-header .btn,
+.header-action {
+  padding: 0 16px !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 7px !important;
+  white-space: nowrap !important;
+}
+
+/* Alignment inside top action containers */
+.topbar-actions,
+.top-actions,
+.transfer-top-actions,
+.settings-user-tools,
+.crm-topbar-user {
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+}
+
+/* ==========================================================================
+   CRM SEARCHABLE & MULTI-SELECT DROPDOWNS (>15 options or multi-choice)
+   ========================================================================== */
+.crm-select-wrap {
+  position: relative;
+  display: inline-block;
+  width: 100%;
+  box-sizing: border-box;
+  font-family: inherit;
+  vertical-align: middle;
+}
+
+.crm-select-native-hidden {
+  position: absolute !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  border: 0 !important;
+}
+
+.crm-select-trigger {
+  width: 100%;
+  min-height: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 10px;
+  background: var(--card, #ffffff);
+  color: var(--dark, var(--text, #172033));
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: start;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all .16s ease;
+  user-select: none;
+}
+
+/* Filter Bar Context Overrides (leads index, reports, dashboards) */
+.filter-control-wrap .crm-select-trigger,
+.filter-field .crm-select-trigger,
+.filters-grid .crm-select-trigger,
+.filter-inputs-grid .crm-select-trigger,
+.filter-card .crm-select-trigger {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  border-radius: 9px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.filter-control-wrap .crm-select-trigger-label,
+.filter-field .crm-select-trigger-label,
+.filters-grid .crm-select-trigger-label,
+.filter-inputs-grid .crm-select-trigger-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.filter-inputs-row .crm-select-trigger {
+  height: 36px !important;
+  min-height: 36px !important;
+  max-height: 36px !important;
+  border-radius: 9px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+}
+
+.crm-select-trigger:hover,
+.crm-select-wrap.is-open .crm-select-trigger {
+  border-color: var(--red, #dc2637);
+  background: var(--card, #ffffff);
+}
+
+.crm-select-wrap.is-open .crm-select-trigger {
+  box-shadow: 0 0 0 3px rgba(220, 38, 55, 0.12);
+}
+
+.crm-select-trigger-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.crm-select-trigger-label.is-placeholder {
+  color: var(--muted, #64748b);
+  font-weight: 500;
+}
+
+.crm-select-trigger-chips {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  overflow: hidden;
+  flex-wrap: nowrap;
+  max-width: 100%;
+}
+
+.crm-select-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 7px;
+  border-radius: 6px;
+  background: rgba(220, 38, 55, 0.08);
+  color: var(--red, #dc2637);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.crm-select-chip-count {
+  display: inline-flex;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--dark, #334155);
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.crm-select-chevron {
+  font-size: 12px;
+  color: var(--muted, #94a3b8);
+  flex-shrink: 0;
+  transition: transform .2s ease;
+}
+
+.crm-select-wrap.is-open .crm-select-chevron {
+  transform: rotate(180deg);
+  color: var(--red, #dc2637);
+}
+
+.crm-select-dropdown {
+  position: absolute !important;
+  inset-block-start: calc(100% + 5px) !important;
+  inset-inline-start: 0 !important;
+  width: 100% !important;
+  min-width: 220px !important;
+  max-width: min(480px, 100vw - 24px) !important;
+  z-index: 10005 !important;
+  background: var(--card, #ffffff) !important;
+  border: 1px solid var(--line, #e2e8f0) !important;
+  border-radius: 12px !important;
+  box-shadow: 0 14px 38px rgba(15, 23, 42, 0.15) !important;
+  padding: 8px !important;
+  display: none;
+  flex-direction: column !important;
+  gap: 6px !important;
+  box-sizing: border-box !important;
+}
+
+.crm-select-wrap.is-open .crm-select-dropdown {
+  display: flex !important;
+}
+
+.crm-select-search-wrap {
+  position: relative;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.crm-select-search-wrap i {
+  position: absolute;
+  inset-inline-start: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted, #94a3b8);
+  font-size: 13px;
+  pointer-events: none;
+}
+
+.crm-select-search-input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  padding-inline-start: 30px;
+  border: 1px solid var(--line, #e2e8f0);
+  border-radius: 8px;
+  background: var(--bg, #f8fafc);
+  color: var(--dark, #182033);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  outline: none;
+  box-sizing: border-box;
+  transition: all .15s ease;
+}
+
+.crm-select-search-input:focus {
+  border-color: var(--red, #dc2637);
+  background: #ffffff;
+  box-shadow: 0 0 0 2px rgba(220, 38, 55, 0.1);
+}
+
+.crm-select-multi-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 6px 6px;
+  border-bottom: 1px solid var(--line, #f1f5f9);
+  font-size: 11px;
+  color: var(--muted, #64748b);
+  font-weight: 800;
+}
+
+.crm-select-batch-btn {
+  border: 0;
+  background: transparent;
+  color: var(--red, #dc2637);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 4px;
+  transition: background .15s ease;
+}
+
+.crm-select-batch-btn:hover {
+  background: rgba(220, 38, 55, 0.08);
+}
+
+.crm-select-options-list {
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 2px 0;
+  scrollbar-width: thin;
+}
+
+.crm-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--dark, #182033);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .12s ease;
+  user-select: none;
+  box-sizing: border-box;
+  text-decoration: none;
+  text-align: start;
+}
+
+.crm-select-option:hover,
+.crm-select-option.is-highlighted {
+  background: #f1f5f9;
+  color: var(--red, #dc2637);
+}
+
+.crm-select-option.is-selected {
+  background: rgba(220, 38, 55, 0.08);
+  color: var(--red, #dc2637);
+  font-weight: 800;
+}
+
+.crm-select-option-check {
+  font-size: 14px;
+  color: var(--red, #dc2637);
+  flex-shrink: 0;
+}
+
+.crm-select-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  cursor: pointer;
+}
+
+.crm-select-checkbox-label input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+  accent-color: var(--red, #dc2637);
+  flex-shrink: 0;
+}
+
+.crm-select-no-results {
+  padding: 18px 10px;
+  text-align: center;
+  color: var(--muted, #94a3b8);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+html.dark-mode .crm-select-trigger {
+  background: var(--bg-card, #18181b) !important;
+  border-color: rgba(255, 255, 255, 0.1) !important;
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-select-trigger:hover,
+html.dark-mode .crm-select-wrap.is-open .crm-select-trigger {
+  border-color: #f87171 !important;
+}
+
+html.dark-mode .crm-select-dropdown {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6) !important;
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-select-search-input {
+  background: #27272a !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-select-search-input:focus {
+  border-color: #ef4444 !important;
+  background: #27272a !important;
+}
+
+html.dark-mode .crm-select-multi-header {
+  border-bottom-color: rgba(255, 255, 255, 0.08) !important;
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-select-batch-btn {
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-select-batch-btn:hover {
+  background: rgba(239, 68, 68, 0.15) !important;
+}
+
+html.dark-mode .crm-select-option {
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-select-option:hover,
+html.dark-mode .crm-select-option.is-highlighted {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-select-option.is-selected {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-select-chip {
+  background: rgba(239, 68, 68, 0.16) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark-mode .crm-select-chip-count {
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #e4e4e7 !important;
+}
+
+html.crm-monochrome .crm-select-trigger,
+html.crm-monochrome .crm-select-dropdown,
+html.crm-monochrome .crm-select-search-input,
+html.crm-monochrome .crm-select-option,
+html.crm-monochrome .crm-select-chip {
+  border-radius: 4px !important;
+}
+
+html.crm-monochrome .crm-select-trigger:hover,
+html.crm-monochrome .crm-select-wrap.is-open .crm-select-trigger {
+  border-color: #171717 !important;
+  box-shadow: none !important;
+}
+
+html.crm-monochrome .crm-select-chip {
+  background: #ededed !important;
+  color: #171717 !important;
+}
+
+html.crm-monochrome .crm-select-batch-btn,
+html.crm-monochrome .crm-select-option-check {
+  color: #171717 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-select-chip {
+  background: #333333 !important;
+  color: #f5f5f5 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-select-batch-btn,
+html.crm-monochrome.dark-mode .crm-select-option-check {
+  color: #f5f5f5 !important;
+}
+
+/* ==========================================================================
+   CRM THEME MATRIX V4 — FULL MONOCHROME COVERAGE
+   Extends the monochrome palette to every CRM surface, not just the
+   sidebar: heroes, stat cards, panels, tables, forms, modals, badges,
+   kanban, calendar, tasks, collections and campaigns.
+   ========================================================================== */
+
+/* ---- Mono light: neutralize every remaining brand-red accent ---- */
+html.crm-monochrome:not(.dark-mode){
+  --red-hover:#000;
+}
+
+html.crm-monochrome:not(.dark-mode) body{
+  background:#fafafa!important;
+  color:#171717;
+}
+
+html.crm-monochrome:not(.dark-mode) body .hero,
+html.crm-monochrome:not(.dark-mode) body .form-hero,
+html.crm-monochrome:not(.dark-mode) body .transfer-hero,
+html.crm-monochrome:not(.dark-mode) body .client-head{
+  background:#f5f5f5!important;
+  background-image:none!important;
+  color:#171717!important;
+  border-color:#e5e5e5!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .hero small,
+html.crm-monochrome:not(.dark-mode) body .form-hero small,
+html.crm-monochrome:not(.dark-mode) body .transfer-hero small,
+html.crm-monochrome:not(.dark-mode) body .client-copy small{
+  color:#737373!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .hero h2,
+html.crm-monochrome:not(.dark-mode) body .hero p,
+html.crm-monochrome:not(.dark-mode) body .hero .actions a,
+html.crm-monochrome:not(.dark-mode) body .form-hero h2,
+html.crm-monochrome:not(.dark-mode) body .form-hero p,
+html.crm-monochrome:not(.dark-mode) body .transfer-hero h2,
+html.crm-monochrome:not(.dark-mode) body .transfer-hero p,
+html.crm-monochrome:not(.dark-mode) body .client-copy h2,
+html.crm-monochrome:not(.dark-mode) body .client-copy p{
+  color:#171717!important;
+}
+
+/* Buttons: every gradient / tinted button becomes solid black on white. */
+html.crm-monochrome:not(.dark-mode) body .btn.primary,
+html.crm-monochrome:not(.dark-mode) body button.primary,
+html.crm-monochrome:not(.dark-mode) body .header-action.primary,
+html.crm-monochrome:not(.dark-mode) body .btn:not(.light):not(.soft):not(.secondary),
+html.crm-monochrome:not(.dark-mode) body .btn.success,
+html.crm-monochrome:not(.dark-mode) body .btn.future,
+html.crm-monochrome:not(.dark-mode) body .crm-profile-logout,
+html.crm-monochrome:not(.dark-mode) body input[type="file"].control::file-selector-button{
+  background:#171717!important;
+  background-image:none!important;
+  border-color:#171717!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .btn.primary:hover,
+html.crm-monochrome:not(.dark-mode) body button.primary:hover,
+html.crm-monochrome:not(.dark-mode) body .header-action.primary:hover,
+html.crm-monochrome:not(.dark-mode) body .btn:not(.light):not(.soft):not(.secondary):hover{
+  background:#000!important;
+  border-color:#000!important;
+}
+
+/* Secondary / soft / light buttons become outlined neutral. */
+html.crm-monochrome:not(.dark-mode) body .btn.soft,
+html.crm-monochrome:not(.dark-mode) body .btn.secondary,
+html.crm-monochrome:not(.dark-mode) body .btn.light{
+  background:#fff!important;
+  border-color:#d4d4d4!important;
+  color:#171717!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .btn.soft:hover,
+html.crm-monochrome:not(.dark-mode) body .btn.secondary:hover,
+html.crm-monochrome:not(.dark-mode) body .btn.light:hover{
+  background:#f5f5f5!important;
+  border-color:#a3a3a3!important;
+  color:#171717!important;
+}
+
+/* Cards, panels, sections, stats — flat white with hairline borders. */
+html.crm-monochrome:not(.dark-mode) body .card,
+html.crm-monochrome:not(.dark-mode) body .stat-card,
+html.crm-monochrome:not(.dark-mode) body .ext-card,
+html.crm-monochrome:not(.dark-mode) body .stat,
+html.crm-monochrome:not(.dark-mode) body .section,
+html.crm-monochrome:not(.dark-mode) body .details-card,
+html.crm-monochrome:not(.dark-mode) body .lead-header-card,
+html.crm-monochrome:not(.dark-mode) body .client-card,
+html.crm-monochrome:not(.dark-mode) body .task-kpi-card,
+html.crm-monochrome:not(.dark-mode) body .task-progress-box,
+html.crm-monochrome:not(.dark-mode) body .task-filters-card,
+html.crm-monochrome:not(.dark-mode) body .task-section-block,
+html.crm-monochrome:not(.dark-mode) body .task-item-card,
+html.crm-monochrome:not(.dark-mode) body .status-card,
+html.crm-monochrome:not(.dark-mode) body .campaign-status-card,
+html.crm-monochrome:not(.dark-mode) body .transfer-card,
+html.crm-monochrome:not(.dark-mode) body .form-card,
+html.crm-monochrome:not(.dark-mode) body .quotation-card,
+html.crm-monochrome:not(.dark-mode) body .timeline-item,
+html.crm-monochrome:not(.dark-mode) body .crm-dialog,
+html.crm-monochrome:not(.dark-mode) body .modal-dialog,
+html.crm-monochrome:not(.dark-mode) body .task-modal-content,
+html.crm-monochrome:not(.dark-mode) body .crm-branch-pill-dropdown,
+html.crm-monochrome:not(.dark-mode) body .lead-menu,
+html.crm-monochrome:not(.dark-mode) body .fc-popover{
+  background:#fff!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  border:1px solid #e5e5e5!important;
+  box-shadow:0 1px 3px rgba(0,0,0,.05)!important;
+  color:#171717!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .card-head,
+html.crm-monochrome:not(.dark-mode) body .details-card-head,
+html.crm-monochrome:not(.dark-mode) body .voip-card-head,
+html.crm-monochrome:not(.dark-mode) body .section-head,
+html.crm-monochrome:not(.dark-mode) body .task-section-header{
+  background:#fafafa!important;
+  border-color:#e5e5e5!important;
+  color:#171717!important;
+}
+
+/* Tables */
+html.crm-monochrome:not(.dark-mode) body th,
+html.crm-monochrome:not(.dark-mode) body td,
+html.crm-monochrome:not(.dark-mode) body .task-table th,
+html.crm-monochrome:not(.dark-mode) body .task-table td{
+  background:transparent!important;
+  border-color:#e5e5e5!important;
+  color:#404040!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body th,
+html.crm-monochrome:not(.dark-mode) body .table th,
+html.crm-monochrome:not(.dark-mode) body .task-table th{
+  background:#fafafa!important;
+  color:#737373!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body tbody tr:hover td{
+  background:#f5f5f5!important;
+}
+
+/* Inputs */
+html.crm-monochrome:not(.dark-mode) body input,
+html.crm-monochrome:not(.dark-mode) body textarea,
+html.crm-monochrome:not(.dark-mode) body select,
+html.crm-monochrome:not(.dark-mode) body .field input,
+html.crm-monochrome:not(.dark-mode) body .field select,
+html.crm-monochrome:not(.dark-mode) body .field textarea,
+html.crm-monochrome:not(.dark-mode) body .search input,
+html.crm-monochrome:not(.dark-mode) body .filters input,
+html.crm-monochrome:not(.dark-mode) body .filters select,
+html.crm-monochrome:not(.dark-mode) body .control,
+html.crm-monochrome:not(.dark-mode) body .task-search-input,
+html.crm-monochrome:not(.dark-mode) body .task-select-filter,
+html.crm-monochrome:not(.dark-mode) body .filter-select,
+html.crm-monochrome:not(.dark-mode) body .form-control,
+html.crm-monochrome:not(.dark-mode) body .task-form-control,
+html.crm-monochrome:not(.dark-mode) body .quotation-select{
+  background:#fff!important;
+  border:1px solid #d4d4d4!important;
+  color:#171717!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body select option{
+  background:#fff;
+  color:#171717;
+}
+
+/* Badges, chips, counts — grayscale. */
+html.crm-monochrome:not(.dark-mode) body .badge,
+html.crm-monochrome:not(.dark-mode) body .count,
+html.crm-monochrome:not(.dark-mode) body .crm-count,
+html.crm-monochrome:not(.dark-mode) body .result-count,
+html.crm-monochrome:not(.dark-mode) body .task-pill-badge,
+html.crm-monochrome:not(.dark-mode) body .task-date-pill,
+html.crm-monochrome:not(.dark-mode) body .section-count-badge{
+  background:#f0f0f0!important;
+  border:1px solid #e5e5e5!important;
+  color:#525252!important;
+  box-shadow:none!important;
+  text-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .status-badge,
+html.crm-monochrome:not(.dark-mode) body .follow-up{
+  background:#f5f5f5!important;
+  border:1px solid #d4d4d4!important;
+  color:#404040!important;
+}
+
+/* Neutralize inline-styled colored dots/avatars via grayscale filter
+   (tiny decorative elements only — safe for stacking context). */
+html.crm-monochrome:not(.dark-mode) body .stat-card span span[style],
+html.crm-monochrome:not(.dark-mode) body .stage-dot[style],
+html.crm-monochrome:not(.dark-mode) body .customer-avatar,
+html.crm-monochrome:not(.dark-mode) body .lead-avatar,
+html.crm-monochrome:not(.dark-mode) body .crm-profile-avatar,
+html.crm-monochrome:not(.dark-mode) body .client-avatar,
+html.crm-monochrome:not(.dark-mode) body .task-lead-avatar,
+html.crm-monochrome:not(.dark-mode) body .status-dot,
+html.crm-monochrome:not(.dark-mode) body .sico,
+html.crm-monochrome:not(.dark-mode) body .dashboard-launch-icon,
+html.crm-monochrome:not(.dark-mode) body .crm-side-brand .logo,
+html.crm-monochrome:not(.dark-mode) body .brand img,
+html.monochrome-grayscaled-images img{
+  filter:grayscale(1);
+}
+
+/* Status pills keep their meaning via weight, not hue. */
+html.crm-monochrome:not(.dark-mode) body .pipeline-stage,
+html.crm-monochrome:not(.dark-mode) body .quick a,
+html.crm-monochrome:not(.dark-mode) body .crm-choice,
+html.crm-monochrome:not(.dark-mode) body .pipeline-statuses span,
+html.crm-monochrome:not(.dark-mode) body .check-item,
+html.crm-monochrome:not(.dark-mode) body .status-guide-item,
+html.crm-monochrome:not(.dark-mode) body .stat{
+  background:#fff!important;
+  border:1px solid #e5e5e5!important;
+  color:#404040!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .notice.info,
+html.crm-monochrome:not(.dark-mode) body .flash.success,
+html.crm-monochrome:not(.dark-mode) body .flash-success{
+  background:#f5f5f5!important;
+  border:1px solid #d4d4d4!important;
+  color:#171717!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .notice.error,
+html.crm-monochrome:not(.dark-mode) body .flash.error,
+html.crm-monochrome:not(.dark-mode) body .error-summary{
+  background:#fafafa!important;
+  border:1px solid #737373!important;
+  color:#171717!important;
+}
+
+/* Kanban board */
+html.crm-monochrome:not(.dark-mode) body .board-shell,
+html.crm-monochrome:not(.dark-mode) body .kanban-column,
+html.crm-monochrome:not(.dark-mode) body .kcard{
+  background:#fff!important;
+  border-color:#e5e5e5!important;
+  box-shadow:none!important;
+}
+
+/* Calendar */
+html.crm-monochrome:not(.dark-mode) body .fc .fc-button,
+html.crm-monochrome:not(.dark-mode) body .fc .fc-button-primary{
+  background:#fff!important;
+  border:1px solid #d4d4d4!important;
+  color:#171717!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .fc .fc-button:hover{
+  background:#f5f5f5!important;
+  color:#171717!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .fc .fc-button-primary:not(:disabled).fc-button-active,
+html.crm-monochrome:not(.dark-mode) body .fc .fc-button-primary:not(:disabled):active{
+  background:#171717!important;
+  border-color:#171717!important;
+  color:#fff!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .fc .fc-toolbar-title,
+html.crm-monochrome:not(.dark-mode) body .fc .fc-col-header-cell-cushion,
+html.crm-monochrome:not(.dark-mode) body .fc .fc-daygrid-day-number{
+  color:#171717!important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .fc .fc-daygrid-day.fc-day-today{
+  background:#f0f0f0!important;
+}
+
+/* Links & headings */
+html.crm-monochrome:not(.dark-mode) body a:hover{
+  color:inherit;
+}
+
+html.crm-monochrome:not(.dark-mode) body h1,
+html.crm-monochrome:not(.dark-mode) body h2,
+html.crm-monochrome:not(.dark-mode) body h3,
+html.crm-monochrome:not(.dark-mode) body h4,
+html.crm-monochrome:not(.dark-mode) body h5,
+html.crm-monochrome:not(.dark-mode) body h6{
+  color:#171717;
+}
+
+/* ---- Mono dark: flat near-black surfaces CRM-wide ---- */
+html.crm-monochrome.dark-mode body{
+  background:#111!important;
+  background-image:none!important;
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body .card,
+html.crm-monochrome.dark-mode body .stat-card,
+html.crm-monochrome.dark-mode body .ext-card,
+html.crm-monochrome.dark-mode body .hero,
+html.crm-monochrome.dark-mode body .form-hero,
+html.crm-monochrome.dark-mode body .transfer-hero,
+html.crm-monochrome.dark-mode body .stat,
+html.crm-monochrome.dark-mode body .section,
+html.crm-monochrome.dark-mode body .settings-tabs,
+html.crm-monochrome.dark-mode body .current-user,
+html.crm-monochrome.dark-mode body .details-card,
+html.crm-monochrome.dark-mode body .lead-header-card,
+html.crm-monochrome.dark-mode body .client-card,
+html.crm-monochrome.dark-mode body .client-head,
+html.crm-monochrome.dark-mode body .task-kpi-card,
+html.crm-monochrome.dark-mode body .task-progress-box,
+html.crm-monochrome.dark-mode body .task-filters-card,
+html.crm-monochrome.dark-mode body .task-section-block,
+html.crm-monochrome.dark-mode body .task-item-card,
+html.crm-monochrome.dark-mode body .status-card,
+html.crm-monochrome.dark-mode body .campaign-status-card,
+html.crm-monochrome.dark-mode body .transfer-card,
+html.crm-monochrome.dark-mode body .form-card,
+html.crm-monochrome.dark-mode body .quotation-card,
+html.crm-monochrome.dark-mode body .timeline-item,
+html.crm-monochrome.dark-mode body .crm-dialog,
+html.crm-monochrome.dark-mode body .modal-dialog,
+html.crm-monochrome.dark-mode body .task-modal-content,
+html.crm-monochrome.dark-mode body .board-shell,
+html.crm-monochrome.dark-mode body .kanban-column,
+html.crm-monochrome.dark-mode body .kcard{
+  background:#1c1c1c!important;
+  background-image:none!important;
+  backdrop-filter:none!important;
+  -webkit-backdrop-filter:none!important;
+  border:1px solid #333!important;
+  box-shadow:none!important;
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body .card-head,
+html.crm-monochrome.dark-mode body .details-card-head,
+html.crm-monochrome.dark-mode body .voip-card-head,
+html.crm-monochrome.dark-mode body .section-head,
+html.crm-monochrome.dark-mode body .task-section-header,
+html.crm-monochrome.dark-mode body .client-data{
+  background:#262626!important;
+  border-color:#333!important;
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body th,
+html.crm-monochrome.dark-mode body td,
+html.crm-monochrome.dark-mode body .task-table th,
+html.crm-monochrome.dark-mode body .task-table td{
+  background:transparent!important;
+  border-color:#333!important;
+  color:#d4d4d4!important;
+}
+
+html.crm-monochrome.dark-mode body th,
+html.crm-monochrome.dark-mode body .table th,
+html.crm-monochrome.dark-mode body .task-table th{
+  background:#262626!important;
+  color:#a3a3a3!important;
+}
+
+html.crm-monochrome.dark-mode body tbody tr:hover td{
+  background:#262626!important;
+}
+
+html.crm-monochrome.dark-mode body input,
+html.crm-monochrome.dark-mode body textarea,
+html.crm-monochrome.dark-mode body select,
+html.crm-monochrome.dark-mode body .field input,
+html.crm-monochrome.dark-mode body .field select,
+html.crm-monochrome.dark-mode body .field textarea,
+html.crm-monochrome.dark-mode body .search input,
+html.crm-monochrome.dark-mode body .filters input,
+html.crm-monochrome.dark-mode body .filters select,
+html.crm-monochrome.dark-mode body .control,
+html.crm-monochrome.dark-mode body .task-search-input,
+html.crm-monochrome.dark-mode body .task-select-filter,
+html.crm-monochrome.dark-mode body .filter-select,
+html.crm-monochrome.dark-mode body .form-control,
+html.crm-monochrome.dark-mode body .task-form-control,
+html.crm-monochrome.dark-mode body .quotation-select{
+  background:#262626!important;
+  border:1px solid #404040!important;
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body select option,
+html.crm-monochrome.dark-mode body .form-control option,
+html.crm-monochrome.dark-mode body .filter-select option{
+  background:#1c1c1c;
+  color:#f5f5f5;
+}
+
+html.crm-monochrome.dark-mode body .badge,
+html.crm-monochrome.dark-mode body .count,
+html.crm-monochrome.dark-mode body .crm-count,
+html.crm-monochrome.dark-mode body .result-count,
+html.crm-monochrome.dark-mode body .task-pill-badge,
+html.crm-monochrome.dark-mode body .task-date-pill,
+html.crm-monochrome.dark-mode body .section-count-badge{
+  background:#2f2f2f!important;
+  border:1px solid #404040!important;
+  color:#d4d4d4!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .status-badge,
+html.crm-monochrome.dark-mode body .follow-up{
+  background:#2f2f2f!important;
+  border:1px solid #525252!important;
+  color:#e5e5e5!important;
+}
+
+html.crm-monochrome.dark-mode body .pipeline-stage,
+html.crm-monochrome.dark-mode body .quick a,
+html.crm-monochrome.dark-mode body .crm-choice,
+html.crm-monochrome.dark-mode body .pipeline-statuses span,
+html.crm-monochrome.dark-mode body .check-item,
+html.crm-monochrome.dark-mode body .status-guide-item,
+html.crm-monochrome.dark-mode body .stat,
+html.crm-monochrome.dark-mode body .task-scope-btn,
+html.crm-monochrome.dark-mode body .task-view-toggle{
+  background:#262626!important;
+  border:1px solid #404040!important;
+  color:#d4d4d4!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .btn:not(.primary):not(.danger):not(.success):not(.future),
+html.crm-monochrome.dark-mode body .btn.soft,
+html.crm-monochrome.dark-mode body .btn.secondary,
+html.crm-monochrome.dark-mode body .btn.light,
+html.crm-monochrome.dark-mode body .header-action,
+html.crm-monochrome.dark-mode body .task-btn-icon,
+html.crm-monochrome.dark-mode body .crm-modal-close,
+html.crm-monochrome.dark-mode body .task-modal-close{
+  background:#2f2f2f!important;
+  border:1px solid #525252!important;
+  color:#f5f5f5!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .btn.primary,
+html.crm-monochrome.dark-mode body button.primary,
+html.crm-monochrome.dark-mode body .header-action.primary,
+html.crm-monochrome.dark-mode body .btn.success,
+html.crm-monochrome.dark-mode body .btn.future,
+html.crm-monochrome.dark-mode body input[type="file"].control::file-selector-button{
+  background:#f5f5f5!important;
+  background-image:none!important;
+  border-color:#f5f5f5!important;
+  color:#171717!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .btn.primary:hover,
+html.crm-monochrome.dark-mode body button.primary:hover,
+html.crm-monochrome.dark-mode body .header-action.primary:hover{
+  background:#fff!important;
+  border-color:#fff!important;
+}
+
+html.crm-monochrome.dark-mode body .notice.info,
+html.crm-monochrome.dark-mode body .flash.success,
+html.crm-monochrome.dark-mode body .flash-success{
+  background:#262626!important;
+  border:1px solid #525252!important;
+  color:#e5e5e5!important;
+}
+
+html.crm-monochrome.dark-mode body .notice.error,
+html.crm-monochrome.dark-mode body .flash.error,
+html.crm-monochrome.dark-mode body .error-summary{
+  background:#262626!important;
+  border:1px solid #8a8a8a!important;
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body h1,
+html.crm-monochrome.dark-mode body h2,
+html.crm-monochrome.dark-mode body h3,
+html.crm-monochrome.dark-mode body h4,
+html.crm-monochrome.dark-mode body h5,
+html.crm-monochrome.dark-mode body h6{
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body p,
+html.crm-monochrome.dark-mode body label,
+html.crm-monochrome.dark-mode body small,
+html.crm-monochrome.dark-mode body .muted,
+html.crm-monochrome.dark-mode body .hint{
+  color:#a3a3a3!important;
+}
+
+/* Grayscale decorative accents in mono-dark too. */
+html.crm-monochrome.dark-mode body .stat-card span span[style],
+html.crm-monochrome.dark-mode body .stage-dot[style],
+html.crm-monochrome.dark-mode body .customer-avatar,
+html.crm-monochrome.dark-mode body .lead-avatar,
+html.crm-monochrome.dark-mode body .crm-profile-avatar,
+html.crm-monochrome.dark-mode body .client-avatar,
+html.crm-monochrome.dark-mode body .task-lead-avatar,
+html.crm-monochrome.dark-mode body .status-dot,
+html.crm-monochrome.dark-mode body .sico,
+html.crm-monochrome.dark-mode body .dashboard-launch-icon{
+  filter:grayscale(1);
+}
+
+/* Calendar in mono-dark */
+html.crm-monochrome.dark-mode body .fc .fc-button,
+html.crm-monochrome.dark-mode body .fc .fc-button-primary{
+  background:#2f2f2f!important;
+  border:1px solid #525252!important;
+  color:#f5f5f5!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .fc .fc-button-primary:not(:disabled).fc-button-active,
+html.crm-monochrome.dark-mode body .fc .fc-button-primary:not(:disabled):active{
+  background:#f5f5f5!important;
+  border-color:#f5f5f5!important;
+  color:#171717!important;
+  box-shadow:none!important;
+}
+
+html.crm-monochrome.dark-mode body .fc .fc-toolbar-title,
+html.crm-monochrome.dark-mode body .fc .fc-col-header-cell-cushion,
+html.crm-monochrome.dark-mode body .fc .fc-daygrid-day-number{
+  color:#f5f5f5!important;
+}
+
+html.crm-monochrome.dark-mode body .fc .fc-daygrid-day.fc-day-today{
+  background:#333!important;
+}
+
+html.crm-monochrome.dark-mode body .fc-popover{
+  background:#1c1c1c!important;
+  border:1px solid #404040!important;
+}
+
+/*
+ * TRANSPARENT PANELS, CARDS & TOPBARS ACROSS ALL THEMES
+ * Ensures panels, panel headers, and topbars have clean transparent backgrounds and no borders.
+ */
+.top,
+.topbar,
+.crm-topbar,
+.settings-top,
+.transfer-topbar,
+.placeholder-topbar,
+.panel,
+.panel-head,
+.stages-panel,
+.chart-card,
+.np-panel,
+.np-panel-head,
+.campaign-report-panel,
+.campaign-report-panel-head,
+.lead-header-card {
+ background: transparent !important;
+ background-color: transparent !important;
+ border: 0 !important;
+ box-shadow: none !important;
+}
+
+html.dark-mode .top,
+html.dark-mode .topbar,
+html.dark-mode .crm-topbar,
+html.dark-mode .settings-top,
+html.dark-mode .transfer-topbar,
+html.dark-mode .placeholder-topbar,
+html.dark-mode .panel,
+html.dark-mode .panel-head,
+html.dark-mode .stages-panel,
+html.dark-mode .chart-card,
+html.dark-mode .np-panel,
+html.dark-mode .np-panel-head,
+html.dark-mode .campaign-report-panel,
+html.dark-mode .campaign-report-panel-head,
+html.dark-mode .lead-header-card {
+ background: transparent !important;
+ background-color: transparent !important;
+ border: 0 !important;
+ box-shadow: none !important;
+}
+
+html.crm-monochrome:not(.dark-mode) body .top,
+html.crm-monochrome:not(.dark-mode) body .topbar,
+html.crm-monochrome:not(.dark-mode) body .crm-topbar,
+html.crm-monochrome:not(.dark-mode) body .settings-top,
+html.crm-monochrome:not(.dark-mode) body .transfer-topbar,
+html.crm-monochrome:not(.dark-mode) body .placeholder-topbar,
+html.crm-monochrome:not(.dark-mode) body .panel,
+html.crm-monochrome:not(.dark-mode) body .panel-head,
+html.crm-monochrome:not(.dark-mode) body .stages-panel,
+html.crm-monochrome:not(.dark-mode) body .chart-card,
+html.crm-monochrome:not(.dark-mode) body .np-panel,
+html.crm-monochrome:not(.dark-mode) body .np-panel-head,
+html.crm-monochrome:not(.dark-mode) body .campaign-report-panel,
+html.crm-monochrome:not(.dark-mode) body .campaign-report-panel-head,
+html.crm-monochrome:not(.dark-mode) body .lead-header-card {
+ background: transparent !important;
+ background-color: transparent !important;
+ border: 0 !important;
+ box-shadow: none !important;
+}
+
+html.crm-monochrome.dark-mode body .top,
+html.crm-monochrome.dark-mode body .topbar,
+html.crm-monochrome.dark-mode body .crm-topbar,
+html.crm-monochrome.dark-mode body .settings-top,
+html.crm-monochrome.dark-mode body .transfer-topbar,
+html.crm-monochrome.dark-mode body .placeholder-topbar,
+html.crm-monochrome.dark-mode body .panel,
+html.crm-monochrome.dark-mode body .panel-head,
+html.crm-monochrome.dark-mode body .stages-panel,
+html.crm-monochrome.dark-mode body .chart-card,
+html.crm-monochrome.dark-mode body .np-panel,
+html.crm-monochrome.dark-mode body .np-panel-head,
+html.crm-monochrome.dark-mode body .campaign-report-panel,
+html.crm-monochrome.dark-mode body .campaign-report-panel-head,
+html.crm-monochrome.dark-mode body .lead-header-card {
+ background: transparent !important;
+ background-color: transparent !important;
+ border: 0 !important;
+ box-shadow: none !important;
+}
+
+/*
+ * MONOTONE THEME RULES FOR TASKS, FOLLOWUPS, VOIP MONITOR ACROSS ALL SCREENS
+ */
+html.crm-monochrome body .task-kpi-icon-box,
+html.crm-monochrome body .stat-icon {
+  background: #f0f0f0 !important;
+  color: #171717 !important;
+  border: 1px solid #d4d4d4 !important;
+}
+html.crm-monochrome.dark-mode body .task-kpi-icon-box,
+html.crm-monochrome.dark-mode body .stat-icon {
+  background: #262626 !important;
+  color: #f5f5f5 !important;
+  border: 1px solid #404040 !important;
+}
+
+html.crm-monochrome body .task-progress-bar-fill {
+  background: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .task-progress-bar-fill {
+  background: #f5f5f5 !important;
+}
+
+html.crm-monochrome body .task-scope-pill {
+  background: #f5f5f5 !important;
+  border-color: #d4d4d4 !important;
+  color: #171717 !important;
+}
+html.crm-monochrome body .task-scope-pill.active {
+  background: #171717 !important;
+  border-color: #171717 !important;
+  color: #fff !important;
+}
+html.crm-monochrome body .task-scope-pill.active .task-pill-badge {
+  background: #fff !important;
+  color: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .task-scope-pill {
+  background: #1f1f1f !important;
+  border-color: #404040 !important;
+  color: #e5e5e5 !important;
+}
+html.crm-monochrome.dark-mode body .task-scope-pill.active {
+  background: #e5e5e5 !important;
+  border-color: #e5e5e5 !important;
+  color: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .task-scope-pill.active .task-pill-badge {
+  background: #171717 !important;
+  color: #fff !important;
+}
+
+html.crm-monochrome body .task-section-indicator,
+html.crm-monochrome body .live-dot {
+  background: #171717 !important;
+  box-shadow: none !important;
+}
+html.crm-monochrome.dark-mode body .task-section-indicator,
+html.crm-monochrome.dark-mode body .live-dot {
+  background: #e5e5e5 !important;
+  box-shadow: none !important;
+}
+
+html.crm-monochrome body .task-status-pill,
+html.crm-monochrome body .status-badge,
+html.crm-monochrome body .timeline-stage-badge {
+  background: #ededed !important;
+  border-color: #d4d4d4 !important;
+  color: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .task-status-pill,
+html.crm-monochrome.dark-mode body .status-badge,
+html.crm-monochrome.dark-mode body .timeline-stage-badge {
+  background: #262626 !important;
+  border-color: #404040 !important;
+  color: #f5f5f5 !important;
+}
+
+html.crm-monochrome body .task-time-strip {
+  background: #f0f0f0 !important;
+  color: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .task-time-strip {
+  background: #222222 !important;
+  color: #e5e5e5 !important;
+}
+
+html.crm-monochrome body .task-action-btn,
+html.crm-monochrome body .action-btn {
+  background: #fff !important;
+  border-color: #d4d4d4 !important;
+  color: #171717 !important;
+}
+html.crm-monochrome body .task-action-btn.followup,
+html.crm-monochrome body .task-action-btn.call,
+html.crm-monochrome body .action-btn.hangup {
+  background: #171717 !important;
+  border-color: #171717 !important;
+  color: #fff !important;
+}
+html.crm-monochrome.dark-mode body .task-action-btn,
+html.crm-monochrome.dark-mode body .action-btn {
+  background: #262626 !important;
+  border-color: #404040 !important;
+  color: #f5f5f5 !important;
+}
+html.crm-monochrome.dark-mode body .task-action-btn.followup,
+html.crm-monochrome.dark-mode body .task-action-btn.call,
+html.crm-monochrome.dark-mode body .action-btn.hangup {
+  background: #e5e5e5 !important;
+  border-color: #e5e5e5 !important;
+  color: #171717 !important;
+}
+
+html.crm-monochrome body .role-badge {
+  background: #ededed !important;
+  color: #171717 !important;
+}
+html.crm-monochrome.dark-mode body .role-badge {
+  background: #262626 !important;
+  color: #f5f5f5 !important;
 }

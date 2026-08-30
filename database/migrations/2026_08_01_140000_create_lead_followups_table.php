@@ -8,7 +8,9 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create(
+        \Illuminate\Support\Facades\DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+        if (! Schema::hasTable('lead_followups')) {
+            Schema::create(
             'lead_followups',
             function (Blueprint $table): void {
                 $table->id();
@@ -67,6 +69,7 @@ return new class extends Migration
                 ]);
             }
         );
+        }
     }
 
     public function down(): void

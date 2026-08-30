@@ -8,14 +8,20 @@ return new class extends Migration
 {
     public function up(): void
     {
+        if (! Schema::hasTable('lead_followups')) {
+            return;
+        }
+
         Schema::table(
             'lead_followups',
             function (Blueprint $table): void {
-                $table->json(
-                    'field_changes'
-                )
-                    ->nullable()
-                    ->after('outcome');
+                if (! Schema::hasColumn('lead_followups', 'field_changes')) {
+                    $table->json(
+                        'field_changes'
+                    )
+                        ->nullable()
+                        ->after('outcome');
+                }
             }
         );
     }

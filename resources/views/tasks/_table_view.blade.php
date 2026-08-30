@@ -108,15 +108,18 @@
      <td>
       <div style="display: flex; align-items: center; justify-content: center; gap: 4px;">
        @if ($lead->phone)
-        <a
-         class="task-btn-icon"
-         href="tel:{{ $rawPhone }}"
-         onclick="openQuickFollowupModal({{ $lead->id }}, '{{ addslashes($lead->name) }}', {{ $lead->lead_status_id ?? 'null' }}, 'call');"
-         title="{{ __('crm.call_and_followup') }}"
-         style="color: #2563eb;"
-        >
-         <i class="bi bi-telephone-fill"></i>
-        </a>
+        @can('createFollowup', $lead)
+         <a
+          class="task-btn-icon call"
+          href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+          data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
+          data-lead-name="{{ $lead->name }}"
+          data-sip-href="sip:{{ $rawPhone }}"
+          title="{{ __('crm.call_via_microsip') }}"
+         >
+          <i class="bi bi-telephone-fill"></i>
+         </a>
+        @endcan
         <a
          class="task-btn-icon whatsapp"
          href="https://wa.me/{{ $waPhone }}"
@@ -127,18 +130,30 @@
          <i class="bi bi-whatsapp"></i>
         </a>
        @endif
+       @can('createFollowup', $lead)
+        <a
+         class="task-btn-icon donation"
+         href="{{ route('v2.leads.followups.index', [$lead, 'make_donation' => 1]) }}"
+         data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'make_donation' => 1]) }}"
+         data-lead-name="{{ $lead->name }}"
+         title="{{ __('crm.record_donation') }}"
+        >
+         <i class="bi bi-heart-fill"></i>
+        </a>
+
+        <button
+         class="task-btn-icon log"
+         type="button"
+         data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+         data-lead-name="{{ $lead->name }}"
+         title="{{ __('crm.quick_log_followup') }}"
+        >
+         <i class="bi bi-pencil-square"></i>
+        </button>
+       @endcan
 
        <button
-        class="task-btn-icon"
-        type="button"
-        onclick="openQuickFollowupModal({{ $lead->id }}, '{{ addslashes($lead->name) }}', {{ $lead->lead_status_id ?? 'null' }})"
-        title="{{ __('crm.quick_log_followup') }}"
-       >
-        <i class="bi bi-pencil-square"></i>
-       </button>
-
-       <button
-        class="task-btn-icon"
+        class="task-btn-icon reschedule"
         type="button"
         onclick="openRescheduleModal({{ $lead->id }}, '{{ addslashes($lead->name) }}', '{{ $lead->next_follow_up_at ? $lead->next_follow_up_at->toISOString() : '' }}')"
         title="{{ __('crm.reschedule_task') }}"
@@ -147,7 +162,7 @@
        </button>
 
        <a
-        class="task-btn-icon"
+        class="task-btn-icon view"
         href="{{ route('v2.leads.show', $lead) }}"
         title="{{ __('crm.view_lead') }}"
        >

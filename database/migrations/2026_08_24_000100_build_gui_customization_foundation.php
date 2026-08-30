@@ -36,17 +36,19 @@ return new class extends Migration
         // ------------------------------------------------------------------
         // 1. Reusable picklists ("option sets") managed from Settings.
         // ------------------------------------------------------------------
-        Schema::create('crm_options', function (Blueprint $table): void {
-            $table->id();
-            $table->string('set_key', 50)->index();
-            $table->string('value', 100);
-            $table->string('label_ar', 150);
-            $table->string('label_en', 150)->nullable();
-            $table->unsignedInteger('position')->default(0);
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-            $table->unique(['set_key', 'value']);
-        });
+        if (! Schema::hasTable('crm_options')) {
+            Schema::create('crm_options', function (Blueprint $table): void {
+                $table->id();
+                $table->string('set_key', 50)->index();
+                $table->string('value', 100);
+                $table->string('label_ar', 150);
+                $table->string('label_en', 150)->nullable();
+                $table->unsignedInteger('position')->default(0);
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+                $table->unique(['set_key', 'value']);
+            });
+        }
 
         foreach ($this->seededOptionSets() as $index => $option) {
             DB::table('crm_options')->insertOrIgnore(array_merge(
@@ -58,43 +60,55 @@ return new class extends Migration
         // ------------------------------------------------------------------
         // 2. Field schema: multi-entity support + conditional display rules.
         // ------------------------------------------------------------------
-        Schema::table('lead_form_fields', function (Blueprint $table): void {
-            $table->string('entity', 50)->default('leads')->after('id');
-            $table->string('condition_field', 50)->nullable()->after('help_text_en');
-            $table->string('condition_value', 150)->nullable()->after('condition_field');
+        if (Schema::hasTable('lead_form_fields')) {
+            Schema::table('lead_form_fields', function (Blueprint $table): void {
+                if (! Schema::hasColumn('lead_form_fields', 'entity')) {
+                    $table->string('entity', 50)->default('leads')->after('id');
+                }
+                if (! Schema::hasColumn('lead_form_fields', 'condition_field')) {
+                    $table->string('condition_field', 50)->nullable()->after('help_text_en');
+                }
+                if (! Schema::hasColumn('lead_form_fields', 'condition_value')) {
+                    $table->string('condition_value', 150)->nullable()->after('condition_field');
+                }
 
-            $table->index(['entity', 'is_active']);
-        });
+                $table->index(['entity', 'is_active']);
+            });
+        }
 
         // ------------------------------------------------------------------
         // 3. Module Builder: GUI-defined entities + generic record storage.
         // ------------------------------------------------------------------
-        Schema::create('custom_entities', function (Blueprint $table): void {
-            $table->id();
-            $table->string('key', 50)->unique();
-            $table->string('name_ar', 150);
-            $table->string('name_en', 150)->nullable();
-            $table->string('icon', 50)->default('bi-grid');
-            $table->boolean('is_active')->default(true);
-            $table->unsignedInteger('position')->default(0);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('custom_entities')) {
+            Schema::create('custom_entities', function (Blueprint $table): void {
+                $table->id();
+                $table->string('key', 50)->unique();
+                $table->string('name_ar', 150);
+                $table->string('name_en', 150)->nullable();
+                $table->string('icon', 50)->default('bi-grid');
+                $table->boolean('is_active')->default(true);
+                $table->unsignedInteger('position')->default(0);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('custom_entity_records', function (Blueprint $table): void {
-            $table->id();
-            $table->unsignedBigInteger('entity_id')->index();
-            $table->string('title', 255)->nullable();
-            $table->json('data')->nullable();
-            $table->unsignedBigInteger('branch_id')->nullable()->index();
-            $table->unsignedBigInteger('assigned_user_id')->nullable()->index();
-            $table->unsignedBigInteger('created_by_user_id')->nullable();
-            $table->timestamps();
+        if (! Schema::hasTable('custom_entity_records')) {
+            Schema::create('custom_entity_records', function (Blueprint $table): void {
+                $table->id();
+                $table->unsignedBigInteger('entity_id')->index();
+                $table->string('title', 255)->nullable();
+                $table->json('data')->nullable();
+                $table->unsignedBigInteger('branch_id')->nullable()->index();
+                $table->unsignedBigInteger('assigned_user_id')->nullable()->index();
+                $table->unsignedBigInteger('created_by_user_id')->nullable();
+                $table->timestamps();
 
-            $table->foreign('entity_id')
-                ->references('id')
-                ->on('custom_entities')
-                ->cascadeOnDelete();
-        });
+                $table->foreign('entity_id')
+                    ->references('id')
+                    ->on('custom_entities')
+                    ->cascadeOnDelete();
+            });
+        }
 
         // ------------------------------------------------------------------
         // 4. Permissions for built modules.

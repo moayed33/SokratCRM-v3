@@ -10,49 +10,59 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('users', function (Blueprint $table): void {
-            $table->string('username', 100)->nullable()->unique()->after('name');
-            $table->boolean('is_active')->default(true)->index()->after('password');
-            $table->timestamp('last_login_at')->nullable()->after('is_active');
-        });
+        if (Schema::hasTable('users') && ! Schema::hasColumn('users', 'username')) {
+            Schema::table('users', function (Blueprint $table): void {
+                $table->string('username', 100)->nullable()->unique()->after('name');
+                $table->boolean('is_active')->default(true)->index()->after('password');
+                $table->timestamp('last_login_at')->nullable()->after('is_active');
+            });
+        }
 
-        Schema::create('groups', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name', 100);
-            $table->string('code', 100)->unique();
-            $table->text('description')->nullable();
-            $table->boolean('is_system')->default(false);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('groups')) {
+            Schema::create('groups', function (Blueprint $table): void {
+                $table->id();
+                $table->string('name', 100);
+                $table->string('code', 100)->unique();
+                $table->text('description')->nullable();
+                $table->boolean('is_system')->default(false);
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('permissions', function (Blueprint $table): void {
-            $table->id();
-            $table->string('code', 120)->unique();
-            $table->string('module', 60)->index();
-            $table->string('name_ar', 150);
-            $table->text('description')->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('permissions')) {
+            Schema::create('permissions', function (Blueprint $table): void {
+                $table->id();
+                $table->string('code', 120)->unique();
+                $table->string('module', 60)->index();
+                $table->string('name_ar', 150);
+                $table->text('description')->nullable();
+                $table->timestamps();
+            });
+        }
 
-        Schema::create('group_user', function (Blueprint $table): void {
-            $table->foreignId('group_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('user_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->primary(['group_id', 'user_id']);
-        });
+        if (! Schema::hasTable('group_user')) {
+            Schema::create('group_user', function (Blueprint $table): void {
+                $table->foreignId('group_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->foreignId('user_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->primary(['group_id', 'user_id']);
+            });
+        }
 
-        Schema::create('group_permission', function (Blueprint $table): void {
-            $table->foreignId('group_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->foreignId('permission_id')
-                ->constrained()
-                ->cascadeOnDelete();
-            $table->primary(['group_id', 'permission_id']);
-        });
+        if (! Schema::hasTable('group_permission')) {
+            Schema::create('group_permission', function (Blueprint $table): void {
+                $table->foreignId('group_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->foreignId('permission_id')
+                    ->constrained()
+                    ->cascadeOnDelete();
+                $table->primary(['group_id', 'permission_id']);
+            });
+        }
     }
 
     public function down(): void

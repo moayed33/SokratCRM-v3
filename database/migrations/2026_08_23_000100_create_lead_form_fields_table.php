@@ -30,35 +30,35 @@ return new class extends Migration
     {
         $this->verifyDatabase();
 
-        Schema::create('lead_form_fields', function (Blueprint $table): void {
-            $table->id();
-            $table->string('key', 50)->unique();
-            $table->string('label_ar', 150);
-            $table->string('label_en', 150)->nullable();
-            $table->string('type', 30)->default('text');
-            $table->json('options')->nullable();
-            $table->boolean('is_required')->default(false);
-            $table->boolean('is_active')->default(true);
-            $table->boolean('is_system')->default(false);
-            $table->boolean('is_locked')->default(false);
-            $table->string('system_column', 64)->nullable();
-            $table->boolean('show_in_create')->default(true);
-            $table->boolean('show_in_edit')->default(true);
-            $table->boolean('show_in_filter')->default(false);
-            $table->boolean('show_in_table')->default(false);
-            $table->boolean('show_in_export')->default(false);
-            $table->string('section', 30)->default('other');
-            $table->unsignedInteger('position')->default(0);
-            $table->string('help_text_ar', 255)->nullable();
-            $table->string('help_text_en', 255)->nullable();
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('lead_form_fields')) {
+            Schema::create('lead_form_fields', function (Blueprint $table): void {
+                $table->id();
+                $table->string('key', 50)->unique();
+                $table->string('label_ar', 150);
+                $table->string('label_en', 150)->nullable();
+                $table->string('type', 30)->default('text');
+                $table->json('options')->nullable();
+                $table->boolean('is_required')->default(false);
+                $table->boolean('is_active')->default(true);
+                $table->boolean('is_system')->default(false);
+                $table->boolean('is_locked')->default(false);
+                $table->string('system_column', 64)->nullable();
+                $table->boolean('show_in_create')->default(true);
+                $table->boolean('show_in_edit')->default(true);
+                $table->boolean('show_in_filter')->default(false);
+                $table->boolean('show_in_table')->default(false);
+                $table->boolean('show_in_export')->default(false);
+                $table->string('section', 30)->default('other');
+                $table->unsignedInteger('position')->default(0);
+                $table->string('help_text_ar', 255)->nullable();
+                $table->string('help_text_en', 255)->nullable();
+                $table->timestamps();
+            });
+        }
 
-        if (! Schema::hasColumn('leads', 'custom_fields')) {
+        if (Schema::hasTable('leads') && ! Schema::hasColumn('leads', 'custom_fields')) {
             Schema::table('leads', function (Blueprint $table): void {
-                $table->json('custom_fields')
-                    ->nullable()
-                    ->after('response_details');
+                $table->json('custom_fields')->nullable();
             });
         }
 
@@ -68,7 +68,7 @@ return new class extends Migration
                 ->exists();
 
             if (! $exists) {
-                DB::table('lead_form_fields')->insert(array_merge(
+                DB::table('lead_form_fields')->insertOrIgnore(array_merge(
                     $field,
                     ['position' => ($index + 1) * 10],
                 ));
@@ -84,7 +84,7 @@ return new class extends Migration
 
         Schema::dropIfExists('lead_form_fields');
 
-        if (Schema::hasColumn('leads', 'custom_fields')) {
+        if (Schema::hasTable('leads') && Schema::hasColumn('leads', 'custom_fields')) {
             Schema::table('leads', function (Blueprint $table): void {
                 $table->dropColumn('custom_fields');
             });

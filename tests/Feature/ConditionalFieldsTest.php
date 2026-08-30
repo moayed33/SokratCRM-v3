@@ -8,12 +8,12 @@ use App\Models\Group;
 use App\Models\Permission;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class ConditionalFieldsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
 

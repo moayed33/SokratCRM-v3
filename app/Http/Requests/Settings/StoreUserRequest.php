@@ -6,6 +6,7 @@ namespace App\Http\Requests\Settings;
 
 use App\Security\CrmPermission;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class StoreUserRequest extends FormRequest
@@ -21,6 +22,7 @@ class StoreUserRequest extends FormRequest
     {
         return [
             'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
+            'manager_id' => ['nullable', 'integer', 'exists:users,id'],
             'name' => ['required', 'string', 'max:150'],
             'username' => [
                 'required',
@@ -35,7 +37,8 @@ class StoreUserRequest extends FormRequest
                 'max:255',
                 'unique:users,email',
             ],
-            'voip_extension' => ['nullable', 'string', 'max:50'],
+            'voip_extension' => ['nullable', 'string', 'max:50', Rule::unique('users', 'voip_extension')],
+            'collection_zone' => ['nullable', 'string', 'max:255'],
             'password' => [
                 'required',
                 'confirmed',
@@ -47,6 +50,9 @@ class StoreUserRequest extends FormRequest
                 'distinct',
                 'exists:groups,id',
             ],
+            'subordinate_ids' => ['nullable', 'array'],
+            'subordinate_ids.*' => ['integer', 'distinct', 'exists:users,id'],
+            'subordinates_section_rendered' => ['nullable', 'boolean'],
         ];
     }
 }

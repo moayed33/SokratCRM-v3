@@ -11,6 +11,7 @@ use App\Models\LeadFollowup;
 use App\Models\LeadStatus;
 use App\Models\LeadStatusHistory;
 use App\Models\PipelineStage;
+use App\Models\PipelineStageField;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -202,6 +203,112 @@ class CrmV2PipelineSeeder extends Seeder
                     ]
                 );
             }
+
+            // 5. Canonical Pipeline Stage Fields
+            if (isset($stageModels['no_answer'])) {
+                PipelineStageField::query()->firstOrCreate(
+                    [
+                        'pipeline_stage_id' => $stageModels['no_answer']->id,
+                        'key' => 'callback_at',
+                    ],
+                    [
+                        'label_ar' => 'موعد إعادة الاتصال',
+                        'label_en' => 'Next Callback Date',
+                        'type' => 'datetime',
+                        'placeholder_ar' => 'حدد تاريخ ووقت إعادة الاتصال',
+                        'placeholder_en' => 'Select callback date and time',
+                        'help_text_ar' => 'موعد الاتصال القادم بالعميل لمتابعة الرد',
+                        'help_text_en' => 'Next scheduled callback date for this lead',
+                        'is_required' => true,
+                        'show_on_transition' => true,
+                        'show_on_stage_view' => true,
+                        'show_in_history' => true,
+                        'is_active' => true,
+                        'position' => 1,
+                    ]
+                );
+
+                PipelineStageField::query()->firstOrCreate(
+                    [
+                        'pipeline_stage_id' => $stageModels['no_answer']->id,
+                        'key' => 'notes',
+                    ],
+                    [
+                        'label_ar' => 'ملاحظات المحاولة',
+                        'label_en' => 'Attempt Notes',
+                        'type' => 'textarea',
+                        'placeholder_ar' => 'أدخل أي ملاحظات حول محاولة الاتصال',
+                        'placeholder_en' => 'Enter any notes about this attempt',
+                        'help_text_ar' => 'تفاصيل إضافية حول سبب عدم الرد',
+                        'help_text_en' => 'Additional details about no-answer attempt',
+                        'is_required' => false,
+                        'show_on_transition' => true,
+                        'show_on_stage_view' => true,
+                        'show_in_history' => true,
+                        'is_active' => true,
+                        'position' => 2,
+                    ]
+                );
+            }
+
+            if (isset($stageModels['not_interested'])) {
+                $reasonOptions = [
+                    ['value' => 'high_price', 'label_ar' => 'السعر مرتفع', 'label_en' => 'High Price'],
+                    ['value' => 'not_convinced', 'label_ar' => 'غير مقتنع بالفكرة', 'label_en' => 'Not Convinced'],
+                    ['value' => 'no_budget', 'label_ar' => 'لا توجد ميزانية حالياً', 'label_en' => 'No Budget Currently'],
+                    ['value' => 'competitor', 'label_ar' => 'يتعامل مع جهة أخرى', 'label_en' => 'Using Another Provider'],
+                    ['value' => 'bad_timing', 'label_ar' => 'التوقيت غير مناسب', 'label_en' => 'Bad Timing'],
+                    ['value' => 'other', 'label_ar' => 'سبب آخر', 'label_en' => 'Other Reason'],
+                ];
+
+                PipelineStageField::query()->firstOrCreate(
+                    [
+                        'pipeline_stage_id' => $stageModels['not_interested']->id,
+                        'key' => 'reason',
+                    ],
+                    [
+                        'label_ar' => 'سبب عدم الاهتمام',
+                        'label_en' => 'Disinterest Reason',
+                        'type' => 'select',
+                        'placeholder_ar' => 'اختر سبب عدم الاهتمام',
+                        'placeholder_en' => 'Select disinterest reason',
+                        'help_text_ar' => 'السبب الرئيسي لعدم اهتمام العميل',
+                        'help_text_en' => 'Primary reason for disinterest',
+                        'is_required' => true,
+                        'options' => $reasonOptions,
+                        'show_on_transition' => true,
+                        'show_on_stage_view' => true,
+                        'show_in_history' => true,
+                        'is_active' => true,
+                        'position' => 1,
+                    ]
+                );
+
+                PipelineStageField::query()->firstOrCreate(
+                    [
+                        'pipeline_stage_id' => $stageModels['not_interested']->id,
+                        'key' => 'notes',
+                    ],
+                    [
+                        'label_ar' => 'ملاحظات وتفاصيل',
+                        'label_en' => 'Notes & Details',
+                        'type' => 'textarea',
+                        'placeholder_ar' => 'أدخل تفاصيل إضافية حول سبب الرفض',
+                        'placeholder_en' => 'Enter additional details about the refusal',
+                        'help_text_ar' => 'أي تعليقات أو شروط من العميل',
+                        'help_text_en' => 'Any customer feedback or conditions',
+                        'is_required' => false,
+                        'show_on_transition' => true,
+                        'show_on_stage_view' => true,
+                        'show_in_history' => true,
+                        'is_active' => true,
+                        'position' => 2,
+                    ]
+                );
+            }
+
+            PipelineStageField::flushCache($stageModels['no_answer']->id ?? 0);
+            PipelineStageField::flushCache($stageModels['not_interested']->id ?? 0);
 
             PipelineStage::clearSidebarCache();
         });

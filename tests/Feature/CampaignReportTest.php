@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Tests\Feature;
 
 use App\Models\Campaign;
+use App\Models\Donation;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadStatus;
@@ -12,12 +13,12 @@ use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
 use Carbon\CarbonImmutable;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CampaignReportTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     protected function tearDown(): void
     {
@@ -66,6 +67,10 @@ class CampaignReportTest extends TestCase
         $sharedDonor = $this->lead($donorStatus, 'Shared Donor');
         $secondDonor = $this->lead($donorStatus, 'Second Donor');
         $newLead = $this->lead($newStatus, 'New Campaign Lead');
+        $sharedDonor->update(['donation_value' => 500]);
+        $secondDonor->update(['donation_value' => 750]);
+        $this->donation($sharedDonor, 500);
+        $this->donation($sharedDonor, 100);
 
         $endedCampaign->leads()->attach([$sharedDonor->id, $newLead->id]);
         $activeCampaign->leads()->attach([$sharedDonor->id, $secondDonor->id]);
@@ -79,17 +84,23 @@ class CampaignReportTest extends TestCase
         $response
             ->assertOk()
             ->assertViewIs('campaigns.reports')
+            ->assertSee(__('crm.campaigns_created'))
+            ->assertSee(__('crm.campaigns_ended'))
+            ->assertSee(__('crm.campaign_donation_revenue'))
+            ->assertSee('<canvas id="campaignTimelineChart"', false)
             ->assertViewHas('metrics', static fn (array $metrics): bool => $metrics['created_campaigns'] === 2
                 && $metrics['ended_campaigns'] === 1
                 && $metrics['current_leads'] === 3
                 && $metrics['donor_leads'] === 2
+                && $metrics['total_donation_value'] === 1350.0
                 && $metrics['total_campaign_cost'] === 3000.0
                 && $metrics['lead_cost'] === 1000.0
                 && $metrics['conversion_rate'] === 66.7)
             ->assertViewHas('timeline', static fn (array $timeline): bool => collect($timeline)->sum('created') === 2
                 && collect($timeline)->sum('ended') === 1)
-            ->assertViewHas('statusDistribution', static fn ($statuses): bool => $statuses->firstWhere('code', 'donor')['count'] === 2
-                && $statuses->firstWhere('code', 'new')['count'] === 1);
+            ->assertViewHas('stageDistribution', static fn ($stages): bool => $stages->firstWhere('code', 'donor')['count'] === 2
+                && $stages->firstWhere('code', 'donor')['percentage'] === 66.7
+                && $stages->firstWhere('code', 'new')['count'] === 1);
     }
 
     public function test_report_can_filter_metrics_and_conversion_by_campaign(): void
@@ -114,13 +125,13 @@ class CampaignReportTest extends TestCase
             '2026-08-30 18:00:00',
         );
 
-        $campaign->leads()->attach([
-            $this->lead($donorStatus, 'Selected Donor')->id,
-            $this->lead($newStatus, 'Selected New Lead')->id,
-        ]);
-        $otherCampaign->leads()->attach([
-            $this->lead($donorStatus, 'Other Donor')->id,
-        ]);
+        $selectedDonor = $this->lead($donorStatus, 'Selected Donor');
+        $selectedNewLead = $this->lead($newStatus, 'Selected New Lead');
+        $otherDonor = $this->lead($donorStatus, 'Other Donor');
+        $campaign->leads()->attach([$selectedDonor->id, $selectedNewLead->id]);
+        $otherCampaign->leads()->attach($otherDonor);
+        $this->donation($selectedDonor, 900);
+        $this->donation($otherDonor, 500);
 
         $this->actingAs($admin)
             ->get(route('v2.campaigns.reports', [
@@ -131,6 +142,10 @@ class CampaignReportTest extends TestCase
             ]))
             ->assertOk()
             ->assertSee('name="campaign_id" value="'.$campaign->id.'"', false)
+            ->assertSee('<canvas id="campaignStageChart"', false)
+            ->assertDontSee('<canvas id="campaignTimelineChart"', false)
+            ->assertDontSee(__('crm.campaigns_created'))
+            ->assertDontSee(__('crm.campaigns_ended'))
             ->assertSee(route('v2.campaigns.reports', [
                 'period' => 'custom',
                 'from' => '2026-08-01',
@@ -142,6 +157,7 @@ class CampaignReportTest extends TestCase
                 && $metrics['ended_campaigns'] === 1
                 && $metrics['current_leads'] === 2
                 && $metrics['donor_leads'] === 1
+                && $metrics['total_donation_value'] === 900.0
                 && $metrics['total_campaign_cost'] === 1000.0
                 && $metrics['lead_cost'] === 500.0
                 && $metrics['conversion_rate'] === 50.0);
@@ -223,8 +239,8 @@ class CampaignReportTest extends TestCase
                 && $metrics['total_campaign_cost'] === 1000.0
                 && $metrics['lead_cost'] === 500.0
                 && $metrics['conversion_rate'] === 50.0)
-            ->assertViewHas('statusDistribution', static fn ($statuses): bool => $statuses->firstWhere('code', 'donor')['count'] === 1
-                && $statuses->firstWhere('code', 'new')['count'] === 1);
+            ->assertViewHas('stageDistribution', static fn ($stages): bool => $stages->firstWhere('code', 'donor')['count'] === 1
+                && $stages->firstWhere('code', 'new')['count'] === 1);
 
         $this->get(route('v2.campaigns.reports', [
             'employee_id' => $employeeTwo->id,
@@ -350,6 +366,17 @@ class CampaignReportTest extends TestCase
                 'is_terminal' => $terminal,
             ],
         );
+    }
+
+    private function donation(Lead $lead, float $amount): Donation
+    {
+        return Donation::query()->create([
+            'lead_id' => $lead->id,
+            'donation_type' => 'One-time donation',
+            'amount' => $amount,
+            'cycle' => 'one_time',
+            'donated_at' => '2026-08-15 12:00:00',
+        ]);
     }
 
     private function userWithPermissions(array $permissionCodes): User

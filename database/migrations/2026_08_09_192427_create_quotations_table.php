@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create(
+        if (! Schema::hasTable('quotations')) {
+            Schema::create(
             'quotations',
             function (
                 Blueprint $table
@@ -74,6 +75,7 @@ return new class extends Migration
                 $table->timestamps();
             }
         );
+        }
     }
 
     public function down(): void

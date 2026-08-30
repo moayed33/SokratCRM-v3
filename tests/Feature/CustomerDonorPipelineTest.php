@@ -9,19 +9,18 @@ use App\Models\DonationType;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadPhone;
-use App\Models\LeadRelatedPerson;
 use App\Models\LeadStatus;
 use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use Database\Seeders\CrmV2PipelineSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CustomerDonorPipelineTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
     private PipelineStage $stageNew;
@@ -33,22 +32,10 @@ class CustomerDonorPipelineTest extends TestCase
     {
         parent::setUp();
 
-        $superAdminGroup = Group::query()->firstOrCreate(
-            ['code' => Group::SUPER_ADMIN_CODE],
-            ['name' => 'Super Administrator']
+        $superAdminGroup = Group::query()->where('code', Group::SUPER_ADMIN_CODE)->firstOrFail();
+        $superAdminGroup->permissions()->syncWithoutDetaching(
+            Permission::query()->pluck('id')->all()
         );
-
-        foreach (CrmPermission::values() as $code) {
-            $perm = Permission::query()->firstOrCreate(
-                ['code' => $code],
-                [
-                    'module' => explode('.', $code, 2)[0] ?? 'crm',
-                    'name_ar' => $code,
-                    'description' => $code,
-                ]
-            );
-            $superAdminGroup->permissions()->syncWithoutDetaching([$perm->id]);
-        }
 
         $this->admin = User::factory()->create([
             'username' => 'admin_tester',
@@ -231,7 +218,7 @@ class CustomerDonorPipelineTest extends TestCase
         $this->assertEquals('new', $lead->status?->stage?->code);
     }
 
-    public function test_admin_can_create_customer_with_full_donor_attributes_phones_and_related_people(): void
+    public function test_admin_can_create_customer_with_full_donor_attributes_and_phones(): void
     {
         $this->actingAs($this->admin);
 
@@ -254,20 +241,6 @@ class CustomerDonorPipelineTest extends TestCase
             'response_details' => 'أبدى رغبة في التبرع الشهري بقيمة 1500 جنيه لدعم الحالات الحرجة.',
             'contact_date' => '2026-08-19',
             'next_follow_up_at' => '2026-08-25T14:30',
-            'related_people' => [
-                [
-                    'name' => 'أحمد الشرقاوي',
-                    'phone' => '01511112222',
-                    'relationship_type' => 'ابن / ابنة',
-                    'notes' => 'للتواصل في حالة عدم الرد',
-                ],
-                [
-                    'name' => 'منى محمود',
-                    'phone' => '01033334444',
-                    'relationship_type' => 'زوج / زوجة',
-                    'notes' => 'متابعة كفالات الأيتام',
-                ],
-            ],
             'source' => 'إعلان فيسبوك',
         ];
 
@@ -299,13 +272,9 @@ class CustomerDonorPipelineTest extends TestCase
         $this->assertTrue($additionalPhones->contains('phone', '01123456789'));
         $this->assertTrue($additionalPhones->contains('phone', '01234567890'));
 
-        // Assert related people
-        $this->assertCount(2, $lead->relatedPeople);
-        $this->assertTrue($lead->relatedPeople->contains('name', 'أحمد الشرقاوي'));
-        $this->assertTrue($lead->relatedPeople->contains('name', 'منى محمود'));
     }
 
-    public function test_moving_customer_to_donor_preserves_next_follow_up_capability(): void
+    public function test_profile_edit_cannot_bypass_followup_transition_workflow(): void
     {
         $this->actingAs($this->admin);
 
@@ -317,25 +286,22 @@ class CustomerDonorPipelineTest extends TestCase
             'created_by_user_id' => $this->admin->id,
         ]);
 
-        // Move to donor stage with recurring annual donation and future follow-up
-        $updatePayload = [
+        $response = $this->patch(route('v2.leads.update', $lead), [
             'name' => 'طارق السعيد المنشاوي',
             'phone' => '01055554444',
             'donation_cycle' => 'annual',
             'donation_value' => 5000,
             'pipeline_stage_id' => $this->stageDonor->id,
+            'lead_status_id' => $this->statusDonor->id,
             'next_follow_up_at' => '2027-08-19T10:00',
-        ];
+        ]);
 
-        $response = $this->patch(route('v2.leads.update', $lead), $updatePayload);
         $response->assertRedirect(route('v2.leads'));
 
         $lead->refresh();
-        $this->assertEquals('donor', $lead->status?->stage?->code);
-        $this->assertEquals('annual', $lead->donation_cycle);
-        $this->assertEquals('5000.00', (string) $lead->donation_value);
-        $this->assertNotNull($lead->next_follow_up_at);
-        $this->assertEquals('2027-08-19 10:00:00', $lead->next_follow_up_at->format('Y-m-d H:i:s'));
+        $this->assertSame('طارق السعيد المنشاوي', $lead->name);
+        $this->assertSame($this->statusNew->id, $lead->lead_status_id);
+        $this->assertSame('new', $lead->status?->stage?->code);
     }
 
     public function test_dashboard_renders_dynamic_donor_kpis_and_stage_cards(): void
@@ -383,10 +349,6 @@ class CustomerDonorPipelineTest extends TestCase
         $response->assertSee('جديد');
         $response->assertSee('متبرع');
 
-        // 3. 4-step animated banner
-        $response->assertSee('تواصل');
-        $response->assertSee('متابعة');
-        $response->assertSee('متبرع ✓');
     }
 
     public function test_dashboard_dynamically_shows_optional_third_stage_when_created(): void
@@ -566,13 +528,6 @@ class CustomerDonorPipelineTest extends TestCase
             'label' => 'واتساب',
         ]);
 
-        LeadRelatedPerson::query()->create([
-            'lead_id' => $lead->id,
-            'name' => 'علي حسن',
-            'phone' => '01211119999',
-            'relationship_type' => 'زوج / زوجة',
-            'notes' => 'المسؤول عن تسليم التبرع',
-        ]);
 
         $response = $this->get(route('v2.leads.show', $lead));
         $response->assertOk();
@@ -580,13 +535,10 @@ class CustomerDonorPipelineTest extends TestCase
         $response->assertSee('01077776666');
         $response->assertSee('01144443333');
         $response->assertSee('كفالة أيتام');
-        $response->assertSee('علي حسن');
-        $response->assertSee('زوج / زوجة');
-        $response->assertSee('المسؤول عن تسليم التبرع');
         $response->assertSee('ترغب في كفالة طفلين شهرياً');
     }
 
-    public function test_customer_search_finds_by_primary_phone_additional_phone_and_related_person(): void
+    public function test_customer_search_finds_by_primary_phone_and_additional_phone(): void
     {
         $this->actingAs($this->admin);
 
@@ -612,12 +564,6 @@ class CustomerDonorPipelineTest extends TestCase
             'label' => 'عمل',
         ]);
 
-        LeadRelatedPerson::query()->create([
-            'lead_id' => $lead->id,
-            'name' => 'هشام عبد الرحمن',
-            'phone' => '01588884321',
-            'relationship_type' => 'أخ / أخت',
-        ]);
 
         // 1. Search by primary phone
         $res1 = $this->get(route('v2.leads', ['q' => '01099887766']));
@@ -629,20 +575,12 @@ class CustomerDonorPipelineTest extends TestCase
         $res2->assertOk();
         $res2->assertSee('صبري عبد الرحمن');
 
-        // 3. Search by related person name
-        $res3 = $this->get(route('v2.leads', ['q' => 'هشام عبد الرحمن']));
-        $res3->assertOk();
-        $res3->assertSee('صبري عبد الرحمن');
-
-        // 4. Search by related person phone
-        $res4 = $this->get(route('v2.leads', ['q' => '01588884321']));
-        $res4->assertOk();
-        $res4->assertSee('صبري عبد الرحمن');
     }
 
     public function test_recording_followup_updates_customer_response_details_and_contact_date(): void
     {
         $this->actingAs($this->admin);
+        $donationType = DonationType::query()->where('is_active', true)->firstOrFail();
 
         $lead = Lead::query()->create([
             'name' => 'خالد عبد الوهاب',
@@ -656,7 +594,9 @@ class CustomerDonorPipelineTest extends TestCase
             'lead_status_id' => $this->statusDonor->id,
             'outcome' => 'تم الاتصال بالمتبرع وتأكيد التبرع بمبلغ 2000 جنيه لحالات العمليات الجراحية.',
             'communication_type' => 'call',
-            'next_follow_up_at' => '2026-09-01T10:00',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 2000,
+            'donation_cycle' => 'monthly',
         ]);
 
         $response->assertRedirect();
@@ -667,5 +607,221 @@ class CustomerDonorPipelineTest extends TestCase
         $this->assertStringContainsString('2000 جنيه', $lead->response_details);
         $this->assertNotNull($lead->contact_date);
         $this->assertEquals($this->admin->id, $lead->responding_user_id);
+    }
+
+    public function test_leads_can_be_filtered_by_minimum_and_maximum_donation_amount(): void
+    {
+        $this->actingAs($this->admin);
+
+        $leadLow = Lead::query()->create([
+            'name' => 'متبرع بمبلغ صغير',
+            'phone' => '01010000001',
+            'donation_value' => 250,
+            'lead_status_id' => $this->statusDonor->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $leadMid = Lead::query()->create([
+            'name' => 'متبرع بمبلغ متوسط',
+            'phone' => '01010000002',
+            'donation_value' => 1500,
+            'lead_status_id' => $this->statusDonor->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $leadHigh = Lead::query()->create([
+            'name' => 'متبرع بمبلغ كبير',
+            'phone' => '01010000003',
+            'donation_value' => 7500,
+            'lead_status_id' => $this->statusDonor->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        // 1. Filter with donation_min = 1000
+        $responseMin = $this->get(route('v2.leads', ['donation_min' => 1000]));
+        $responseMin->assertOk();
+        $responseMin->assertSee('متبرع بمبلغ متوسط');
+        $responseMin->assertSee('متبرع بمبلغ كبير');
+        $responseMin->assertDontSee('متبرع بمبلغ صغير');
+
+        // 2. Filter with donation_max = 2000
+        $responseMax = $this->get(route('v2.leads', ['donation_max' => 2000]));
+        $responseMax->assertOk();
+        $responseMax->assertSee('متبرع بمبلغ صغير');
+        $responseMax->assertSee('متبرع بمبلغ متوسط');
+        $responseMax->assertDontSee('متبرع بمبلغ كبير');
+
+        // 3. Filter with range: donation_min = 500 and donation_max = 3000
+        $responseRange = $this->get(route('v2.leads', ['donation_min' => 500, 'donation_max' => 3000]));
+        $responseRange->assertOk();
+        $responseRange->assertSee('متبرع بمبلغ متوسط');
+        $responseRange->assertDontSee('متبرع بمبلغ صغير');
+        $responseRange->assertDontSee('متبرع بمبلغ كبير');
+    }
+
+    public function test_donor_transition_modal_contains_other_option_in_donation_cycle_dropdown(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل مرحلة التحويل',
+            'phone' => '01099990001',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.followups.index', [
+            'lead' => $lead,
+            'target_status_id' => $this->statusDonor->id,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('value="other"', false);
+        $response->assertSee('أخرى');
+        $response->assertSee('id="customerPreferredSchedulePanel"', false);
+        $response->assertSee('name="preferred_donation_date"', false);
+        $response->assertSee('name="preferred_donation_time"', false);
+    }
+
+    public function test_donor_transition_with_other_cycle_requires_preferred_donation_date(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل اختبار موعد فارغ',
+            'phone' => '01099990002',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $donationType = DonationType::query()->first();
+
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'موافقة على التبرع بموعد مخصص',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 500,
+            'donation_cycle' => 'other',
+            'preferred_donation_date' => '',
+            'donation_way' => 'instant',
+            'instant_donation_method_id' => \App\Models\InstantDonationMethod::query()->where('is_active', true)->value('id'),
+        ]);
+
+        $response->assertSessionHasErrors('preferred_donation_date');
+        $this->assertNotSame((int) $this->statusDonor->id, (int) $lead->fresh()->lead_status_id);
+        $this->assertDatabaseMissing('donations', [
+            'lead_id' => $lead->id,
+        ]);
+    }
+
+    public function test_donor_transition_with_other_cycle_and_preferred_date_and_time_succeeds(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل موعد مخصص مؤكد',
+            'phone' => '01099990003',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $donationType = DonationType::query()->first();
+        $instantMethod = \App\Models\InstantDonationMethod::query()->where('is_active', true)->first();
+
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'تم الاتفاق على موعد مخصص للتبرع',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 1200,
+            'donation_cycle' => 'other',
+            'preferred_donation_date' => '2026-09-18',
+            'preferred_donation_time' => '11:30',
+            'preferred_donation_note' => 'التواصل هاتفياً قبل الموعد بنصف ساعة',
+            'donation_way' => 'instant',
+            'instant_donation_method_id' => $instantMethod->id,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $freshLead = $lead->fresh();
+        $this->assertSame((int) $this->statusDonor->id, (int) $freshLead->lead_status_id);
+        $this->assertSame('other', $freshLead->donation_cycle);
+        $this->assertSame('2026-09-18 11:30:00', $freshLead->next_follow_up_at?->toDateTimeString());
+
+        $this->assertDatabaseHas('donations', [
+            'lead_id' => $lead->id,
+            'amount' => '1200.00',
+            'cycle' => 'other',
+        ]);
+    }
+
+    public function test_donor_transition_switching_from_other_to_monthly_ignores_stale_preferred_date(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل تراجع عن الموعد المخصص لاختيار شهري',
+            'phone' => '01099990004',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $donationType = DonationType::query()->first();
+        $instantMethod = \App\Models\InstantDonationMethod::query()->where('is_active', true)->first();
+
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'communication_type' => 'call',
+            'outcome' => 'تم اختيار التبرع الشهري',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 800,
+            'donation_cycle' => 'monthly',
+            'preferred_donation_date' => '2026-01-01', // Stale input
+            'preferred_donation_time' => '09:00',
+            'donation_way' => 'instant',
+            'instant_donation_method_id' => $instantMethod->id,
+        ]);
+
+        $response->assertSessionHasNoErrors();
+        $response->assertRedirect();
+
+        $freshLead = $lead->fresh();
+        $this->assertSame('monthly', $freshLead->donation_cycle);
+        $this->assertNotNull($freshLead->next_follow_up_at);
+        $this->assertEqualsWithDelta(now()->addMonthsNoOverflow(1)->timestamp, $freshLead->next_follow_up_at->timestamp, 120);
+    }
+
+    public function test_predefined_cycles_regression_in_donor_transition(): void
+    {
+        $cycles = ['one_time', 'monthly', 'quarterly', 'semi_annual', 'annual'];
+        $donationType = DonationType::query()->first();
+        $instantMethod = \App\Models\InstantDonationMethod::query()->where('is_active', true)->first();
+
+        foreach ($cycles as $idx => $cycle) {
+            $lead = Lead::query()->create([
+                'name' => 'متبرع دوري ' . $cycle,
+                'phone' => '0108888000' . $idx,
+                'lead_status_id' => $this->statusNew->id,
+                'assigned_user_id' => $this->admin->id,
+            ]);
+
+            $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+                'lead_status_id' => $this->statusDonor->id,
+                'communication_type' => 'call',
+                'outcome' => 'تسجيل تبرع دوري ' . $cycle,
+                'donation_type_id' => $donationType->id,
+                'donation_value' => 1000,
+                'donation_cycle' => $cycle,
+                'donation_way' => 'instant',
+                'instant_donation_method_id' => $instantMethod->id,
+            ]);
+
+            $response->assertSessionHasNoErrors();
+            $fresh = $lead->fresh();
+            $this->assertSame($cycle, $fresh->donation_cycle);
+            if ($cycle === 'one_time') {
+                $this->assertNull($fresh->next_follow_up_at);
+            } else {
+                $this->assertNotNull($fresh->next_follow_up_at);
+            }
+        }
     }
 }

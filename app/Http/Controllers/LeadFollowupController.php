@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 use App\Models\Campaign;
+use App\Models\DonationType;
+use App\Models\InstantDonationMethod;
 use App\Models\Lead;
 use App\Models\LeadFollowup;
 use App\Models\LeadStatus;
@@ -21,6 +23,15 @@ use Illuminate\Validation\Rule;
 
 class LeadFollowupController extends Controller
 {
+    private const DONATION_CYCLES = [
+        'one_time' => null,
+        'monthly' => 1,
+        'quarterly' => 3,
+        'semi_annual' => 6,
+        'annual' => 12,
+        'other' => null,
+    ];
+
     public function index(
         Request $request,
         string $lead
@@ -33,6 +44,8 @@ class LeadFollowupController extends Controller
                 'status.stage',
                 'assignedUser:id,name',
                 'campaigns:id,name',
+                'donationTypeRel',
+                'donations',
             ])
             ->findOrFail(
                 (int) $lead
@@ -41,33 +54,40 @@ class LeadFollowupController extends Controller
 
         $statuses = LeadStatus::query()
             ->with('stage')
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->orderBy('position')
             ->orderBy('id')
             ->get();
 
         /*
-         * Kanban drag/drop chooses only the
-         * proposed destination status.
-         * This GET request never changes the lead.
+         * A transition trigger proposes a destination. Opening the form
+         * never mutates the lead; the change happens only after submit.
          */
-        $requestedStatusId = (int)
-            $request->query(
-                'target_status_id',
-                0
-            );
+        $requestedStatusId = (int) $request->query('target_status_id', 0);
+        $requestedStatusCode = mb_substr(
+            trim((string) $request->query('target_status_code', '')),
+            0,
+            50,
+        );
 
-        $defaultStatusId =
-            $statuses->contains(
-                static fn (
-                    LeadStatus $status
-                ): bool => (int) $status->id
-                    === $requestedStatusId
-            )
-                ? $requestedStatusId
-                : (int)
-                    $leadRecord
-                        ->lead_status_id;
+        if (
+            $requestedStatusCode === ''
+            && ($request->boolean('make_donation') || $request->query('donation') === '1')
+        ) {
+            $requestedStatusCode = 'donor';
+        }
 
+        if ($requestedStatusId === 0 && $requestedStatusCode !== '') {
+            $requestedStatusId = (int) ($statuses->firstWhere('code', $requestedStatusCode)?->id ?? 0);
+        }
+
+        $defaultStatusId = $statuses->contains(
+            static fn (
+                LeadStatus $status
+            ): bool => (int) $status->id === $requestedStatusId
+        )
+            ? $requestedStatusId
+            : (int) $leadRecord->lead_status_id;
         $statusGroups = $statuses->groupBy(
             static fn (
                 LeadStatus $status
@@ -82,6 +102,17 @@ class LeadFollowupController extends Controller
 
         $communicationTypes =
             $this->communicationTypes();
+
+        $donationTypes = DonationType::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
+        $instantDonationMethods = InstantDonationMethod::query()
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->orderBy('id')
+            ->get();
 
         $requestedType = trim(
             (string)
@@ -104,6 +135,8 @@ class LeadFollowupController extends Controller
                 'fromStatus.stage',
                 'toStatus.stage',
                 'user:id,name',
+                'donation.donationType',
+                'donation.recordedBy:id,name',
             ])
             ->where(
                 'lead_id',
@@ -120,35 +153,26 @@ class LeadFollowupController extends Controller
         $callPhone = $this->callPhone(
             (string) $leadRecord->phone
         );
-
-        $quotationPath = trim(
-            (string)
-                $leadRecord->quotation_file_path
-        );
-
-        $hasQuotationFile = (
-            $quotationPath !== ''
-            && Storage::disk('local')->exists(
-                $quotationPath
-            )
-        );
-
-        $quotationFileName =
-            $hasQuotationFile
-                ? basename($quotationPath)
-                : null;
-
-        $quotationFileHelpText =
-            $hasQuotationFile
-                ? 'يوجد ملف عرض سعر حالي. '
-                    .'اختر ملفًا جديدًا فقط '
-                    .'لاستبداله.'
-                : 'الملفات المدعومة: PDF, Word, '
-                    .'Excel والصور. الحد الأقصى 2MB.';
         $totalLeads = Lead::query()
             ->accessibleTo($request->user())
             ->count();
         $actor = $request->user();
+        $canAssignCollections = $actor->hasPermission(CrmPermission::COLLECTIONS_ASSIGN);
+        $collectors = $canAssignCollections
+            ? User::query()
+                ->where('is_active', true)
+                ->when(
+                    $leadRecord->branch_id === null,
+                    static fn ($query) => $query->whereNull('branch_id'),
+                    static fn ($query) => $query->where('branch_id', $leadRecord->branch_id),
+                )
+                ->whereHas('groups.permissions', static fn ($query) => $query->where(
+                    'permissions.code',
+                    CrmPermission::COLLECTIONS_COLLECT->value,
+                ))
+                ->orderBy('name')
+                ->get(['id', 'name'])
+            : collect();
         $manageableCampaigns = Campaign::query()
             ->with([
                 'users' => static fn ($query) => $query
@@ -187,6 +211,16 @@ class LeadFollowupController extends Controller
             static fn (Campaign $campaign): bool => $manageableCampaigns
                 ->contains('id', $campaign->id),
         );
+        $stageFieldsMap = \App\Models\PipelineStage::query()
+            ->with(['activeFields'])
+            ->get()
+            ->keyBy('id')
+            ->map(static fn ($st) => $st->activeFields);
+
+        $currentStageValues = $leadRecord->stageFieldValues
+            ->keyBy('field_key')
+            ->map(static fn ($v) => $v->getTypedValue())
+            ->all();
 
         return view(
             'leads.followups.index',
@@ -194,18 +228,22 @@ class LeadFollowupController extends Controller
                 'lead' => $leadRecord,
                 'statusGroups' => $statusGroups,
                 'communicationTypes' => $communicationTypes,
+                'donationTypes' => $donationTypes,
+                'instantDonationMethods' => $instantDonationMethods,
+                'donationCycles' => array_keys(self::DONATION_CYCLES),
+                'canAssignCollections' => $canAssignCollections,
+                'collectors' => $collectors,
                 'defaultCommunicationType' => $defaultCommunicationType,
                 'followups' => $followups,
                 'currentEmployee' => $currentEmployee,
                 'callPhone' => $callPhone,
-                'hasQuotationFile' => $hasQuotationFile,
-                'quotationFileName' => $quotationFileName,
-                'quotationFileHelpText' => $quotationFileHelpText,
                 'defaultStatusId' => $defaultStatusId,
                 'totalLeads' => $totalLeads,
                 'manageableCampaigns' => $manageableCampaigns,
                 'campaignAssignees' => $campaignAssignees,
                 'currentCampaign' => $currentCampaign,
+                'stageFieldsMap' => $stageFieldsMap,
+                'currentStageValues' => $currentStageValues,
             ]
         );
     }
@@ -279,6 +317,32 @@ class LeadFollowupController extends Controller
                     ]
             );
 
+        $isCurrentDonor = $leadRecord->status()
+            ->where('code', 'donor')
+            ->exists();
+        $isDonorConversion = $status->code === 'donor' && ! $isCurrentDonor;
+        $recordsDonation = $isDonorConversion
+            || ($status->code === 'donor' && $request->boolean('record_donation'));
+        $donationWay = $recordsDonation
+            ? trim((string) $request->input('donation_way'))
+            : null;
+        if ($recordsDonation && $donationWay === '') {
+            $donationWay = 'instant';
+            $request->merge(['donation_way' => $donationWay]);
+        }
+        $recordsInstantDonation = $recordsDonation && $donationWay === 'instant';
+        $createsCollection = $recordsDonation && $donationWay === 'collection';
+        if ($recordsInstantDonation && ! $request->filled('instant_donation_method_id')) {
+            $fallbackMethodId = InstantDonationMethod::query()
+                ->where('is_active', true)
+                ->orderBy('position')
+                ->value('id');
+
+            if ($fallbackMethodId !== null) {
+                $request->merge(['instant_donation_method_id' => (int) $fallbackMethodId]);
+            }
+        }
+
         $businessStatusCodes = [
             'new',
             'no_answer',
@@ -290,28 +354,6 @@ class LeadFollowupController extends Controller
             $status->code,
             $businessStatusCodes,
             true
-        );
-
-        $isQuotationStage = false;
-
-        $currentQuotationPath = trim(
-            (string)
-                $leadRecord->quotation_file_path
-        );
-
-        $hasCurrentQuotationFile = (
-            $currentQuotationPath !== ''
-            && Storage::disk('local')->exists(
-                $currentQuotationPath
-            )
-        );
-
-        $solutionTypeInput = trim(
-            (string)
-                $request->input(
-                    'solution_type',
-                    ''
-                )
         );
 
         /*
@@ -379,6 +421,107 @@ class LeadFollowupController extends Controller
                     'date',
                 ],
 
+                'donation_type_id' => [
+                    Rule::requiredIf($recordsDonation),
+                    'nullable',
+                    'integer',
+                    Rule::exists('donation_types', 'id')->where(
+                        static fn ($query) => $query->where('is_active', true)
+                    ),
+                ],
+
+                'donation_value' => [
+                    Rule::requiredIf($recordsDonation),
+                    'nullable',
+                    'numeric',
+                    'gt:0',
+                    'max:999999999999',
+                ],
+
+                'donation_cycle' => [
+                    Rule::requiredIf($recordsDonation),
+                    'nullable',
+                    'string',
+                    Rule::in(array_keys(self::DONATION_CYCLES)),
+                ],
+
+                'preferred_donation_date' => [
+                    Rule::requiredIf($recordsDonation && $request->input('donation_cycle') === 'other'),
+                    'nullable',
+                    'date',
+                ],
+
+                'preferred_donation_time' => [
+                    'nullable',
+                    'date_format:H:i',
+                ],
+
+                'preferred_donation_note' => [
+                    'nullable',
+                    'string',
+                    'max:500',
+                ],
+
+                'donation_way' => [
+                    Rule::requiredIf($recordsDonation),
+                    'nullable',
+                    'string',
+                    Rule::in(['instant', 'collection']),
+                ],
+
+                'instant_donation_method_id' => [
+                    Rule::requiredIf($recordsInstantDonation),
+                    'nullable',
+                    'integer',
+                    Rule::exists('instant_donation_methods', 'id')->where(
+                        static fn ($query) => $query->where('is_active', true)
+                    ),
+                ],
+                'instant_donation_account' => [
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+
+                'collection_due_at' => [
+                    Rule::requiredIf($createsCollection),
+                    'nullable',
+                    'date',
+                ],
+
+                'collection_address' => [
+                    Rule::requiredIf($createsCollection),
+                    'nullable',
+                    'string',
+                    'max:255',
+                ],
+
+                'collection_notes' => [
+                    'nullable',
+                    'string',
+                    'max:5000',
+                ],
+
+                'assigned_collector_user_id' => [
+                    'nullable',
+                    'integer',
+                    Rule::exists('users', 'id')->where(
+                        static fn ($query) => $query->where('is_active', true)
+                    ),
+                ],
+
+                'record_donation' => [
+                    'nullable',
+                    'boolean',
+                ],
+
+                'donation_receipt' => [
+                    'nullable',
+                    'file',
+                    'mimes:png,jpg,jpeg,webp',
+                    'max:5120',
+                ],
+
                 'company_name' => [
                     'nullable',
                     'string',
@@ -433,61 +576,6 @@ class LeadFollowupController extends Controller
                     'max:5000',
                 ],
 
-                'solution_type' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                    ),
-                    'nullable',
-                    Rule::in([
-                        'call_center',
-                        'erp',
-                    ]),
-                ],
-
-                'lines_count' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput ===
-                            'call_center'
-                    ),
-                    'nullable',
-                    'integer',
-                    'min:1',
-                    'max:1000000',
-                ],
-
-                'extensions' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput ===
-                            'call_center'
-                    ),
-                    'nullable',
-                    'string',
-                    'max:5000',
-                ],
-
-                'departments' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && $solutionTypeInput ===
-                            'erp'
-                    ),
-                    'nullable',
-                    'string',
-                    'max:5000',
-                ],
-
-                'quotation_file' => [
-                    Rule::requiredIf(
-                        $isQuotationStage
-                        && ! $hasCurrentQuotationFile
-                    ),
-                    'nullable',
-                    'file',
-                    'mimes:pdf,doc,docx,xls,xlsx,png,jpg,jpeg',
-                    'max:2048',
-                ],
                 'campaign_id' => [
                     'nullable',
                     'integer',
@@ -514,25 +602,49 @@ class LeadFollowupController extends Controller
                     .'غير مهتم.',
                 'next_follow_up_at.date_format' => 'موعد المتابعة القادمة غير صحيح.',
 
+                'donation_type_id.required' => 'اختر نوع التبرع قبل تحويل العميل إلى متبرع.',
+                'donation_type_id.exists' => 'نوع التبرع المختار غير متاح.',
+                'donation_value.required' => 'أدخل قيمة التبرع قبل تحويل العميل إلى متبرع.',
+                'donation_value.numeric' => 'قيمة التبرع يجب أن تكون رقمًا صحيحًا.',
+                'donation_value.gt' => 'قيمة التبرع يجب أن تكون أكبر من صفر.',
+                'donation_cycle.required' => 'اختر دورة التبرع قبل تحويل العميل إلى متبرع.',
+                'donation_cycle.in' => 'دورة التبرع المختارة غير صحيحة.',
+                'preferred_donation_date.required' => __('crm.preferred_donation_date_required') ?: 'يجب تحديد التاريخ المناسب عند اختيار دورة تبرع أخرى.',
+                'preferred_donation_date.date' => 'يرجى إدخال تاريخ صحيح للموعد المناسب.',
+                'preferred_donation_time.date_format' => 'يرجى إدخال وقت صحيح للموعد المناسب (ساعة:دقيقة).',
+                'donation_way.required' => 'اختر طريقة استلام التبرع.',
+                'donation_way.in' => 'طريقة استلام التبرع غير صحيحة.',
+                'instant_donation_method_id.required' => 'اختر وسيلة التبرع الفوري.',
+                'instant_donation_method_id.exists' => 'وسيلة التبرع الفوري غير متاحة.',
+                'collection_due_at.required' => 'حدد موعد التحصيل.',
+                'collection_due_at.date' => 'موعد التحصيل غير صحيح.',
+                'collection_address.required' => 'أدخل عنوان التحصيل.',
+                'donation_receipt.mimes' => 'إيصال التبرع يجب أن يكون صورة PNG أو JPG أو WEBP.',
+                'donation_receipt.max' => 'الحد الأقصى لصورة إيصال التبرع هو 5MB.',
+
                 'disinterest_reason.required' => 'سبب عدم الاهتمام مطلوب.',
-
-                'solution_type.required' => 'نوع النظام مطلوب.',
-
-                'lines_count.required' => 'عدد الخطوط مطلوب.',
-
-                'extensions.required' => 'تفاصيل الملحقات مطلوبة.',
-
-                'departments.required' => 'الأقسام المطلوبة مطلوبة.',
-
-                'quotation_file.required' => 'ملف عرض السعر مطلوب.',
-
-                'quotation_file.max' => 'الحد الأقصى لملف عرض '
-                    .'السعر 2MB.',
-
-                'quotation_file.mimes' => 'صيغة ملف عرض السعر '
-                    .'غير مدعومة.',
             ]
         );
+
+        $assignedCollectorId = isset($validated['assigned_collector_user_id'])
+            ? (int) $validated['assigned_collector_user_id']
+            : null;
+        if ($assignedCollectorId !== null) {
+            abort_unless(
+                $createsCollection
+                && $request->user()->hasPermission(CrmPermission::COLLECTIONS_ASSIGN)
+                && User::query()
+                    ->whereKey($assignedCollectorId)
+                    ->where('is_active', true)
+                    ->where('branch_id', $leadRecord->branch_id)
+                    ->whereHas('groups.permissions', static fn ($query) => $query->where(
+                        'permissions.code',
+                        CrmPermission::COLLECTIONS_COLLECT->value,
+                    ))
+                    ->exists(),
+                403,
+            );
+        }
 
         $nullableText = static function (
             mixed $value
@@ -578,6 +690,7 @@ class LeadFollowupController extends Controller
                     'communication_type'
                 ];
 
+        $contactedAt = now();
         $nextFollowUpAt = null;
 
         if (
@@ -606,46 +719,51 @@ class LeadFollowupController extends Controller
             $nextFollowUpAt = null;
         }
 
-        $newQuotationPath = null;
-        $uploadedQuotationName = null;
-
-        if (
-            $request->hasFile(
-                'quotation_file'
-            )
-        ) {
-            $uploadedQuotationName =
-                mb_substr(
-                    trim(
-                        (string)
-                            $request
-                                ->file(
-                                    'quotation_file'
-                                )
-                                ->getClientOriginalName()
-                    ),
-                    0,
-                    255
-                );
-
-            $storedPath = $request
-                ->file('quotation_file')
-                ->store(
-                    'crm-v2/quotation-files',
-                    'local'
-                );
-
-            if (
-                ! is_string($storedPath)
-                || trim($storedPath) === ''
-            ) {
-                throw new \RuntimeException(
-                    'Quotation file storage failed.'
-                );
+        if ($recordsInstantDonation || $recordsDonation) {
+            $cycle = (string) ($validated['donation_cycle'] ?? '');
+            if ($cycle === 'other' && ! empty($validated['preferred_donation_date'])) {
+                $dateStr = (string) $validated['preferred_donation_date'];
+                $timeStr = ! empty($validated['preferred_donation_time']) ? (string) $validated['preferred_donation_time'] : '00:00';
+                try {
+                    $nextFollowUpAt = Carbon::parse($dateStr . ' ' . $timeStr);
+                } catch (\Throwable) {
+                    $nextFollowUpAt = Carbon::parse($dateStr);
+                }
+            } elseif ($recordsInstantDonation) {
+                $cycleMonths = self::DONATION_CYCLES[$cycle] ?? null;
+                $nextFollowUpAt = $cycleMonths === null
+                    ? null
+                    : $contactedAt->copy()->addMonthsNoOverflow($cycleMonths);
             }
+        }
 
-            $newQuotationPath =
-                $storedPath;
+        $newReceiptPath = null;
+        $receiptOriginalName = null;
+        $donationType = $recordsDonation
+            ? DonationType::query()->findOrFail((int) $validated['donation_type_id'])
+            : null;
+
+        if ($recordsInstantDonation && $request->hasFile('donation_receipt')) {
+            try {
+                $receipt = $request->file('donation_receipt');
+                $receiptOriginalName = mb_substr(
+                    trim((string) $receipt->getClientOriginalName()),
+                    0,
+                    255,
+                );
+                $storedReceipt = $receipt->store(
+                    'crm-v2/donation-receipts/'.$leadRecord->id,
+                    'local',
+                );
+
+                if (! is_string($storedReceipt) || trim($storedReceipt) === '') {
+                    throw new \RuntimeException('Donation receipt storage failed.');
+                }
+
+                $newReceiptPath = $storedReceipt;
+            } catch (\Throwable $exception) {
+                throw $exception;
+            }
         }
 
         $stageData = [
@@ -713,68 +831,14 @@ class LeadFollowupController extends Controller
                             ] ?? null
                         )
                         : null,
-
-            'solution_type' => $isQuotationStage
-                    ? $nullableText(
-                        $validated[
-                            'solution_type'
-                        ] ?? null
-                    )
-                    : null,
-
-            'lines_count' => (
-                $isQuotationStage
-                && (
-                    $validated[
-                        'solution_type'
-                    ] ?? null
-                ) === 'call_center'
-            )
-                ? (int)
-                    $validated[
-                        'lines_count'
-                    ]
-                : null,
-
-            'extensions' => (
-                $isQuotationStage
-                && (
-                    $validated[
-                        'solution_type'
-                    ] ?? null
-                ) === 'call_center'
-            )
-                ? $nullableText(
-                    $validated[
-                        'extensions'
-                    ] ?? null
-                )
-                : null,
-
-            'departments' => (
-                $isQuotationStage
-                && (
-                    $validated[
-                        'solution_type'
-                    ] ?? null
-                ) === 'erp'
-            )
-                ? $nullableText(
-                    $validated[
-                        'departments'
-                    ] ?? null
-                )
-                : null,
-
-            'quotation_sent' => $isQuotationStage,
-
-            'quotation_file_path' => $newQuotationPath
-                    ?? (
-                        $hasCurrentQuotationFile
-                            ? $currentQuotationPath
-                            : null
-                    ),
         ];
+
+        if ($recordsDonation) {
+            $stageData['donation_type'] = $donationType->name_ar;
+            $stageData['donation_type_id'] = $donationType->id;
+            $stageData['donation_value'] = (float) $validated['donation_value'];
+            $stageData['donation_cycle'] = (string) $validated['donation_cycle'];
+        }
 
         $fieldLabels = [
             'company_name' => 'اسم الشركة',
@@ -785,12 +849,15 @@ class LeadFollowupController extends Controller
             'branches_count' => 'عدد الفروع',
             'job_title' => 'المنصب',
             'disinterest_reason' => 'سبب عدم الاهتمام',
-            'solution_type' => 'نوع النظام',
-            'lines_count' => 'عدد الخطوط',
-            'extensions' => 'الملحقات',
-            'departments' => 'الأقسام',
-            'quotation_file_path' => 'ملف عرض السعر',
         ];
+
+        if ($recordsDonation) {
+            $fieldLabels += [
+                'donation_type' => 'نوع التبرع',
+                'donation_value' => 'قيمة التبرع',
+                'donation_cycle' => 'دورة التبرع',
+            ];
+        }
 
         $formatChangeValue =
             static function (
@@ -802,28 +869,6 @@ class LeadFollowupController extends Controller
                     || $value === ''
                 ) {
                     return '----';
-                }
-
-                if (
-                    $field
-                    === 'solution_type'
-                ) {
-                    return match (
-                        (string) $value
-                    ) {
-                        'call_center' => 'Call Center',
-                        'erp' => 'ERP',
-                        default => (string) $value,
-                    };
-                }
-
-                if (
-                    $field
-                    === 'quotation_file_path'
-                ) {
-                    return basename(
-                        (string) $value
-                    );
                 }
 
                 return trim(
@@ -877,14 +922,6 @@ class LeadFollowupController extends Controller
                 $oldValue = $formatChangeValue($field, $oldRaw);
                 $newValue = $formatChangeValue($field, $newRaw);
 
-                if (
-                    $field === 'quotation_file_path'
-                    && $uploadedQuotationName !== null
-                    && $uploadedQuotationName !== ''
-                ) {
-                    $newValue = $uploadedQuotationName;
-                }
-
                 $fieldChanges[] = [
                     'field' => $field,
                     'label' => $label,
@@ -900,15 +937,58 @@ class LeadFollowupController extends Controller
                 'employee_name' => $employeeName,
                 'next_follow_up_at' => $nextFollowUpAt,
                 'response_details' => $outcome,
-                'contact_date' => now(),
+                'contact_date' => $contactedAt,
                 'responding_user_id' => $currentUserId,
+                'disinterest_reason' => $request->input('disinterest_reason'),
                 'lead_attributes' => $stageData,
                 'field_changes' => $fieldChanges === [] ? null : $fieldChanges,
                 'history_note' => 'متابعة - '
                     .$communicationTypes[$communicationType]
                     .': '
-                    .$outcome,
+                    .$outcome
+                    .((($validated['donation_cycle'] ?? '') === 'other' && ! empty($validated['preferred_donation_date']))
+                        ? ' (الموعد المناسب: ' . $validated['preferred_donation_date'] . (! empty($validated['preferred_donation_time']) ? ' ' . $validated['preferred_donation_time'] : '') . ')'
+                        : ''),
+                'stage_fields' => (array) $request->input('stage_fields', []),
+                'stage_fields_custom' => (array) $request->input('stage_fields_custom', []),
+                'preferred_donation_date' => $validated['preferred_donation_date'] ?? null,
+                'preferred_donation_time' => $validated['preferred_donation_time'] ?? null,
+                'preferred_donation_note' => $validated['preferred_donation_note'] ?? null,
             ];
+
+            if ($recordsInstantDonation) {
+                $transitionContext['donation'] = [
+                    'donation_type_id' => $stageData['donation_type_id'],
+                    'donation_type' => $stageData['donation_type'],
+                    'amount' => (string) $validated['donation_value'],
+                    'cycle' => (string) $validated['donation_cycle'],
+                    'donation_way' => 'instant',
+                    'instant_donation_method_id' => (int) $validated['instant_donation_method_id'],
+                    'instant_donation_account' => trim((string) ($validated['instant_donation_account'] ?? '')) ?: null,
+                    'receipt_path' => $newReceiptPath,
+                    'receipt_original_name' => $receiptOriginalName,
+                    'donated_at' => $contactedAt,
+                ];
+            } elseif ($createsCollection) {
+                $transitionContext['collection'] = [
+                    'donation_type_id' => $stageData['donation_type_id'],
+                    'donation_type' => $stageData['donation_type'],
+                    'expected_amount' => (string) $validated['donation_value'],
+                    'cycle' => (string) $validated['donation_cycle'],
+                    'due_at' => (string) $validated['collection_due_at'],
+                    'collection_address' => trim((string) $validated['collection_address']),
+                    'notes' => isset($validated['collection_notes'])
+                        ? trim((string) $validated['collection_notes']) ?: null
+                        : null,
+                    'assigned_collector_user_id' => $assignedCollectorId,
+                ];
+            }
+
+            if ($recordsDonation) {
+                $transitionContext['donation_intent'] = $isDonorConversion
+                    ? 'conversion'
+                    : 'explicit';
+            }
 
             if ($targetUser !== null) {
                 $transitionContext['assigned_user_id'] = $targetUser->id;
@@ -927,47 +1007,38 @@ class LeadFollowupController extends Controller
 
             $leadRecord = $transitionResult['lead'];
         } catch (\Throwable $exception) {
-            if (
-                $newQuotationPath
-                !== null
-            ) {
-                Storage::disk('local')
-                    ->delete(
-                        $newQuotationPath
-                    );
+            if ($newReceiptPath !== null) {
+                Storage::disk('local')->delete($newReceiptPath);
             }
 
             throw $exception;
         }
 
-        if (
-            $newQuotationPath !== null
-            && $currentQuotationPath !== ''
-            && $currentQuotationPath
-                !== $newQuotationPath
-            && Storage::disk('local')->exists(
-                $currentQuotationPath
-            )
-        ) {
-            Storage::disk('local')->delete(
-                $currentQuotationPath
-            );
-        }
+        $nextLead = Lead::query()
+            ->accessibleTo($request->user())
+            ->where('id', '!=', $leadRecord->id)
+            ->where(function ($q) {
+                $q->where('next_follow_up_at', '<=', now())
+                  ->orWhereNull('next_follow_up_at');
+            })
+            ->orderByRaw('next_follow_up_at IS NULL, next_follow_up_at ASC')
+            ->first();
+
+        $context = $request->input('context', $request->input('source', ''));
 
         $redirectParameters =
             $request->boolean(
                 'kanban_popup'
             )
-                ? [
+                ? array_filter([
                     'lead' => $leadRecord->id,
-
                     'kanban_popup' => 1,
-
                     'saved' => 1,
-                ]
+                    'context' => $context ?: null,
+                ])
                 : $leadRecord;
 
-        return redirect()
+        $redirect = redirect()
             ->route(
                 'v2.leads.followups.index',
                 $redirectParameters
@@ -979,6 +1050,20 @@ class LeadFollowupController extends Controller
                 .$employeeName
                 .'.'
             );
+
+        if ($nextLead !== null) {
+            $nextLeadUrl = route(
+                'v2.leads.followups.index',
+                $request->boolean('kanban_popup')
+                    ? array_filter(['lead' => $nextLead->id, 'kanban_popup' => 1, 'context' => $context ?: null])
+                    : $nextLead
+            );
+
+            $redirect->with('next_lead_url', $nextLeadUrl);
+            $redirect->with('next_lead_id', $nextLead->id);
+        }
+
+        return $redirect;
     }
 
     private function communicationTypes(): array

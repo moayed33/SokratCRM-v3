@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-sidebar-collapse-v2">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
 <style>
 :root {
   --red: #dc2637;
@@ -89,7 +89,8 @@ a { color: inherit; text-decoration: none; }
   align-items: center;
   justify-content: center;
   gap: 8px;
-  height: 40px;
+  height: 42px;
+  min-height: 42px;
   padding: 0 16px;
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -188,31 +189,72 @@ html.dark-mode .btn.soft:hover {
 .filter-panel {
   background: var(--card);
   border: 1px solid var(--line);
-  border-radius: var(--radius);
-  padding: 18px 20px;
-  box-shadow: var(--shadow);
-  margin-bottom: 24px;
+  border-radius: 14px;
+  padding: 12px 14px;
+  box-shadow: 0 4px 14px rgba(15, 23, 42, 0.03);
+  margin-bottom: 16px;
 }
 .filter-form-grid {
   display: grid;
-  grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto;
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px 10px;
   align-items: end;
 }
 .filter-field {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 4px;
   min-width: 0;
+}
+.filter-field.col-search {
+  grid-column: span 2;
+  min-width: 220px;
+}
+.filter-actions-col {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  justify-self: start;
+  align-self: end;
+  white-space: nowrap;
+}
+.filter-apply-btn {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 9px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.filter-reset-btn {
+  height: 34px;
+  min-height: 34px;
+  padding: 0 10px;
+  font-size: 12px;
+  border-radius: 9px;
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .filter-field label {
   display: flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
+  gap: 4px;
+  font-size: 11px;
   font-weight: 700;
   color: var(--muted);
   white-space: nowrap;
+  line-height: 1.2;
+}
+.filter-field label i {
+  font-size: 11px;
+  opacity: .75;
 }
 .filter-input-wrap {
   position: relative;
@@ -222,30 +264,46 @@ html.dark-mode .btn.soft:hover {
 }
 .filter-input-icon {
   position: absolute;
-  inset-inline-start: 12px;
+  inset-inline-start: 10px;
   color: var(--muted);
   pointer-events: none;
-  font-size: 14px;
+  font-size: 12px;
 }
 .filter-control {
   width: 100%;
-  height: 40px;
+  height: 34px;
   border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 0 12px;
+  border-radius: 9px;
+  padding: 0 10px;
   background: var(--card);
   color: var(--dark);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   outline: none;
-  transition: all 0.15s ease;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.filter-field .crm-select-trigger,
+.filter-control-wrap .crm-select-trigger {
+  height: 34px !important;
+  min-height: 34px !important;
+  max-height: 34px !important;
+  border-radius: 9px !important;
+  padding: 0 10px !important;
+  font-size: 12px !important;
+  font-weight: 600 !important;
+}
+
+.filter-field .crm-select-trigger .crm-select-trigger-label,
+.filter-control-wrap .crm-select-trigger .crm-select-trigger-label {
+  font-size: 12px !important;
+  font-weight: 600 !important;
 }
 .filter-control.with-icon {
-  padding-inline-start: 34px;
+  padding-inline-start: 28px;
 }
 .filter-control:focus {
   border-color: var(--red);
-  box-shadow: 0 0 0 3px rgba(220, 38, 55, 0.15);
+  box-shadow: 0 0 0 2px rgba(220, 38, 55, 0.12);
   background: var(--card);
 }
 html.dark-mode .filter-control {
@@ -263,12 +321,8 @@ html.dark-mode .filter-control option {
   color: #f1f5f9;
 }
 .filter-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  display: none;
 }
-
-/* Leads Table Layout */
 .table-card {
   background: var(--card);
   border: 1px solid var(--line);
@@ -419,6 +473,35 @@ html.dark-mode .btn-action.call:hover {
   background: rgba(37, 99, 235, 0.2);
   border-color: rgba(37, 99, 235, 0.4);
 }
+.btn-action.whatsapp {
+  color: #12805c;
+}
+.btn-action.whatsapp:hover,
+.btn-action.whatsapp:focus-visible {
+  background: #ecfdf5;
+  border-color: #a7f3d0;
+}
+html.dark-mode .btn-action.whatsapp {
+  color: #6ee7b7;
+}
+html.dark-mode .btn-action.whatsapp:hover,
+html.dark-mode .btn-action.whatsapp:focus-visible {
+  background: rgba(16, 185, 129, 0.18);
+  border-color: rgba(52, 211, 153, 0.4);
+}
+.btn-action.is-disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-action.is-disabled:hover {
+  background: #f1f5f9;
+  border-color: var(--line);
+  transform: none;
+}
+html.dark-mode .btn-action.is-disabled:hover {
+  background: rgba(255, 255, 255, 0.06);
+  border-color: var(--line);
+}
 
 /* Pagination Wrap */
 .pagination-wrap {
@@ -542,8 +625,8 @@ html.dark-mode .flash.success {
 /* Responsive Breakpoints */
 @media(max-width: 1200px) {
   .stats-grid { grid-template-columns: repeat(3, 1fr); }
-  .filter-form-grid { grid-template-columns: repeat(3, 1fr); }
-  .filter-field.col-search { grid-column: span 3; }
+  .filter-form-grid { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+  .filter-field.col-search { grid-column: span 2; }
 }
 @media(max-width: 900px) {
   .stats-grid { grid-template-columns: repeat(2, 1fr); }
@@ -555,6 +638,8 @@ html.dark-mode .flash.success {
   .stats-grid { grid-template-columns: 1fr; }
   .filter-form-grid { grid-template-columns: 1fr; }
   .filter-field.col-search { grid-column: span 1; }
+  .filter-actions-col { width: 100%; justify-self: stretch; }
+  .filter-apply-btn { flex: 1; justify-content: center; }
   .pagination-wrap { flex-direction: column; align-items: center; text-align: center; }
 }
 </style>
@@ -569,18 +654,14 @@ html.dark-mode .flash.success {
             <div class="topbar-left">
                 <div>
                     <h1>{{ __('crm.view_leads') }}</h1>
-                    <p>{{ __('crm.leads_page_subtitle') }}</p>
                 </div>
             </div>
             <div class="top-actions">
-                @can('create', App\Models\Lead::class)
-                    <a href="{{ route('v2.leads.create') }}" class="btn primary">
-                        <i class="bi bi-plus-lg"></i> {{ __('crm.add_lead') }}
-                    </a>
-                @endcan
+                @can('leads.export')
                 <a href="{{ route('v2.leads.export') }}" class="btn soft">
                     <i class="bi bi-file-earmark-arrow-down"></i> {{ __('crm.export') }}
                 </a>
+                @endcan
                 @include('partials.profile-dropdown')
             </div>
         </header>
@@ -623,7 +704,7 @@ html.dark-mode .flash.success {
                 <!-- Stage Filter -->
                 <div class="filter-field">
                     <label for="stageFilter"><i class="bi bi-diagram-3"></i> {{ __('crm.stage') }}</label>
-                    <select id="stageFilter" name="stage" class="filter-control" onchange="this.form.submit()">
+                    <select id="stageFilter" name="stage" class="filter-control">
                         <option value="">{{ __('crm.all_stages') }}</option>
                         @foreach ($stages as $stage)
                             <option value="{{ $stage->id }}" {{ (string) $filters['stage'] === (string) $stage->id ? 'selected' : '' }}>
@@ -636,7 +717,7 @@ html.dark-mode .flash.success {
                 <!-- Donation Type Filter -->
                 <div class="filter-field">
                     <label for="typeFilter"><i class="bi bi-cash-stack"></i> {{ __('crm.donation_type') }}</label>
-                    <select id="typeFilter" name="donation_type" class="filter-control" onchange="this.form.submit()">
+                    <select id="typeFilter" name="donation_type" class="filter-control">
                         <option value="">{{ __('crm.all_donation_types') }}</option>
                         @foreach ($donationTypes as $dType)
                             <option value="{{ $dType->name_ar }}" {{ $filters['donation_type'] === $dType->name_ar ? 'selected' : '' }}>
@@ -649,7 +730,7 @@ html.dark-mode .flash.success {
                 <!-- Donation Cycle Filter -->
                 <div class="filter-field">
                     <label for="cycleFilter"><i class="bi bi-arrow-repeat"></i> {{ __('crm.donation_cycle') }}</label>
-                    <select id="cycleFilter" name="donation_cycle" class="filter-control" onchange="this.form.submit()">
+                    <select id="cycleFilter" name="donation_cycle" class="filter-control">
                         <option value="">{{ __('crm.all_donation_cycles') }}</option>
                         @foreach ($donationCycles as $cKey => $cLabel)
                             <option value="{{ $cKey }}" {{ $filters['donation_cycle'] === $cKey ? 'selected' : '' }}>
@@ -659,10 +740,22 @@ html.dark-mode .flash.success {
                     </select>
                 </div>
 
+                <!-- Min Donation Value Filter -->
+                <div class="filter-field">
+                    <label for="donationMinFilter"><i class="bi bi-cash"></i> {{ __('crm.min_donation_value') }}</label>
+                    <input type="number" step="any" min="0" id="donationMinFilter" name="donation_min" value="{{ $filters['donation_min'] }}" class="filter-control" placeholder="0.00">
+                </div>
+
+                <!-- Max Donation Value Filter -->
+                <div class="filter-field">
+                    <label for="donationMaxFilter"><i class="bi bi-cash-stack"></i> {{ __('crm.max_donation_value') }}</label>
+                    <input type="number" step="any" min="0" id="donationMaxFilter" name="donation_max" value="{{ $filters['donation_max'] }}" class="filter-control" placeholder="10000.00">
+                </div>
+
                 <!-- Employee Filter -->
                 <div class="filter-field">
                     <label for="employeeFilter"><i class="bi bi-person-check"></i> {{ __('crm.assigned_employee') }}</label>
-                    <select id="employeeFilter" name="employee" class="filter-control" onchange="this.form.submit()">
+                    <select id="employeeFilter" name="employee" class="filter-control">
                         <option value="">{{ __('crm.all_employees') }}</option>
                         @foreach ($employees as $empName)
                             <option value="{{ $empName }}" {{ $filters['employee'] === $empName ? 'selected' : '' }}>
@@ -682,7 +775,7 @@ html.dark-mode .flash.success {
                         <label for="cfFilter_{{ $filterField->key }}"><i class="bi bi-list-ul"></i> {{ $filterField->label() }}</label>
                         @switch ($filterField->type)
                             @case ('select')
-                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control" onchange="this.form.submit()">
+                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control">
                                     <option value="">{{ __('crm.lf_filter_all') }}</option>
                                     @foreach ($filterField->options ?? [] as $option)
                                         <option value="{{ $option['value'] ?? '' }}" @selected($fieldFilterValue === (string) ($option['value'] ?? ''))>
@@ -701,7 +794,7 @@ html.dark-mode .flash.success {
                                 </select>
                                 @break
                             @case ('checkbox')
-                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control" onchange="this.form.submit()">
+                                <select id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" class="filter-control">
                                     <option value="">{{ __('crm.lf_filter_any') }}</option>
                                     <option value="1" @selected($fieldFilterValue === '1')>{{ __('crm.lf_filter_yes') }}</option>
                                     <option value="0" @selected($fieldFilterValue === '0')>{{ __('crm.lf_filter_no') }}</option>
@@ -712,7 +805,7 @@ html.dark-mode .flash.success {
                                 @break
                             @case ('date')
                             @case ('datetime')
-                                <input type="date" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control" onchange="this.form.submit()">
+                                <input type="date" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control">
                                 @break
                             @default
                                 <input type="text" id="cfFilter_{{ $filterField->key }}" name="{{ $filterField->key }}" value="{{ $fieldFilterValue }}" class="filter-control" placeholder="{{ __('crm.lf_filter_contains') }}">
@@ -720,13 +813,13 @@ html.dark-mode .flash.success {
                     </div>
                 @endforeach
 
-                <!-- Action Buttons: Apply & Reset -->
-                <div class="filter-actions">
-                    <button type="submit" class="btn primary small" title="{{ __('crm.apply_filter') }}">
+                <!-- Action Buttons: Next to filters -->
+                <div class="filter-actions-col">
+                    <button type="submit" class="btn primary small filter-apply-btn" title="{{ __('crm.apply_filter') }}">
                         <i class="bi bi-funnel-fill"></i> {{ __('crm.apply') }}
                     </button>
                     @if ($activeQuery !== [])
-                        <a href="{{ route('v2.leads') }}" class="btn soft small" title="{{ __('crm.reset_filters') }}">
+                        <a href="{{ route('v2.leads') }}" class="btn soft small filter-reset-btn" title="{{ __('crm.reset_filters') }}">
                             <i class="bi bi-arrow-counterclockwise"></i>
                         </a>
                     @endif
@@ -741,20 +834,14 @@ html.dark-mode .flash.success {
                     <thead>
                         <tr>
                             <th style="min-width:220px">{{ __('crm.lead_name_or_donor') }}</th>
-                            @if (auth()->user()->isSuperAdmin())
-                                <th style="min-width:130px">{{ __('crm.branch') }}</th>
-                            @endif
                             <th style="min-width:140px">{{ __('crm.primary_phone') }}</th>
-                            <th style="min-width:130px">{{ __('crm.donation_type') }}</th>
                             <th style="min-width:120px">{{ __('crm.donation_value') }}</th>
+                            <th style="min-width:130px">{{ __('crm.donation_cycle') }}</th>
                             <th style="min-width:130px">{{ __('crm.current_stage') }}</th>
-                            <th style="min-width:140px">{{ __('crm.assigned_employee') }}</th>
-                            <th style="min-width:110px">{{ __('crm.last_contact') }}</th>
-                            <th style="min-width:130px">{{ __('crm.next_followup') }}</th>
                             @foreach ($tableColumns as $tableColumn)
                                 <th style="min-width:120px">{{ $tableColumn->label() }}</th>
                             @endforeach
-                            <th style="min-width:120px">{{ __('crm.actions') }}</th>
+                            <th style="min-width:160px">{{ __('crm.actions') }}</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -772,19 +859,6 @@ html.dark-mode .flash.success {
                                     @endif
                                 </td>
 
-                                <!-- Branch for Super Admins -->
-                                @if (auth()->user()->isSuperAdmin())
-                                    <td>
-                                        @if ($lead->branch)
-                                            <span class="badge badge-branch">
-                                                <i class="bi bi-buildings"></i> {{ $lead->branch->name_ar }}
-                                            </span>
-                                        @else
-                                            <span style="color:var(--muted)">—</span>
-                                        @endif
-                                    </td>
-                                @endif
-
                                 <!-- 2. Primary Phone & Extra count -->
                                 <td>
                                     <div style="display:flex;align-items:center;gap:6px">
@@ -797,27 +871,25 @@ html.dark-mode .flash.success {
                                     </div>
                                 </td>
 
-                                <!-- 3. Donation Type -->
-                                <td>
-                                    @if ($lead->donation_type)
-                                        <span class="badge active">
-                                            {{ $lead->donation_type }}
-                                            @if ($lead->donation_cycle)
-                                                <span style="opacity:0.7">({{ __('crm.donation_cycle_' . $lead->donation_cycle) }})</span>
-                                            @endif
-                                        </span>
-                                    @else
-                                        <span style="color:var(--muted)">—</span>
-                                    @endif
-                                </td>
-
-                                <!-- 4. Donation Value -->
+                                <!-- Donation Value -->
                                 <td>
                                     @if ($lead->donation_value !== null)
                                         <strong style="color:var(--dark)">
                                             {{ number_format((float) $lead->donation_value, 2) }}
                                         </strong>
                                         <small style="font-size:11px;color:var(--muted)">{{ __('crm.currency_egp') }}</small>
+                                    @else
+                                        <span style="color:var(--muted)">—</span>
+                                    @endif
+                                </td>
+
+                                <!-- Donation Cycle -->
+                                <td>
+                                    @if ($lead->donation_cycle)
+                                        <span class="badge active" style="font-size:12px">
+                                            <i class="bi bi-arrow-repeat" style="font-size:11px"></i>
+                                            {{ __('crm.donation_cycle_' . $lead->donation_cycle) }}
+                                        </span>
                                     @else
                                         <span style="color:var(--muted)">—</span>
                                     @endif
@@ -831,40 +903,6 @@ html.dark-mode .flash.success {
                                     <span class="badge" style="background:{{ $stageColor }}18; color:{{ $stageColor }}; border:1px solid {{ $stageColor }}40">
                                         {{ (app()->getLocale() === 'en' && !empty($lead->status?->stage?->name_en)) ? $lead->status?->stage?->name_en : ($lead->status?->stage?->name_ar ?? $lead->status?->name_ar ?? '—') }}
                                     </span>
-                                </td>
-
-                                <!-- 6. Responding / Assigned Employee -->
-                                <td>
-                                    <span style="font-weight:700;color:var(--dark)">
-                                        <i class="bi bi-person-fill" style="color:var(--muted);font-size:12px"></i>
-                                        {{ $lead->respondingUser?->name ?? $lead->assignedUser?->name ?? $lead->assigned_employee ?? '—' }}
-                                    </span>
-                                </td>
-
-                                <!-- 7. Last Contact -->
-                                <td>
-                                    @if ($lead->contact_date)
-                                        <span style="font-size:13px">{{ $lead->contact_date->format('Y-m-d') }}</span>
-                                    @else
-                                        <span style="color:var(--muted)">{{ $lead->created_at ? $lead->created_at->format('Y-m-d') : '—' }}</span>
-                                    @endif
-                                </td>
-
-                                <!-- 8. Next Follow-up -->
-                                <td>
-                                    @if ($lead->next_follow_up_at)
-                                        @php
-                                            $isOverdue = $lead->next_follow_up_at->isPast();
-                                            $isToday = $lead->next_follow_up_at->isToday();
-                                            $statusClass = $isOverdue ? 'overdue' : ($isToday ? 'today' : 'upcoming');
-                                        @endphp
-                                        <span class="badge {{ $statusClass }}">
-                                            <i class="bi {{ $isOverdue ? 'bi-exclamation-circle' : ($isToday ? 'bi-clock' : 'bi-calendar-event') }}"></i>
-                                            {{ $lead->next_follow_up_at->format('m-d H:i') }}
-                                        </span>
-                                    @else
-                                        <span style="color:var(--muted);font-size:12px">{{ __('crm.no_scheduled_date') }}</span>
-                                    @endif
                                 </td>
 
                                 <!-- 9. Configurable table columns -->
@@ -881,6 +919,20 @@ html.dark-mode .flash.success {
 
                                 <!-- 10. Actions -->
                                 <td>
+                                    @php
+                                        $phoneDigits = preg_replace('/\D+/', '', (string) $lead->phone) ?? '';
+                                        $whatsappPhone = null;
+
+                                        if (str_starts_with($phoneDigits, '0020')) {
+                                            $whatsappPhone = substr($phoneDigits, 2);
+                                        } elseif (preg_match('/^01[0125][0-9]{8}$/', $phoneDigits)) {
+                                            $whatsappPhone = '20'.substr($phoneDigits, 1);
+                                        } elseif (preg_match('/^20[0-9]{10}$/', $phoneDigits)) {
+                                            $whatsappPhone = $phoneDigits;
+                                        } elseif (preg_match('/^[1-9][0-9]{7,14}$/', $phoneDigits)) {
+                                            $whatsappPhone = $phoneDigits;
+                                        }
+                                    @endphp
                                     <div class="actions-cell">
                                         <a href="{{ route('v2.leads.show', $lead) }}" class="btn-action" title="{{ __('crm.view_details') }}">
                                             <i class="bi bi-eye"></i>
@@ -891,10 +943,25 @@ html.dark-mode .flash.success {
                                             </a>
                                         @endcan
                                         @can('createFollowup', $lead)
-                                            <a href="{{ route('v2.leads.followups.index', $lead) }}" class="btn-action call" title="{{ __('crm.log_followup') }}">
+                                            <a href="{{ route('v2.leads.followups.index', $lead) }}"
+                                               class="btn-action call"
+                                               title="{{ $phoneDigits ? __('crm.open_microsip_and_followup') : __('crm.log_followup') }}"
+                                               data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
+                                               data-lead-name="{{ $lead->name }}"
+                                               @if ($phoneDigits) data-sip-href="sip:{{ $phoneDigits }}" @endif
+                                            >
                                                 <i class="bi bi-telephone-outbound"></i>
                                             </a>
                                         @endcan
+                                        @if ($whatsappPhone)
+                                            <a href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener noreferrer" class="btn-action whatsapp" title="{{ __('crm.open_whatsapp') }}" aria-label="{{ __('crm.open_whatsapp') }}">
+                                                <i class="bi bi-whatsapp"></i>
+                                            </a>
+                                        @else
+                                            <span class="btn-action whatsapp is-disabled" title="{{ __('crm.invalid_whatsapp_number') }}" aria-label="{{ __('crm.invalid_whatsapp_number') }}" aria-disabled="true">
+                                                <i class="bi bi-whatsapp"></i>
+                                            </span>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>
@@ -923,6 +990,7 @@ html.dark-mode .flash.success {
         </section>
     </main>
 </div>
-<script src="{{ asset('quotation-generator/crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}"></script>
+@include('partials.transition-popup')
 </body>
 </html>

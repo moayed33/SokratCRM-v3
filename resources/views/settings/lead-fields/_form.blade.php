@@ -140,7 +140,7 @@
     </div>
 </div>
 
-<div class="panel" style="box-shadow:none;margin-top:18px;background:#fafbfc">
+<div class="panel" style="box-shadow:none;margin-top:18px">
     <strong style="display:block;margin-bottom:12px"><i class="bi bi-toggles"></i> {{ __('crm.lf_visibility') }}</strong>
     <div class="checkbox-grid">
         <label class="check-card">

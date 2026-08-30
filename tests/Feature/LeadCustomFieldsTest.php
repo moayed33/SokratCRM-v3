@@ -13,12 +13,12 @@ use App\Models\User;
 use App\Security\CrmPermission;
 use App\Support\LeadFieldSchema;
 use Database\Seeders\CrmV2PipelineSeeder;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LeadCustomFieldsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
 

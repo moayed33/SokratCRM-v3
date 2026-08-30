@@ -25,26 +25,27 @@
  .campaign-selector-head{display:flex;align-items:flex-end;justify-content:space-between;gap:20px}
  .campaign-selector-head h2{margin:0;color:#202a3c;font-size:18px;line-height:1.35}
  .campaign-selector-head p{max-width:720px;margin:5px 0 0;color:var(--muted);font-size:11px;line-height:1.7}
- .campaign-selector-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(225px,1fr));gap:12px;margin-top:13px}
- .campaign-selector-card{position:relative;min-width:0;display:grid;grid-template-rows:auto 1fr auto;gap:14px;min-height:174px;padding:17px;border:1px solid transparent;border-radius:14px;background:var(--card);color:inherit;text-decoration:none;box-shadow:0 10px 28px #17203310;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease}
+ .campaign-selector-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;margin-top:13px}
+ .campaign-selector-card{position:relative;min-width:0;width:100%;display:flex;flex-direction:column;justify-content:space-between;gap:12px;min-height:180px;padding:16px;border:1px solid var(--line,#e2e8f0);border-radius:14px;background:var(--card);color:inherit;text-decoration:none;box-shadow:0 10px 28px #17203310;transition:transform .18s ease,border-color .18s ease,box-shadow .18s ease;overflow:hidden;box-sizing:border-box}
  .campaign-selector-card:hover{transform:translateY(-2px);border-color:#e7a4ac;box-shadow:0 16px 34px #17203318}
  .campaign-selector-card:focus-visible{outline:3px solid #dc263738;outline-offset:3px}
  .campaign-selector-card.is-active{border-color:#dc2637;box-shadow:0 13px 32px #dc263718}
  .campaign-selector-card.is-all{background:#202a3c;color:#fff}
  .campaign-selector-card.is-all.is-active{border-color:#f18c98}
- .campaign-selector-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+ .campaign-selector-top{display:flex;align-items:center;justify-content:space-between;gap:10px;min-width:0}
  .campaign-selector-icon{width:42px;height:42px;display:grid;place-items:center;flex:0 0 42px;overflow:hidden;border-radius:11px;background:#fff0f2;color:#c91f31;font-size:18px}
  .campaign-selector-icon img{width:100%;height:100%;display:block;object-fit:cover}
  .campaign-selector-card.is-all .campaign-selector-icon{background:#ffffff17;color:#fff}
- .campaign-selector-state{padding:5px 8px;border-radius:999px;background:#eef2f7;color:#596477;font-size:9px;font-weight:900;white-space:nowrap}
+ .campaign-selector-state{padding:5px 8px;border-radius:999px;background:#eef2f7;color:#596477;font-size:9px;font-weight:900;white-space:nowrap;flex-shrink:0}
  .campaign-selector-state.is-active{background:#eaf8f1;color:#148657}
  .campaign-selector-state.is-ended{background:#f2f3f5;color:#687284}
  .campaign-selector-state.is-upcoming{background:#fff6dc;color:#9a6500}
- .campaign-selector-card h3{overflow:hidden;margin:0;color:#253047;font-size:15px;line-height:1.45;text-overflow:ellipsis;white-space:nowrap}
+ .campaign-selector-body{min-width:0;width:100%;overflow:hidden;display:flex;flex-direction:column;gap:5px;flex:1;justify-content:center}
+ .campaign-selector-card h3{margin:0;color:#253047;font-size:14px;font-weight:800;line-height:1.4;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;text-overflow:ellipsis;word-break:break-word;overflow-wrap:break-word;max-width:100%}
  .campaign-selector-card.is-all h3{color:#fff}
- .campaign-selector-card p{margin:5px 0 0;color:#7e899a;font-size:10px;line-height:1.65}
+ .campaign-selector-card p{margin:0;color:#7e899a;font-size:11px;line-height:1.5;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%;min-width:0}
  .campaign-selector-card.is-all p{color:#cbd2de}
- .campaign-selector-open{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid var(--line);color:#bd1f30;font-size:10px;font-weight:900}
+ .campaign-selector-open{display:flex;align-items:center;justify-content:space-between;gap:10px;padding-top:11px;border-top:1px solid var(--line);color:#bd1f30;font-size:10px;font-weight:900;margin-top:auto;min-width:0}
  .campaign-selector-card.is-all .campaign-selector-open{border-color:#ffffff1f;color:#fff}
  .campaign-report-filters{padding:18px 20px;border:1px solid var(--line);border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
  .campaign-report-filters-head{margin-bottom:15px;padding-bottom:13px;border-bottom:1px solid var(--line)}
@@ -60,7 +61,7 @@
  .campaign-report-actions .btn{height:44px;white-space:nowrap}
  .campaign-report-errors{margin:0 0 14px;padding:11px 14px;border:1px solid #f3bec4;border-radius:10px;background:#fff1f3;color:#a51828;font-size:12px;font-weight:800}
  .campaign-report-definition{margin:12px 2px 0;color:var(--muted);font-size:10px;line-height:1.7}
- .campaign-metric-strip{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));overflow:hidden;border-radius:16px;background:var(--card);box-shadow:0 14px 35px #17203312}
+ .campaign-metric-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));overflow:hidden;border-radius:16px;background:var(--card);box-shadow:0 14px 35px #17203312}
  .campaign-metric{position:relative;min-width:0;padding:21px 22px}
  .campaign-metric+.campaign-metric{border-inline-start:1px solid var(--line)}
  .campaign-metric span,.campaign-metric strong,.campaign-metric small{display:block}
@@ -71,13 +72,16 @@
  .campaign-metric.is-conversion strong{color:#148657}
  .campaign-metric.is-cost{background:#fff8e8}
  .campaign-metric.is-cost strong{color:#b36b00;font-size:24px}
+ .campaign-metric.is-revenue{background:#eef8ff}
+ .campaign-metric.is-revenue strong{color:#096b92;font-size:24px}
  .campaign-report-charts{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(320px,1fr);gap:18px}
- .campaign-report-panel{min-width:0;padding:22px;border-radius:16px;background:var(--card);box-shadow:var(--shadow)}
- .campaign-report-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:17px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+ .campaign-report-charts.is-focused{grid-template-columns:minmax(0,1fr)}
+ .campaign-report-panel{min-width:0;padding:22px;border-radius:16px;background:transparent;border:1px solid var(--line);box-shadow:var(--shadow)}
+ .campaign-report-panel-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:17px;padding-bottom:14px;border-bottom:1px solid var(--line);background:transparent}
  .campaign-report-panel h3{margin:0;color:#202a3c;font-size:16px;line-height:1.35}
  .campaign-report-panel-head p{max-width:630px;margin:6px 0 0;color:var(--muted);font-size:11px;line-height:1.7}
  .campaign-report-chart-wrap{position:relative;height:330px}
- .campaign-report-chart-wrap.is-donut{height:250px}
+ .campaign-report-chart-wrap.is-stage{height:300px}
  .campaign-report-empty{height:100%;display:grid;place-items:center;padding:24px;color:var(--muted);text-align:center;font-size:12px;font-weight:800;line-height:1.8}
  .campaign-status-list{display:grid;gap:7px;margin-top:13px}
  .campaign-status-row{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:9px;padding:8px 0}
@@ -86,11 +90,12 @@
  .campaign-status-value{color:#283449;font-size:11px;font-weight:900;font-variant-numeric:tabular-nums}
  .campaign-snapshot-note{margin:15px 0 0;padding-top:13px;border-top:1px solid var(--line);color:#667286;font-size:10px;line-height:1.75}
  .campaign-report-sr-only{position:absolute;width:1px;height:1px;overflow:hidden;margin:-1px;padding:0;border:0;clip:rect(0,0,0,0)}
- @media(max-width:1100px){.campaign-report-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-report-actions{grid-column:1/-1}.campaign-report-charts{grid-template-columns:1fr}.campaign-report-chart-wrap.is-donut{height:280px}}
+ @media(max-width:1100px){.campaign-report-filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-report-actions{grid-column:1/-1}.campaign-report-charts{grid-template-columns:1fr}.campaign-report-chart-wrap.is-stage{height:320px}}
  @media(max-width:760px){.campaign-report-intro{align-items:stretch;flex-direction:column;padding:22px}.campaign-report-scope{min-width:0}.campaign-selector-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-metric-strip{grid-template-columns:repeat(2,minmax(0,1fr))}.campaign-metric+.campaign-metric{border-inline-start:0}.campaign-metric:nth-child(even){border-inline-start:1px solid var(--line)}.campaign-metric:nth-child(n+3){border-top:1px solid var(--line)}.campaign-report-chart-wrap{height:290px}}
- @media(max-width:560px){.campaign-selector-head{align-items:flex-start;flex-direction:column}.campaign-selector-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px}.campaign-selector-card{min-width:min(82vw,280px);scroll-snap-align:start}.campaign-report-filter-grid{grid-template-columns:1fr}.campaign-report-actions{grid-column:auto;display:grid;grid-template-columns:1fr auto}.campaign-report-actions .btn{justify-content:center}.campaign-metric-strip{grid-template-columns:1fr}.campaign-metric:nth-child(n){border-top:1px solid var(--line);border-inline-start:0}.campaign-metric:first-child{border-top:0}.campaign-report-panel{padding:18px}.campaign-report-chart-wrap{height:260px}.campaign-report-chart-wrap.is-donut{height:230px}}
+ @media(max-width:560px){.campaign-selector-head{align-items:flex-start;flex-direction:column}.campaign-selector-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;padding:2px 2px 12px}.campaign-selector-card{min-width:min(82vw,280px);scroll-snap-align:start}.campaign-report-filter-grid{grid-template-columns:1fr}.campaign-report-actions{grid-column:auto;display:grid;grid-template-columns:1fr auto}.campaign-report-actions .btn{justify-content:center}.campaign-metric-strip{grid-template-columns:1fr}.campaign-metric:nth-child(n){border-top:1px solid var(--line);border-inline-start:0}.campaign-metric:first-child{border-top:0}.campaign-report-panel{padding:18px}.campaign-report-chart-wrap{height:260px}.campaign-report-chart-wrap.is-stage{height:280px}}
  html.dark-mode .campaign-report-intro{background:#09090b;box-shadow:0 18px 38px #0006}
- html.dark-mode .campaign-report-filters,html.dark-mode .campaign-metric-strip,html.dark-mode .campaign-report-panel{background:var(--card);border-color:var(--line)}
+ html.dark-mode .campaign-report-filters,html.dark-mode .campaign-metric-strip{background:var(--card);border-color:var(--line)}
+ html.dark-mode .campaign-report-panel{background:transparent!important;border-color:var(--line)}
  html.dark-mode .campaign-report-filters-head h3{color:#f4f4f5}
  html.dark-mode .campaign-report-field label,html.dark-mode .campaign-status-name,html.dark-mode .campaign-snapshot-note{color:#a1a1aa}
  html.dark-mode .campaign-report-field select,html.dark-mode .campaign-report-field input{border-color:#3f3f46;background:#18181b;color:#f4f4f5}
@@ -100,6 +105,8 @@
  html.dark-mode .campaign-metric.is-conversion strong{color:#5ee0a5}
  html.dark-mode .campaign-metric.is-cost{background:#34260f}
  html.dark-mode .campaign-metric.is-cost strong{color:#f8bd58}
+ html.dark-mode .campaign-metric.is-revenue{background:#102b3a}
+ html.dark-mode .campaign-metric.is-revenue strong{color:#7dd3fc}
  html.dark-mode .campaign-selector-head h2,html.dark-mode .campaign-selector-card h3{color:#f4f4f5}
  html.dark-mode .campaign-selector-card{background:#18181b;box-shadow:0 12px 30px #0005}
  html.dark-mode .campaign-selector-card.is-all{background:#09090b}
@@ -189,7 +196,7 @@
    </div>
   </div>
   <p class="campaign-report-definition">
-   {{ __('crm.campaign_report_definition') }}
+   {{ __($selectedCampaign === null ? 'crm.campaign_report_definition' : 'crm.selected_campaign_report_definition') }}
    @if ($selectedEmployee)
     {{ __('crm.campaign_report_employee_definition', ['employee' => $selectedEmployee->name]) }}
    @endif
@@ -216,7 +223,7 @@
      <span class="campaign-selector-icon"><i class="bi bi-collection" aria-hidden="true"></i></span>
      <span class="campaign-selector-state">{{ __('crm.all') }}</span>
     </div>
-    <div>
+    <div class="campaign-selector-body">
      <h3>{{ __('crm.all_campaigns') }}</h3>
      <p>{{ __('crm.all_campaigns_report_desc') }}</p>
      <p>{{ __('crm.campaigns_available_count', ['count' => number_format($campaigns->count())]) }}</p>
@@ -246,7 +253,7 @@
        {{ $campaignState === 'active' ? __('crm.active_now') : __($campaignState === 'ended' ? 'crm.ended' : 'crm.upcoming') }}
       </span>
      </div>
-     <div>
+     <div class="campaign-selector-body">
       <h3 title="{{ $campaign->name }}">{{ $campaign->name }}</h3>
       <p>{{ $campaign->starts_at->format('Y-m-d') }} - {{ $campaign->ends_at->format('Y-m-d') }}</p>
      </div>
@@ -260,16 +267,18 @@
  </section>
 
  <section class="campaign-metric-strip" aria-label="{{ __('crm.campaign_reports') }}">
-  <article class="campaign-metric">
-   <span>{{ __('crm.campaigns_created') }}</span>
-   <strong>{{ number_format($metrics['created_campaigns']) }}</strong>
-   <small>{{ __('crm.campaigns_created_help') }}</small>
-  </article>
-  <article class="campaign-metric">
-   <span>{{ __('crm.campaigns_ended') }}</span>
-   <strong>{{ number_format($metrics['ended_campaigns']) }}</strong>
-   <small>{{ __('crm.campaigns_ended_help') }}</small>
-  </article>
+   @if ($selectedCampaign === null)
+    <article class="campaign-metric">
+     <span>{{ __('crm.campaigns_created') }}</span>
+     <strong>{{ number_format($metrics['created_campaigns']) }}</strong>
+     <small>{{ __('crm.campaigns_created_help') }}</small>
+    </article>
+    <article class="campaign-metric">
+     <span>{{ __('crm.campaigns_ended') }}</span>
+     <strong>{{ number_format($metrics['ended_campaigns']) }}</strong>
+     <small>{{ __('crm.campaigns_ended_help') }}</small>
+    </article>
+   @endif
   <article class="campaign-metric">
    <span>{{ __('crm.current_campaign_leads') }}</span>
    <strong>{{ number_format($metrics['current_leads']) }}</strong>
@@ -285,10 +294,16 @@
    <strong>{{ number_format($metrics['conversion_rate'], 1) }}%</strong>
    <small>{{ number_format($metrics['donor_leads']) }} {{ __('crm.donor') }}</small>
   </article>
- </section>
+   <article class="campaign-metric is-revenue">
+    <span>{{ __('crm.campaign_donation_revenue') }}</span>
+    <strong>{{ number_format($metrics['total_donation_value'], 2) }} {{ __('crm.pound') }}</strong>
+    <small>{{ __('crm.campaign_donation_revenue_help') }}</small>
+   </article>
+  </section>
 
- <section class="campaign-report-charts">
-  <article class="campaign-report-panel">
+  <section class="campaign-report-charts {{ $selectedCampaign !== null ? 'is-focused' : '' }}">
+   @if ($selectedCampaign === null)
+    <article class="campaign-report-panel">
    <header class="campaign-report-panel-head">
     <div>
      <h3>{{ __('crm.campaign_performance_timeline') }}</h3>
@@ -311,35 +326,36 @@
      @endforeach
     </tbody>
    </table>
-  </article>
+    </article>
+   @endif
 
   <article class="campaign-report-panel">
    <header class="campaign-report-panel-head">
     <div>
-     <h3>{{ __('crm.campaign_status_distribution') }}</h3>
-     <p>{{ __('crm.campaign_status_distribution_desc') }}</p>
+      <h3>{{ __('crm.campaign_stage_distribution') }}</h3>
+      <p>{{ __('crm.campaign_stage_distribution_desc') }}</p>
     </div>
    </header>
-   <div class="campaign-report-chart-wrap is-donut">
-    @if ($metrics['current_leads'] > 0)
-     <canvas id="campaignStatusChart" role="img" aria-label="{{ __('crm.campaign_status_distribution') }}"></canvas>
+    <div class="campaign-report-chart-wrap is-stage">
+     @if ($metrics['current_leads'] > 0)
+      <canvas id="campaignStageChart" role="img" aria-label="{{ __('crm.campaign_stage_distribution') }}"></canvas>
     @else
      <div class="campaign-report-empty">{{ __('crm.no_campaign_leads') }}</div>
     @endif
    </div>
    @if ($metrics['current_leads'] > 0)
     <div class="campaign-status-list">
-     @foreach ($statusDistribution as $status)
-      <div class="campaign-status-row">
-       <span class="campaign-status-dot" style="--status-color:{{ $status['color'] }}" aria-hidden="true"></span>
-       <span class="campaign-status-name">{{ $status['label'] }}</span>
-       <span class="campaign-status-value">{{ number_format($status['count']) }} · {{ number_format($status['percentage'], 1) }}%</span>
+      @foreach ($stageDistribution as $stage)
+       <div class="campaign-status-row">
+        <span class="campaign-status-dot" style="--status-color:{{ $stage['color'] }}" aria-hidden="true"></span>
+        <span class="campaign-status-name">{{ $stage['label'] }}</span>
+        <span class="campaign-status-value">{{ number_format($stage['count']) }} · {{ number_format($stage['percentage'], 1) }}%</span>
       </div>
      @endforeach
     </div>
    @endif
    <p class="campaign-snapshot-note">
-    {{ __('crm.current_snapshot_notice', ['donors' => number_format($metrics['donor_leads']), 'total' => number_format($metrics['current_leads'])]) }}
+     {{ __('crm.campaign_stage_snapshot_notice') }}
    </p>
   </article>
  </section>
@@ -367,7 +383,7 @@
   syncCustomDates();
 
   if (typeof Chart === 'undefined') {
-   document.querySelectorAll('#campaignTimelineChart, #campaignStatusChart').forEach((canvas) => {
+    document.querySelectorAll('#campaignTimelineChart, #campaignStageChart').forEach((canvas) => {
     const fallback = document.createElement('div');
     fallback.className = 'campaign-report-empty';
     fallback.textContent = @json(__('crm.campaign_chart_unavailable'));
@@ -422,38 +438,48 @@
    });
   }
 
-  const statusCanvas = document.getElementById('campaignStatusChart');
-  if (statusCanvas) {
-   const statuses = @json($statusDistribution);
-   new Chart(statusCanvas, {
-    type: 'doughnut',
+  const stageCanvas = document.getElementById('campaignStageChart');
+  if (stageCanvas) {
+   const stages = @json($stageDistribution);
+   new Chart(stageCanvas, {
+    type: 'bar',
     data: {
-     labels: statuses.map(status => status.label),
+     labels: stages.map(stage => stage.label),
      datasets: [{
-      data: statuses.map(status => status.count),
-      backgroundColor: statuses.map(status => status.color),
-      borderColor: dark ? '#18181b' : '#ffffff',
-      borderWidth: 3,
-      hoverOffset: 5
+       data: stages.map(stage => stage.percentage),
+       backgroundColor: stages.map(stage => stage.color),
+       borderRadius: 6,
+       borderSkipped: false,
+       maxBarThickness: 34
      }]
     },
     options: {
+     indexAxis: 'y',
      responsive: true,
      maintainAspectRatio: false,
-     cutout: '68%',
-     animation: reducedMotion ? false : {duration: 620, easing: 'easeOutQuart', animateRotate: true},
+     animation: reducedMotion ? false : {duration: 620, easing: 'easeOutQuart'},
      plugins: {
-      legend: {display: false},
-      tooltip: {
-       callbacks: {
-        label(context) {
-         const status = statuses[context.dataIndex];
-         return ` ${status.label}: ${status.count} (${status.percentage}%)`;
+       legend: {display: false},
+       tooltip: {
+        callbacks: {
+         label(context) {
+          const stage = stages[context.dataIndex];
+          return ` ${stage.label}: ${stage.count} (${stage.percentage}%)`;
+         }
         }
        }
+      },
+      scales: {
+       x: {
+        beginAtZero: true,
+        max: 100,
+        position: 'bottom',
+        grid: {color: gridColor},
+        ticks: {callback: value => `${value}%`}
+       },
+       y: {grid: {display: false}}
       }
      }
-    }
    });
   }
  })();

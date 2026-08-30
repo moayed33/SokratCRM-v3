@@ -8,18 +8,19 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('pipeline_stages', function (Blueprint $table) {
-            $table->id();
-            $table->string('code', 50)->unique();
-            $table->string('name_ar', 100);
-            $table->string('description_ar', 255)->nullable();
-            $table->unsignedTinyInteger('position')->unique();
-            $table->string('color', 20)->nullable();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('pipeline_stages')) {
+            Schema::create('pipeline_stages', function (Blueprint $table) {
+                $table->id();
+                $table->string('code', 50)->unique();
+                $table->string('name_ar', 100);
+                $table->string('description_ar', 255)->nullable();
+                $table->unsignedTinyInteger('position')->unique();
+                $table->string('color', 20)->nullable();
+                $table->boolean('is_active')->default(true);
+                $table->timestamps();
+            });
+        }
     }
-
     public function down(): void
     {
         Schema::dropIfExists('pipeline_stages');

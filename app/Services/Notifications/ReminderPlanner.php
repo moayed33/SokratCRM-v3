@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Lead;
 use App\Models\NotificationDelivery;
 use App\Models\NotificationOccurrence;
@@ -35,6 +36,7 @@ class ReminderPlanner
                 NotificationRule::EVENT_FOLLOWUP_DUE,
                 NotificationRule::EVENT_FOLLOWUP_OVERDUE,
                 NotificationRule::EVENT_CALENDAR_DUE,
+                NotificationRule::EVENT_COLLECTION_DUE,
             ])
             ->get();
         $created = 0;
@@ -44,6 +46,7 @@ class ReminderPlanner
                 NotificationRule::EVENT_FOLLOWUP_DUE => $this->planFollowupsDue($rule, $now),
                 NotificationRule::EVENT_FOLLOWUP_OVERDUE => $this->planFollowupsOverdue($rule, $now),
                 NotificationRule::EVENT_CALENDAR_DUE => $this->planCalendarDue($rule, $now),
+                NotificationRule::EVENT_COLLECTION_DUE => $this->planCollectionsDue($rule, $now),
                 default => 0,
             };
         }
@@ -53,7 +56,7 @@ class ReminderPlanner
 
     public function planImmediate(
         string $eventKey,
-        Lead|CalendarEvent $source,
+        Lead|CalendarEvent|CollectionCase $source,
         ?CarbonInterface $dueAt = null,
     ): int {
         if (! config('crm_notifications.enabled')) {
@@ -138,7 +141,7 @@ class ReminderPlanner
         $created = 0;
 
         Lead::query()
-            ->with(['assignedUser.groups.permissions', 'creator.groups.permissions'])
+            ->with(['assignedUser.groups.permissions', 'creator.groups.permissions', 'status.stage'])
             ->whereNotNull('next_follow_up_at')
             ->whereBetween('next_follow_up_at', [
                 $now->copy()->subHours($lookback),
@@ -173,7 +176,7 @@ class ReminderPlanner
         $created = 0;
 
         Lead::query()
-            ->with(['assignedUser.groups.permissions', 'creator.groups.permissions'])
+            ->with(['assignedUser.groups.permissions', 'creator.groups.permissions', 'status.stage'])
             ->whereNotNull('next_follow_up_at')
             ->whereBetween('next_follow_up_at', [
                 $now->copy()->subMinutes($delay)->subHours($lookback),
@@ -211,7 +214,7 @@ class ReminderPlanner
         $created = 0;
 
         CalendarEvent::query()
-            ->with(['user.groups.permissions', 'lead'])
+            ->with(['user.groups.permissions', 'lead.status.stage'])
             ->where('status', 'scheduled')
             ->whereBetween('start_time', [
                 $now->copy()->subHours($lookback),
@@ -240,14 +243,49 @@ class ReminderPlanner
         return $created;
     }
 
+    private function planCollectionsDue(NotificationRule $rule, CarbonInterface $now): int
+    {
+        $offset = max(0, $rule->trigger_offset_minutes);
+        $lookback = max(1, (int) config('crm_notifications.planner_lookback_hours', 24));
+        $created = 0;
+
+        CollectionCase::query()
+            ->with(['assignedCollector.groups.permissions', 'createdBy.groups.permissions', 'lead.status.stage'])
+            ->open()
+            ->whereNotNull('assigned_collector_user_id')
+            ->whereBetween('due_at', [
+                $now->copy()->subHours($lookback),
+                $now->copy()->addMinutes($offset),
+            ])
+            ->orderBy('id')
+            ->chunkById(200, function ($cases) use ($rule, $now, $offset, &$created): void {
+                foreach ($cases as $collectionCase) {
+                    $triggerAt = $collectionCase->due_at->copy()->subMinutes($offset)->startOfMinute();
+                    if ($triggerAt->isAfter($now) || ! $this->matcher->matches($rule, $collectionCase)) {
+                        continue;
+                    }
+
+                    foreach ($this->recipientResolver->resolve($rule, $collectionCase) as $recipient) {
+                        $created += $this->createOccurrence($rule, $collectionCase, $recipient, $collectionCase->due_at, $triggerAt);
+                    }
+                }
+            });
+
+        return $created;
+    }
+
     private function createOccurrence(
         NotificationRule $rule,
-        Lead|CalendarEvent $source,
+        Lead|CalendarEvent|CollectionCase $source,
         User $recipient,
         ?CarbonInterface $dueAt,
         CarbonInterface $triggerAt,
     ): int {
-        $sourceKind = $source instanceof Lead ? 'lead_followup' : 'calendar_event';
+        $sourceKind = match (true) {
+            $source instanceof Lead => 'lead_followup',
+            $source instanceof CollectionCase => 'collection_case',
+            default => 'calendar_event',
+        };
 
         $occurrence = NotificationOccurrence::query()->firstOrCreate([
             'notification_rule_id' => $rule->getKey(),

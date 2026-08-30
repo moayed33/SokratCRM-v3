@@ -18,12 +18,12 @@ use App\Models\User;
 use App\Security\CrmPermission;
 use App\Support\BranchContext;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CalendarMultiBranchAndFollowupTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private Branch $branchA;
     private Branch $branchB;
@@ -315,14 +315,23 @@ class CalendarMultiBranchAndFollowupTest extends TestCase
             'leads.followups.view',
             'leads.followups.create',
         ];
-
-        foreach ($permissions as $code) {
-            $permission = Permission::query()->firstOrCreate(
-                ['code' => $code],
-                ['module' => explode('.', $code, 2)[0], 'name_ar' => $code]
-            );
-            $group->permissions()->attach($permission);
+        $permissionIds = Permission::query()->whereIn('code', $permissions)->pluck('id')->all();
+        if (count($permissionIds) < count($permissions)) {
+            $now = now();
+            $permData = [];
+            foreach ($permissions as $code) {
+                $permData[] = [
+                    'code' => $code,
+                    'module' => explode('.', $code, 2)[0],
+                    'name_ar' => $code,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ];
+            }
+            Permission::query()->insertOrIgnore($permData);
+            $permissionIds = Permission::query()->whereIn('code', $permissions)->pluck('id')->all();
         }
+        $group->permissions()->syncWithoutDetaching($permissionIds);
 
         $user = User::factory()->create([
             'is_active' => true,

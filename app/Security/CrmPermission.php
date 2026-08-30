@@ -24,13 +24,11 @@ enum CrmPermission: string
 
     case TASKS_VIEW = 'tasks.view';
 
-    case QUOTATIONS_VIEW = 'quotations.view';
-    case QUOTATIONS_CREATE = 'quotations.create';
-
     case CAMPAIGNS_VIEW = 'campaigns.view';
     case CAMPAIGNS_CREATE = 'campaigns.create';
     case CAMPAIGNS_REPORTS = 'campaigns.reports';
     case REPORTS_VIEW = 'reports.view';
+    case REPORTS_EMPLOYEES_VIEW = 'reports.employees.view';
 
     case USERS_VIEW = 'users.view';
     case USERS_CREATE = 'users.create';
@@ -51,6 +49,15 @@ enum CrmPermission: string
 
     case CALENDAR_VIEW = 'calendar.view';
     case CALENDAR_MANAGE = 'calendar.manage';
+
+    case COLLECTIONS_VIEW = 'collections.view';
+    case COLLECTIONS_COLLECT = 'collections.collect';
+    case COLLECTIONS_ASSIGN = 'collections.assign';
+    case COLLECTIONS_MANAGE = 'collections.manage';
+    case COLLECTIONS_COMPLETE = 'collections.complete';
+    case COLLECTIONS_CANCEL = 'collections.cancel';
+    case COLLECTIONS_REPORTS = 'collections.reports';
+    case COLLECTIONS_METHODS_MANAGE = 'collections.methods.manage';
 
     case BRANCHES_VIEW = 'branches.view';
     case BRANCHES_CREATE = 'branches.create';
@@ -80,12 +87,11 @@ enum CrmPermission: string
             self::LEADS_FOLLOWUPS_VIEW => 'عرض متابعات العملاء',
             self::LEADS_FOLLOWUPS_CREATE => 'تسجيل متابعات العملاء',
             self::TASKS_VIEW => 'عرض المهام والمتابعات',
-            self::QUOTATIONS_VIEW => 'عرض عروض الأسعار',
-            self::QUOTATIONS_CREATE => 'إنشاء عروض الأسعار',
             self::CAMPAIGNS_VIEW => 'عرض الحملات',
             self::CAMPAIGNS_CREATE => 'إنشاء الحملات',
             self::CAMPAIGNS_REPORTS => 'عرض تقارير الحملات',
             self::REPORTS_VIEW => 'عرض التقارير',
+            self::REPORTS_EMPLOYEES_VIEW => 'عرض إحصائيات الموظفين',
             self::USERS_VIEW => 'عرض المستخدمين',
             self::USERS_CREATE => 'إضافة المستخدمين',
             self::USERS_UPDATE => 'تعديل المستخدمين ومجموعاتهم',
@@ -102,6 +108,14 @@ enum CrmPermission: string
             self::VOIP_SETTINGS => 'إدارة ربط السنترال (VoIP)',
             self::CALENDAR_VIEW => 'عرض التقويم والأحداث',
             self::CALENDAR_MANAGE => 'إدارة التقويم والأحداث',
+            self::COLLECTIONS_VIEW => 'عرض لوحة التحصيل',
+            self::COLLECTIONS_COLLECT => 'تنفيذ مهام التحصيل المسندة',
+            self::COLLECTIONS_ASSIGN => 'إسناد وإعادة إسناد التحصيل',
+            self::COLLECTIONS_MANAGE => 'إدارة تحصيلات الفرع',
+            self::COLLECTIONS_COMPLETE => 'تأكيد استلام التحصيل',
+            self::COLLECTIONS_CANCEL => 'إلغاء طلبات التحصيل',
+            self::COLLECTIONS_REPORTS => 'عرض تقارير التحصيل',
+            self::COLLECTIONS_METHODS_MANAGE => 'إدارة وسائل التبرع الفوري',
             self::BRANCHES_VIEW => 'عرض الفروع',
             self::BRANCHES_CREATE => 'إضافة الفروع',
             self::BRANCHES_UPDATE => 'تعديل الفروع',
@@ -131,13 +145,13 @@ enum CrmPermission: string
             'notifications' => 'الإشعارات',
             'leads' => 'العملاء والمتابعات',
             'tasks' => 'المهام',
-            'quotations' => 'عروض الأسعار',
             'campaigns' => 'الحملات',
             'reports' => 'التقارير',
             'users' => 'المستخدمون',
             'groups' => 'المجموعات والصلاحيات',
             'voip' => 'اتصالات السنترال (VoIP)',
             'calendar' => 'التقويم والأحداث',
+            'collections' => 'التحصيل',
             'branches' => 'الفروع',
         ];
     }

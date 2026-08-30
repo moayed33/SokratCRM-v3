@@ -8,13 +8,13 @@ use App\Models\Group;
 use App\Models\Permission;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Support\Facades\Gate;
 use Tests\TestCase;
 
 class AuthorizationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_user_inherits_the_union_of_all_group_permissions(): void
     {
@@ -49,11 +49,10 @@ class AuthorizationTest extends TestCase
 
     public function test_super_admin_group_grants_every_defined_ability(): void
     {
-        $group = Group::query()->create([
-            'name' => 'مدير النظام',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $group = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'مدير النظام', 'is_system' => true]
+        );
         $user = User::factory()->create();
         $user->groups()->attach($group);
 
@@ -79,11 +78,10 @@ class AuthorizationTest extends TestCase
                 CrmPermission::USERS_UPDATE,
             ],
         );
-        $superAdminGroup = Group::query()->create([
-            'name' => 'مدير النظام',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $superAdminGroup = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'مدير النظام', 'is_system' => true]
+        );
         $actor = User::factory()->create();
         $protectedAdmin = User::factory()->create([
             'username' => 'protected-admin',
@@ -113,11 +111,10 @@ class AuthorizationTest extends TestCase
 
     public function test_last_active_super_admin_cannot_remove_own_super_group(): void
     {
-        $superAdminGroup = Group::query()->create([
-            'name' => 'مدير النظام',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $superAdminGroup = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'مدير النظام', 'is_system' => true]
+        );
         $regularGroup = Group::query()->create([
             'name' => 'المبيعات',
             'code' => 'sales',
@@ -201,11 +198,10 @@ class AuthorizationTest extends TestCase
 
     public function test_permission_matrix_updates_regular_groups_only(): void
     {
-        $superAdminGroup = Group::query()->create([
-            'name' => 'مدير النظام',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $superAdminGroup = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'مدير النظام', 'is_system' => true]
+        );
         $regularGroup = Group::query()->create([
             'name' => 'المبيعات',
             'code' => 'sales',
@@ -217,7 +213,7 @@ class AuthorizationTest extends TestCase
         $settingsAccess = $this->permission(
             CrmPermission::SETTINGS_ACCESS,
         );
-        $superAdminGroup->permissions()->attach($settingsAccess);
+        $superAdminGroup->permissions()->sync([$settingsAccess->id], false);
 
         $this->actingAs($admin)
             ->put(route('v2.settings.permissions.update'), [
@@ -250,11 +246,11 @@ class AuthorizationTest extends TestCase
             'code' => $code,
         ]);
 
-        $group->permissions()->attach(
+        $group->permissions()->sync(
             array_map(
                 fn (CrmPermission $permission): int => $this->permission($permission)->id,
                 $permissions,
-            ),
+            )
         );
 
         return $group;

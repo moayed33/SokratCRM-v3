@@ -9,12 +9,12 @@ use App\Models\Permission;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Support\CrmOptions;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class OptionSetsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
 

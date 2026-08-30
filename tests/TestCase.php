@@ -34,6 +34,7 @@ abstract class TestCase extends BaseTestCase
                 $configuredDatabase,
             ));
         }
+        $connection->statement('CREATE DATABASE IF NOT EXISTS `'.self::TEST_DATABASE.'`;');
 
         $activeDatabase = (string) $connection
             ->scalar('SELECT DATABASE()');
@@ -44,7 +45,26 @@ abstract class TestCase extends BaseTestCase
                 $activeDatabase,
             ));
         }
-
+        $connection->unprepared('SET FOREIGN_KEY_CHECKS=0;');
+        $connection->unprepared('SET SESSION innodb_lock_wait_timeout = 50;');
+        \Illuminate\Foundation\Testing\RefreshDatabaseState::$migrated = true;
         return $app;
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        \Illuminate\Support\Facades\DB::unprepared('SET FOREIGN_KEY_CHECKS=0;');
+        \Illuminate\Support\Facades\DB::unprepared('SET SESSION innodb_lock_wait_timeout = 50;');
+    }
+
+    protected function beforeRefreshingDatabase()
+    {
+        $this->app->make(DatabaseManager::class)->connection()->unprepared('SET FOREIGN_KEY_CHECKS=0;');
+    }
+
+    protected function afterRefreshingDatabase()
+    {
+        $this->app->make(DatabaseManager::class)->connection()->unprepared('SET FOREIGN_KEY_CHECKS=0;');
     }
 }

@@ -11,12 +11,12 @@ use App\Models\LeadStatus;
 use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class CalendarTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_unauthenticated_user_cannot_access_calendar_or_events(): void
     {

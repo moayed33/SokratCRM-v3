@@ -11,12 +11,12 @@ use App\Models\LeadStatus;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class DynamicSidebarPipelineStagesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
 
@@ -24,16 +24,12 @@ class DynamicSidebarPipelineStagesTest extends TestCase
     {
         parent::setUp();
 
-        $group = Group::query()->create([
-            'name' => 'Super Admin Group',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $group = Group::query()->where('code', Group::SUPER_ADMIN_CODE)->firstOrFail();
 
         $this->admin = User::factory()->create([
             'is_active' => true,
         ]);
-        $this->admin->groups()->attach($group);
+        $this->admin->groups()->syncWithoutDetaching([$group->id]);
 
         $this->seed(\Database\Seeders\CrmV2PipelineSeeder::class);
     }
@@ -182,14 +178,18 @@ class DynamicSidebarPipelineStagesTest extends TestCase
         ]);
         $userBranchA->groups()->attach($group);
 
-        $permission = \App\Models\Permission::query()->firstOrCreate(
-            ['code' => CrmPermission::TASKS_VIEW->value],
-            ['name_ar' => 'عرض المهام', 'module' => 'tasks']
-        );
-        $permLeads = \App\Models\Permission::query()->firstOrCreate(
-            ['code' => CrmPermission::LEADS_VIEW->value],
-            ['name_ar' => 'عرض العملاء', 'module' => 'leads']
-        );
+        $permission = \App\Models\Permission::query()->where('code', CrmPermission::TASKS_VIEW->value)->first()
+            ?? \App\Models\Permission::query()->create([
+                'code' => CrmPermission::TASKS_VIEW->value,
+                'name_ar' => 'عرض المهام',
+                'module' => 'tasks',
+            ]);
+        $permLeads = \App\Models\Permission::query()->where('code', CrmPermission::LEADS_VIEW->value)->first()
+            ?? \App\Models\Permission::query()->create([
+                'code' => CrmPermission::LEADS_VIEW->value,
+                'name_ar' => 'عرض العملاء',
+                'module' => 'leads',
+            ]);
         $group->permissions()->syncWithoutDetaching([$permission->id, $permLeads->id]);
 
         $stageDonor = PipelineStage::query()->where('code', 'donor')->firstOrFail();

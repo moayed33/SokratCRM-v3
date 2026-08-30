@@ -10,42 +10,50 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('leads', function (Blueprint $table): void {
-            $table->foreignId('assigned_user_id')
-                ->nullable()
-                ->after('assigned_employee')
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->foreignId('created_by_user_id')
-                ->nullable()
-                ->after('created_by')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('leads') && ! Schema::hasColumn('leads', 'assigned_user_id')) {
+            Schema::table('leads', function (Blueprint $table): void {
+                $table->foreignId('assigned_user_id')
+                    ->nullable()
+                    ->after('assigned_employee')
+                    ->constrained('users')
+                    ->nullOnDelete();
+                $table->foreignId('created_by_user_id')
+                    ->nullable()
+                    ->after('created_by')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
 
-        Schema::table('lead_followups', function (Blueprint $table): void {
-            $table->foreignId('user_id')
-                ->nullable()
-                ->after('employee_name')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('lead_followups') && ! Schema::hasColumn('lead_followups', 'user_id')) {
+            Schema::table('lead_followups', function (Blueprint $table): void {
+                $table->foreignId('user_id')
+                    ->nullable()
+                    ->after('employee_name')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
 
-        Schema::table('lead_status_histories', function (Blueprint $table): void {
-            $table->foreignId('changed_by_user_id')
-                ->nullable()
-                ->after('changed_by')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('lead_status_histories') && ! Schema::hasColumn('lead_status_histories', 'changed_by_user_id')) {
+            Schema::table('lead_status_histories', function (Blueprint $table): void {
+                $table->foreignId('changed_by_user_id')
+                    ->nullable()
+                    ->after('changed_by')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
 
-        Schema::table('quotations', function (Blueprint $table): void {
-            $table->foreignId('created_by_user_id')
-                ->nullable()
-                ->after('created_by')
-                ->constrained('users')
-                ->nullOnDelete();
-        });
+        if (Schema::hasTable('quotations') && ! Schema::hasColumn('quotations', 'created_by_user_id')) {
+            Schema::table('quotations', function (Blueprint $table): void {
+                $table->foreignId('created_by_user_id')
+                    ->nullable()
+                    ->after('created_by')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     public function down(): void

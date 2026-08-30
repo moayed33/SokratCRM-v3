@@ -5,12 +5,13 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Lead;
 use App\Models\NotificationRule;
 
 class NotificationRuleMatcher
 {
-    public function matches(NotificationRule $rule, Lead|CalendarEvent $source): bool
+    public function matches(NotificationRule $rule, Lead|CalendarEvent|CollectionCase $source): bool
     {
         $conditions = $rule->conditions ?? [];
 
@@ -19,6 +20,10 @@ class NotificationRuleMatcher
 
             return $statusIds === []
                 || in_array((int) $source->lead_status_id, $statusIds, true);
+        }
+
+        if ($source instanceof CollectionCase) {
+            return true;
         }
 
         $types = array_values(array_filter(

@@ -4,13 +4,19 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Campaign;
+use App\Models\DonationPurpose;
+use App\Models\DonationType;
 use App\Models\Lead;
+use App\Models\LeadPhone;
 use App\Models\LeadStatus;
+use App\Models\LeadStatusHistory;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
 use App\Security\LeadAssignment;
 use App\Support\CrmDatabaseGuard;
+use App\Support\LeadFieldSchema;
+use Carbon\Carbon;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -390,12 +396,14 @@ class LeadTransferController extends Controller
                             'لم تعد تملك صلاحية إسناد أحد العملاء إلى الموظف المحدد.'
                         );
                     }
+                    $extraPhones = $data['_additional_phones'] ?? [];
+                    $rowCampaignId = $data['_campaign_id'] ?? null;
+                    unset($data['_additional_phones'], $data['_campaign_id']);
 
-                    $data['assigned_user_id'] = $assignee->id;
-                    $data['assigned_employee'] = $assignee->name;
-                    $data['created_by_user_id'] = $actor->id;
-                    $data['created_by'] = $actor->name;
-                    $data['branch_id'] = $assignee->branch_id ?? $actor->branch_id ?? Branch::value('id');
+                    if (empty($data['branch_id'])) {
+                        $data['branch_id'] = $assignee->branch_id ?? $actor->branch_id ?? Branch::value('id');
+                    }
+
                     $phone = $this
                         ->normalizePhone(
                             (string)
@@ -419,11 +427,47 @@ class LeadTransferController extends Controller
                         $data
                     );
 
-                    if ($campaign !== null) {
-                        $campaign->leads()->attach(
-                            $lead->id
-                        );
+                    // 1. Primary phone in lead_phones
+                    LeadPhone::query()->create([
+                        'lead_id' => $lead->id,
+                        'phone' => $lead->phone,
+                        'is_primary' => true,
+                        'label' => 'أساسي',
+                    ]);
+
+                    // 2. Additional phones in lead_phones
+                    if (is_array($extraPhones) && $extraPhones !== []) {
+                        foreach ($extraPhones as $extraPhone) {
+                            $cleanExtra = trim((string) $extraPhone);
+                            if ($cleanExtra !== '' && $cleanExtra !== $lead->phone) {
+                                LeadPhone::query()->create([
+                                    'lead_id' => $lead->id,
+                                    'phone' => $cleanExtra,
+                                    'is_primary' => false,
+                                    'label' => 'إضافي',
+                                ]);
+                            }
+                        }
                     }
+
+                    // 3. Attach campaign
+                    $targetCampaign = $campaign ?? ($rowCampaignId ? Campaign::find($rowCampaignId) : null);
+                    if ($targetCampaign !== null) {
+                        $targetCampaign->leads()->syncWithoutDetaching([
+                            $lead->id,
+                        ]);
+                    }
+
+                    // 4. Initial status history
+                    LeadStatusHistory::query()->create([
+                        'lead_id' => $lead->id,
+                        'from_status_id' => null,
+                        'to_status_id' => $lead->lead_status_id,
+                        'changed_by' => $actor->name,
+                        'changed_by_user_id' => $actor->id,
+                        'note' => ! empty($lead->response_details) ? 'استيراد: '.$lead->response_details : 'استيراد عميل',
+                        'changed_at' => now(),
+                    ]);
 
                     $existingPhones[
                         $phone
@@ -786,42 +830,67 @@ class LeadTransferController extends Controller
     {
         return LeadStatus::query()
             ->with('stage')
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->orderBy('position')
             ->get();
     }
 
     private function importColumns(): array
     {
-        return [
-            'first_name' => 'اسم العميل الأول',
-            'last_name' => 'اسم العميل الأخير',
-            'phone' => 'الهاتف',
+        $columns = [
+            'name' => 'اسم العميل / المتبرع',
+            'phone' => 'رقم الهاتف الأساسي',
+            'additional_phones' => 'أرقام هواتف إضافية',
             'email' => 'البريد الإلكتروني',
             'company_name' => 'اسم الشركة',
-            'activity' => 'النشاط',
+            'activity' => 'نشاط الشركة',
             'governorate' => 'المحافظة',
             'address' => 'العنوان',
-            'users_count' => 'عدد المستخدمين',
-            'branches_count' => 'عدد الفروع',
-            'job_title' => 'المنصب',
-            'source' => 'المصدر',
-            'status' => 'الحالة',
-            'solution_type' => 'نوع النظام',
-            'lines_count' => 'عدد الخطوط',
-            'extensions' => 'الملحقات',
-            'departments' => 'الأقسام',
-            'disinterest_reason' => 'سبب عدم الاهتمام',
+            'donation_type' => 'نوع التبرع',
+            'donation_cycle' => 'دورة التبرع',
+            'donation_value' => 'قيمة التبرع',
+            'donation_purpose' => 'غرض التبرع',
             'assigned_employee' => 'الموظف المسؤول',
-            'notes' => 'ملاحظات',
+            'branch' => 'الفرع',
+            'source' => 'المصدر',
+            'campaign' => 'الحملة',
+            'contact_date' => 'تاريخ التواصل',
+            'response_details' => 'تفاصيل الرد والمكالمة',
+            'status' => 'الحالة',
         ];
+
+        try {
+            $customFields = LeadFieldSchema::customFields();
+            foreach ($customFields as $customField) {
+                $columns[$customField->key] = $customField->label();
+            }
+        } catch (\Throwable) {
+        }
+
+        return $columns;
     }
 
     private function importHeaderAliases(): array
     {
         $aliases = [
+            'name' => [
+                'اسم العميل / المتبرع',
+                'اسم العميل او المتبرع',
+                'اسم العميل',
+                'اسم المتبرع',
+                'الاسم',
+                'الاسم الكامل',
+                'name',
+                'full_name',
+                'customer_name',
+                'donor_name',
+                'lead_name',
+            ],
+
             'first_name' => [
                 'اسم العميل الأول',
                 'الاسم الأول',
+                'الاسم الاول',
                 'first_name',
                 'first name',
             ],
@@ -829,45 +898,196 @@ class LeadTransferController extends Controller
             'last_name' => [
                 'اسم العميل الأخير',
                 'الاسم الأخير',
+                'الاسم الاخير',
                 'last_name',
                 'last name',
             ],
 
             'phone' => [
+                'رقم الهاتف الأساسي',
+                'الهاتف الأساسي',
+                'الهاتف الاساسي',
                 'الهاتف',
                 'رقم الهاتف',
                 'phone',
                 'mobile',
+                'primary_phone',
+                'primary phone',
+            ],
+
+            'additional_phones' => [
+                'أرقام هواتف إضافية',
+                'ارقام هواتف اضافية',
+                'هواتف إضافية',
+                'هواتف اضافية',
+                'أرقام إضافية',
+                'ارقام اضافية',
+                'additional_phones',
+                'additional phones',
+                'extra_phones',
+                'other_phones',
             ],
 
             'email' => [
                 'البريد الإلكتروني',
                 'البريد الالكتروني',
+                'البريد',
                 'email',
+                'email_address',
+                'e-mail',
             ],
 
             'company_name' => [
                 'اسم الشركة',
                 'الشركة',
+                'المؤسسة',
+                'اسم المؤسسة',
                 'company_name',
                 'company',
+                'organization',
             ],
 
             'activity' => [
+                'نشاط الشركة',
                 'النشاط',
                 'activity',
+                'business_activity',
             ],
 
             'governorate' => [
                 'المحافظة',
+                'المدينة',
                 'governorate',
+                'city',
             ],
 
             'address' => [
                 'العنوان',
+                'الشارع',
                 'address',
             ],
 
+            'donation_type' => [
+                'نوع التبرع',
+                'نوع التبرعات',
+                'نوع_التبرع',
+                'donation_type',
+                'donation type',
+                'donation_type_id',
+            ],
+
+            'donation_cycle' => [
+                'دورة التبرع',
+                'دورة التبرع (التكرار)',
+                'تكرار التبرع',
+                'دورة التبرعات',
+                'donation_cycle',
+                'donation cycle',
+                'frequency',
+                'donation_frequency',
+            ],
+
+            'donation_value' => [
+                'قيمة التبرع',
+                'مبلغ التبرع',
+                'قيمة التبرع المتوقعة',
+                'donation_value',
+                'donation value',
+                'donation_amount',
+                'amount',
+                'value',
+            ],
+
+            'donation_purpose' => [
+                'غرض التبرع',
+                'غرض / وجهة التبرع',
+                'غرض او وجهة التبرع',
+                'وجهة التبرع',
+                'donation_purpose',
+                'donation purpose',
+                'purpose',
+                'donation_purpose_id',
+            ],
+
+            'assigned_employee' => [
+                'الموظف المسؤول',
+                'الموظف المستجيب',
+                'الموظف المستجيب / المسؤول',
+                'الموظف المسند',
+                'الموظف',
+                'المسؤول',
+                'assigned_employee',
+                'assigned employee',
+                'assigned_user',
+                'assigned_user_id',
+                'assignee',
+            ],
+
+            'branch' => [
+                'الفرع',
+                'الفرع التابع له العميل',
+                'فرع العميل',
+                'اسم الفرع',
+                'branch',
+                'branch_name',
+                'branch_id',
+            ],
+
+            'source' => [
+                'المصدر',
+                'مصدر العميل',
+                'source',
+                'lead_source',
+                'lead source',
+            ],
+
+            'campaign' => [
+                'الحملة',
+                'الحملة المرتبطة',
+                'اسم الحملة',
+                'campaign',
+                'campaign_name',
+                'campaign_id',
+            ],
+
+            'contact_date' => [
+                'تاريخ التواصل',
+                'تاريخ الاتصال',
+                'contact_date',
+                'contact date',
+            ],
+
+            'response_details' => [
+                'تفاصيل الرد والمكالمة',
+                'تفاصيل الرد',
+                'ملاحظات التواصل',
+                'تفاصيل المكالمة',
+                'response_details',
+                'response details',
+                'call_details',
+            ],
+
+            'notes' => [
+                'ملاحظات',
+                'الملاحظات',
+                'notes',
+                'comment',
+                'comments',
+            ],
+
+            'status' => [
+                'الحالة',
+                'حالة العميل',
+                'المرحلة',
+                'المرحلة الحالية',
+                'status',
+                'status_code',
+                'status code',
+                'stage',
+                'pipeline_stage',
+            ],
+
+            // Legacy aliases
             'users_count' => [
                 'عدد المستخدمين',
                 'users_count',
@@ -885,19 +1105,6 @@ class LeadTransferController extends Controller
                 'المسمى الوظيفي',
                 'job_title',
                 'job title',
-            ],
-
-            'source' => [
-                'المصدر',
-                'source',
-            ],
-
-            'status' => [
-                'الحالة',
-                'حالة العميل',
-                'status',
-                'status_code',
-                'status code',
             ],
 
             'solution_type' => [
@@ -928,18 +1135,20 @@ class LeadTransferController extends Controller
                 'disinterest_reason',
                 'disinterest reason',
             ],
-
-            'assigned_employee' => [
-                'الموظف المسؤول',
-                'assigned_employee',
-                'assigned employee',
-            ],
-
-            'notes' => [
-                'ملاحظات',
-                'notes',
-            ],
         ];
+
+        try {
+            $customFields = LeadFieldSchema::customFields();
+            foreach ($customFields as $field) {
+                $fieldAliases = array_filter([
+                    $field->key,
+                    $field->label_ar,
+                    $field->label_en,
+                ]);
+                $aliases[$field->key] = array_values(array_unique(array_merge($aliases[$field->key] ?? [], $fieldAliases)));
+            }
+        } catch (\Throwable) {
+        }
 
         $map = [];
 
@@ -1025,7 +1234,6 @@ class LeadTransferController extends Controller
 
                 continue;
             }
-
             $key = $aliasMap[
                 $normalized
             ];
@@ -1043,27 +1251,19 @@ class LeadTransferController extends Controller
                 $columnIndex;
         }
 
-        foreach (
-            [
-                'first_name',
-                'phone',
-                'source',
-            ] as $requiredHeader
-        ) {
-            if (
-                ! isset(
-                    $indexes[
-                        $requiredHeader
-                    ]
-                )
-            ) {
-                throw new \RuntimeException(
-                    'العمود المطلوب غير موجود: '
-                    .$this->importColumns()[
-                        $requiredHeader
-                    ]
-                );
-            }
+        $hasNameHeader = isset($indexes['name']) || isset($indexes['first_name']);
+        if (! $hasNameHeader) {
+            throw new \RuntimeException(
+                'العمود المطلوب غير موجود: '
+                .($this->importColumns()['name'] ?? 'اسم العميل / المتبرع')
+            );
+        }
+
+        if (! isset($indexes['phone'])) {
+            throw new \RuntimeException(
+                'العمود المطلوب غير موجود: '
+                .($this->importColumns()['phone'] ?? 'رقم الهاتف الأساسي')
+            );
         }
 
         $dataRows = array_slice(
@@ -1150,7 +1350,6 @@ class LeadTransferController extends Controller
             $assignableUsers = $assignableUsers
                 ->whereIn('id', $campaignUserIds);
         }
-
         foreach (
             $assignableUsers as $user
         ) {
@@ -1172,6 +1371,60 @@ class LeadTransferController extends Controller
                         (int) $user->id;
                 }
             }
+        }
+
+        $donationTypeMap = [];
+        try {
+            foreach (DonationType::all() as $dt) {
+                $donationTypeMap[$this->normalizeToken((string) $dt->name_ar)] = $dt;
+                if (! empty($dt->name_en)) {
+                    $donationTypeMap[$this->normalizeToken((string) $dt->name_en)] = $dt;
+                }
+                $donationTypeMap[(string) $dt->id] = $dt;
+            }
+        } catch (\Throwable) {
+        }
+
+        $donationPurposeMap = [];
+        try {
+            foreach (DonationPurpose::all() as $dp) {
+                $donationPurposeMap[$this->normalizeToken((string) $dp->name_ar)] = $dp;
+                if (! empty($dp->name_en)) {
+                    $donationPurposeMap[$this->normalizeToken((string) $dp->name_en)] = $dp;
+                }
+                $donationPurposeMap[(string) $dp->id] = $dp;
+            }
+        } catch (\Throwable) {
+        }
+
+        $branchMap = [];
+        try {
+            foreach (Branch::all() as $br) {
+                $branchMap[$this->normalizeToken((string) $br->name_ar)] = $br;
+                if (! empty($br->name_en)) {
+                    $branchMap[$this->normalizeToken((string) $br->name_en)] = $br;
+                }
+                if (! empty($br->code)) {
+                    $branchMap[$this->normalizeToken((string) $br->code)] = $br;
+                }
+                $branchMap[(string) $br->id] = $br;
+            }
+        } catch (\Throwable) {
+        }
+
+        $campaignMap = [];
+        try {
+            foreach (Campaign::all() as $camp) {
+                $campaignMap[$this->normalizeToken((string) $camp->name)] = $camp;
+                $campaignMap[(string) $camp->id] = $camp;
+            }
+        } catch (\Throwable) {
+        }
+
+        $customFieldKeys = [];
+        try {
+            $customFieldKeys = LeadFieldSchema::customFields()->pluck('key')->all();
+        } catch (\Throwable) {
         }
 
         $existingPhones = [];
@@ -1200,7 +1453,6 @@ class LeadTransferController extends Controller
         $validCount = 0;
         $errorCount = 0;
         $duplicateCount = 0;
-
         foreach (
             $dataRows as $offset => $row
         ) {
@@ -1243,23 +1495,26 @@ class LeadTransferController extends Controller
             $errors = [];
             $warnings = [];
 
-            $firstName =
-                $value('first_name');
+            $rawName = $value('name');
+            $rawFirstName = $value('first_name');
+            $rawLastName = $this->nullableText($value('last_name'));
 
-            $lastName =
-                $this->nullableText(
-                    $value('last_name')
-                );
+            if ($rawName !== '') {
+                $fullName = $rawName;
+                $parts = preg_split('/\s+/u', $fullName, 2);
+                $firstName = $parts[0] ?? $fullName;
+                $lastName = $rawLastName ?? ($parts[1] ?? null);
+            } else {
+                $firstName = $rawFirstName;
+                $lastName = $rawLastName;
+                $fullName = trim($firstName.' '.($lastName ?? ''));
+            }
 
-            $phone =
-                $value('phone');
+            $phone = $value('phone');
+            $source = $this->nullableText($value('source')) ?? 'مباشر';
 
-            $source =
-                $value('source');
-
-            if ($firstName === '') {
-                $errors[] =
-                    'اسم العميل الأول مطلوب.';
+            if ($fullName === '' && $firstName === '') {
+                $errors[] = 'اسم العميل / المتبرع مطلوب.';
             }
 
             $this->validateLength(
@@ -1270,8 +1525,7 @@ class LeadTransferController extends Controller
             );
 
             if ($phone === '') {
-                $errors[] =
-                    'رقم الهاتف مطلوب.';
+                $errors[] = 'رقم الهاتف الأساسي مطلوب.';
             }
 
             $this->validateLength(
@@ -1280,11 +1534,6 @@ class LeadTransferController extends Controller
                 'رقم الهاتف',
                 $errors
             );
-
-            if ($source === '') {
-                $errors[] =
-                    'المصدر مطلوب.';
-            }
 
             $this->validateLength(
                 $source,
@@ -1302,11 +1551,19 @@ class LeadTransferController extends Controller
                 );
             }
 
-            $email =
-                $this->nullableText(
-                    $value('email')
-                );
+            $additionalPhonesRaw = $this->nullableText($value('additional_phones'));
+            $additionalPhonesList = [];
+            if ($additionalPhonesRaw !== null) {
+                $splitPhones = preg_split('/[,;\/\n]+/u', $additionalPhonesRaw);
+                foreach ($splitPhones as $rawExtra) {
+                    $cleanedExtra = $this->normalizePhone($rawExtra);
+                    if ($cleanedExtra !== '' && $cleanedExtra !== $this->normalizePhone($phone)) {
+                        $additionalPhonesList[] = trim($rawExtra);
+                    }
+                }
+            }
 
+            $email = $this->nullableText($value('email'));
             if (
                 $email !== null
                 && (
@@ -1317,214 +1574,171 @@ class LeadTransferController extends Controller
                     ) === false
                 )
             ) {
-                $errors[] =
-                    'البريد الإلكتروني غير صحيح.';
+                $errors[] = 'البريد الإلكتروني غير صحيح.';
             }
 
-            $statusInput =
-                $value('status');
-
+            $statusInput = $value('status');
             if ($statusInput === '') {
-                $statusInput = 'new';
+                $statusInput = $value('stage') !== '' ? $value('stage') : 'new';
             }
 
-            $statusKey =
-                $this->normalizeToken(
-                    $statusInput
-                );
-
-            $status =
-                $statusMap[
-                    $statusKey
-                ] ?? null;
-
+            $statusKey = $this->normalizeToken($statusInput);
+            $status = $statusMap[$statusKey] ?? null;
             if ($status === null) {
-                $errors[] =
-                    'الحالة "'
-                    .$statusInput
-                    .'" غير موجودة في النظام.';
+                $errors[] = 'الحالة "'.$statusInput.'" غير موجودة في النظام.';
             }
 
-            $usersCount =
-                $this->parseUnsignedInteger(
-                    $value(
-                        'users_count'
-                    ),
-                    0,
-                    1000000,
-                    'عدد المستخدمين',
-                    $errors
-                );
+            $companyName = $this->nullableText($value('company_name'));
+            $activity = $this->nullableText($value('activity'));
+            $governorate = $this->nullableText($value('governorate'));
+            $address = $this->nullableText($value('address'));
 
-            $branchesCount =
-                $this->parseUnsignedInteger(
-                    $value(
-                        'branches_count'
-                    ),
-                    0,
-                    1000000,
-                    'عدد الفروع',
-                    $errors
-                );
+            $donationTypeInput = $this->nullableText($value('donation_type'));
+            $donationTypeStr = null;
+            $donationTypeId = null;
+            if ($donationTypeInput !== null) {
+                $normType = $this->normalizeToken($donationTypeInput);
+                $matchedType = $donationTypeMap[$normType] ?? null;
+                if ($matchedType) {
+                    $donationTypeStr = $matchedType->name_ar;
+                    $donationTypeId = (int) $matchedType->id;
+                } else {
+                    $donationTypeStr = $donationTypeInput;
+                }
+            }
 
-            $linesCount =
-                $this->parseUnsignedInteger(
-                    $value(
-                        'lines_count'
-                    ),
-                    1,
-                    1000000,
-                    'عدد الخطوط',
-                    $errors
-                );
+            $donationCycleInput = $this->nullableText($value('donation_cycle'));
+            $donationCycle = null;
+            if ($donationCycleInput !== null) {
+                $normCycle = $this->normalizeToken($donationCycleInput);
+                $donationCycle = match ($normCycle) {
+                    'one_time', 'one-time', 'مرة واحدة', 'مرة' => 'one_time',
+                    'monthly', 'شهري', 'شهر' => 'monthly',
+                    'quarterly', 'ربع سنوي', 'ربع' => 'quarterly',
+                    'semi_annual', 'semi-annual', 'نصف سنوي', 'نصف' => 'semi_annual',
+                    'annual', 'سنوي', 'سنة' => 'annual',
+                    default => in_array($donationCycleInput, ['one_time', 'monthly', 'quarterly', 'semi_annual', 'annual'], true) ? $donationCycleInput : $donationCycleInput,
+                };
+            }
 
-            $solutionType =
-                $this->parseSolutionType(
-                    $value(
-                        'solution_type'
-                    ),
-                    $errors
-                );
+            $donationValueRaw = $value('donation_value');
+            $donationValue = null;
+            if ($donationValueRaw !== '') {
+                $cleanedVal = $this->normalizeDigits($donationValueRaw);
+                $cleanedVal = preg_replace('/[^\d.]/u', '', str_replace(',', '.', $cleanedVal));
+                if (is_numeric($cleanedVal)) {
+                    $donationValue = (float) $cleanedVal;
+                    if ($donationValue < 0) {
+                        $errors[] = 'قيمة التبرع لا يمكن أن تكون سالبة.';
+                    }
+                } else {
+                    $errors[] = 'قيمة التبرع يجب أن تكون قيمة رقمية صحيحة.';
+                }
+            }
 
-            $companyName =
-                $this->nullableText(
-                    $value(
-                        'company_name'
-                    )
-                );
+            $donationPurposeInput = $this->nullableText($value('donation_purpose'));
+            $donationPurposeStr = null;
+            $donationPurposeId = null;
+            if ($donationPurposeInput !== null) {
+                $normPurpose = $this->normalizeToken($donationPurposeInput);
+                $matchedPurpose = $donationPurposeMap[$normPurpose] ?? null;
+                if ($matchedPurpose) {
+                    $donationPurposeStr = $matchedPurpose->name_ar;
+                    $donationPurposeId = (int) $matchedPurpose->id;
+                } else {
+                    $donationPurposeStr = $donationPurposeInput;
+                }
+            }
 
-            $activity =
-                $this->nullableText(
-                    $value('activity')
-                );
+            $branchInput = $this->nullableText($value('branch'));
+            $branchId = null;
+            if ($branchInput !== null) {
+                $normBranch = $this->normalizeToken($branchInput);
+                $matchedBranch = $branchMap[$normBranch] ?? null;
+                if ($matchedBranch) {
+                    $branchId = (int) $matchedBranch->id;
+                }
+            }
 
-            $governorate =
-                $this->nullableText(
-                    $value(
-                        'governorate'
-                    )
-                );
+            $campaignInput = $this->nullableText($value('campaign'));
+            $rowCampaignId = $campaignId;
+            if ($rowCampaignId === null && $campaignInput !== null) {
+                $normCamp = $this->normalizeToken($campaignInput);
+                $matchedCamp = $campaignMap[$normCamp] ?? null;
+                if ($matchedCamp) {
+                    $rowCampaignId = (int) $matchedCamp->id;
+                }
+            }
 
-            $address =
-                $this->nullableText(
-                    $value('address')
-                );
+            $contactDateInput = $this->nullableText($value('contact_date'));
+            $contactDate = null;
+            if ($contactDateInput !== null) {
+                try {
+                    $contactDate = Carbon::parse($contactDateInput)->format('Y-m-d');
+                } catch (\Throwable) {
+                    $contactDate = date('Y-m-d');
+                }
+            } else {
+                $contactDate = date('Y-m-d');
+            }
 
-            $jobTitle =
-                $this->nullableText(
-                    $value(
-                        'job_title'
-                    )
-                );
+            $nextFollowUpInput = $this->nullableText($value('next_follow_up_at'));
+            $nextFollowUpAt = null;
+            if ($nextFollowUpInput !== null) {
+                try {
+                    $nextFollowUpAt = Carbon::parse($nextFollowUpInput)->format('Y-m-d H:i:s');
+                } catch (\Throwable) {
+                    $nextFollowUpAt = null;
+                }
+            }
 
-            $extensions =
-                $this->nullableText(
-                    $value(
-                        'extensions'
-                    )
-                );
+            $responseDetails = $this->nullableText($value('response_details')) ?? $this->nullableText($value('notes'));
+            $notes = $this->nullableText($value('notes')) ?? $responseDetails;
 
-            $departments =
-                $this->nullableText(
-                    $value(
-                        'departments'
-                    )
-                );
-
-            $disinterestReason =
-                $this->nullableText(
-                    $value(
-                        'disinterest_reason'
-                    )
-                );
-            $assignedEmployee =
-                $this->nullableText(
-                    $value(
-                        'assigned_employee'
-                    )
-                )
-                ?? $this
-                    ->currentEmployeeName();
-
-            $assignedUserId = $userIdMap[
-                $this->normalizeToken($assignedEmployee)
-            ] ?? null;
+            $assignedEmployee = $this->nullableText($value('assigned_employee')) ?? $this->currentEmployeeName();
+            $assignedUserId = $userIdMap[$this->normalizeToken($assignedEmployee)] ?? null;
 
             if ($assignedUserId === null) {
-                $errors[] =
-                    'لا تملك صلاحية الإسناد إلى الموظف المسؤول المحدد.';
+                $errors[] = 'لا تملك صلاحية الإسناد إلى الموظف المسؤول المحدد: '.$assignedEmployee;
             }
 
-            $notes =
-                $this->nullableText(
-                    $value('notes')
-                );
+            $customFieldsPayload = [];
+            foreach ($customFieldKeys as $cfKey) {
+                if (isset($indexes[$cfKey])) {
+                    $cfVal = trim((string) ($row[$indexes[$cfKey]] ?? ''));
+                    if ($cfVal !== '') {
+                        $customFieldsPayload[$cfKey] = $cfVal;
+                    }
+                }
+            }
+
+            // Legacy fields for backward compatibility
+            $usersCount = $this->parseUnsignedInteger($value('users_count'), 0, 1000000, 'عدد المستخدمين', $errors);
+            $branchesCount = $this->parseUnsignedInteger($value('branches_count'), 0, 1000000, 'عدد الفروع', $errors);
+            $linesCount = $this->parseUnsignedInteger($value('lines_count'), 1, 1000000, 'عدد الخطوط', $errors);
+            $solutionType = $this->parseSolutionType($value('solution_type'), $errors);
+            $jobTitle = $this->nullableText($value('job_title'));
+            $extensions = $this->nullableText($value('extensions'));
+            $departments = $this->nullableText($value('departments'));
+            $disinterestReason = $this->nullableText($value('disinterest_reason'));
 
             foreach (
                 [
-                    [
-                        $companyName,
-                        150,
-                        'اسم الشركة',
-                    ],
-                    [
-                        $activity,
-                        150,
-                        'النشاط',
-                    ],
-                    [
-                        $governorate,
-                        100,
-                        'المحافظة',
-                    ],
-                    [
-                        $address,
-                        255,
-                        'العنوان',
-                    ],
-                    [
-                        $jobTitle,
-                        150,
-                        'المنصب',
-                    ],
-                    [
-                        $assignedEmployee,
-                        150,
-                        'الموظف المسؤول',
-                    ],
-                    [
-                        $extensions,
-                        5000,
-                        'الملحقات',
-                    ],
-                    [
-                        $departments,
-                        5000,
-                        'الأقسام',
-                    ],
-                    [
-                        $disinterestReason,
-                        5000,
-                        'سبب عدم الاهتمام',
-                    ],
-                    [
-                        $notes,
-                        5000,
-                        'الملاحظات',
-                    ],
-                ] as [
-                    $text,
-                    $max,
-                    $label,
-                ]
+                    [$companyName, 150, 'اسم الشركة'],
+                    [$activity, 150, 'النشاط'],
+                    [$governorate, 100, 'المحافظة'],
+                    [$address, 255, 'العنوان'],
+                    [$jobTitle, 150, 'المنصب'],
+                    [$assignedEmployee, 150, 'الموظف المسؤول'],
+                    [$extensions, 5000, 'الملحقات'],
+                    [$departments, 5000, 'الأقسام'],
+                    [$disinterestReason, 5000, 'سبب عدم الاهتمام'],
+                    [$notes, 5000, 'الملاحظات'],
+                    [$responseDetails, 5000, 'تفاصيل الرد'],
+                ] as [$text, $max, $label]
             ) {
                 if ($text !== null) {
-                    $this->validateLength(
-                        $text,
-                        $max,
-                        $label,
-                        $errors
-                    );
+                    $this->validateLength($text, $max, $label, $errors);
                 }
             }
 
@@ -1610,67 +1824,45 @@ class LeadTransferController extends Controller
             if ($state === 'valid') {
                 $leadData = [
                     'lead_status_id' => (int) $status->id,
-
                     'name' => $fullName,
-
                     'first_name' => $firstName,
-
                     'last_name' => $lastName,
-
-                    'company_name' => $companyName,
-
-                    'activity' => $activity,
-
-                    'governorate' => $governorate,
-
-                    'address' => $address,
-
-                    'users_count' => $usersCount,
-
-                    'branches_count' => $branchesCount,
-
-                    'job_title' => $jobTitle,
-
-                    'disinterest_reason' => $disinterestReason,
-
-                    'solution_type' => $solutionType,
-
-                    'lines_count' => $solutionType
-                            === 'call_center'
-                            ? $linesCount
-                            : null,
-
-                    'extensions' => $solutionType
-                            === 'call_center'
-                            ? $extensions
-                            : null,
-
-                    'departments' => $solutionType
-                            === 'erp'
-                            ? $departments
-                            : null,
-
-                    'quotation_file_path' => null,
-
                     'phone' => $phone,
-
                     'email' => $email,
-
+                    'company_name' => $companyName,
+                    'activity' => $activity,
+                    'governorate' => $governorate,
+                    'address' => $address,
+                    'donation_type' => $donationTypeStr,
+                    'donation_type_id' => $donationTypeId,
+                    'donation_cycle' => $donationCycle,
+                    'donation_value' => $donationValue,
+                    'donation_purpose' => $donationPurposeStr,
+                    'donation_purpose_id' => $donationPurposeId,
                     'source' => $source,
-
-                    'quotation_sent' => false,
-
                     'assigned_employee' => $assignedEmployee,
-
                     'assigned_user_id' => $assignedUserId,
-
+                    'responding_user_id' => $assignedUserId,
                     'created_by' => $actor->name,
-
                     'created_by_user_id' => (int) $actor->id,
-
+                    'contact_date' => $contactDate,
+                    'next_follow_up_at' => $nextFollowUpAt,
+                    'response_details' => $responseDetails,
                     'notes' => $notes,
+                    'custom_fields' => $customFieldsPayload,
+                    'users_count' => $usersCount,
+                    'branches_count' => $branchesCount,
+                    'job_title' => $jobTitle,
+                    'disinterest_reason' => $disinterestReason,
+                    'solution_type' => $solutionType,
+                    'lines_count' => $solutionType === 'call_center' ? $linesCount : null,
+                    'extensions' => $solutionType === 'call_center' ? $extensions : null,
+                    'departments' => $solutionType === 'erp' ? $departments : null,
+                    'quotation_file_path' => null,
+                    'quotation_sent' => false,
+                    '_additional_phones' => $additionalPhonesList,
+                    '_campaign_id' => $rowCampaignId,
                 ];
-
                 $validPayloadRows[] = [
                     'row_number' => $excelRowNumber,
                     'data' => $leadData,
@@ -2512,43 +2704,60 @@ class LeadTransferController extends Controller
 
     private function exportColumns(): array
     {
-        return [
+        $columns = [
             'id' => 'رقم العميل',
             'name' => 'اسم العميل',
             'first_name' => 'الاسم الأول',
             'last_name' => 'الاسم الأخير',
-            'phone' => 'الهاتف',
+            'phone' => 'الهاتف الأساسي',
+            'additional_phones' => 'هواتف إضافية',
             'email' => 'البريد الإلكتروني',
-            'company_name' => 'الشركة',
+            'company_name' => 'اسم الشركة',
             'activity' => 'النشاط',
             'governorate' => 'المحافظة',
             'address' => 'العنوان',
-            'users_count' => 'عدد المستخدمين',
-            'branches_count' => 'عدد الفروع',
-            'job_title' => 'المنصب',
+            'donation_type' => 'نوع التبرع',
+            'donation_cycle' => 'دورة التبرع',
+            'donation_value' => 'قيمة التبرع',
+            'donation_purpose' => 'غرض التبرع',
             'source' => 'المصدر',
             'status' => 'الحالة',
             'stage' => 'المرحلة',
             'assigned_employee' => 'الموظف المسؤول',
+            'branch' => 'الفرع',
+            'campaign' => 'الحملة',
+            'contact_date' => 'تاريخ التواصل',
             'next_follow_up_at' => 'المتابعة القادمة',
-            'solution_type' => 'نوع النظام',
-            'lines_count' => 'عدد الخطوط',
-            'extensions' => 'الملحقات',
-            'departments' => 'الأقسام',
-            'quotation_sent' => 'عرض السعر مرسل',
-            'quotation_file' => 'ملف عرض السعر',
-            'disinterest_reason' => 'سبب عدم الاهتمام',
+            'response_details' => 'تفاصيل الرد',
             'notes' => 'ملاحظات',
             'created_by' => 'أنشأ بواسطة',
             'created_at' => 'تاريخ الإضافة',
             'updated_at' => 'آخر تحديث',
         ];
+
+        try {
+            $customFields = LeadFieldSchema::customFields();
+            foreach ($customFields as $customField) {
+                $columns['cf_'.$customField->key] = $customField->label();
+            }
+        } catch (\Throwable) {
+        }
+
+        return $columns;
     }
 
     private function exportValue(
         Lead $lead,
         string $column
     ): string {
+        if (str_starts_with($column, 'cf_')) {
+            $key = substr($column, 3);
+            $customFields = is_array($lead->custom_fields) ? $lead->custom_fields : [];
+            $val = $customFields[$key] ?? '';
+
+            return is_array($val) ? implode(', ', $val) : (string) $val;
+        }
+
         return match ($column) {
             'id' => (string) $lead->id,
 
@@ -2561,6 +2770,8 @@ class LeadTransferController extends Controller
                     $lead->last_name,
 
             'phone' => (string) $lead->phone,
+
+            'additional_phones' => (string) $lead->additionalPhones->pluck('phone')->implode(', '),
 
             'email' => (string) $lead->email,
 
@@ -2576,18 +2787,13 @@ class LeadTransferController extends Controller
             'address' => (string)
                     $lead->address,
 
-            'users_count' => $lead->users_count === null
-                    ? ''
-                    : (string)
-                        $lead->users_count,
+            'donation_type' => (string) ($lead->donationType?->name_ar ?? $lead->donation_type ?? ''),
 
-            'branches_count' => $lead->branches_count === null
-                    ? ''
-                    : (string)
-                        $lead->branches_count,
+            'donation_cycle' => (string) ($lead->donation_cycle ?? ''),
 
-            'job_title' => (string)
-                    $lead->job_title,
+            'donation_value' => $lead->donation_value !== null ? (string) $lead->donation_value : '',
+
+            'donation_purpose' => (string) ($lead->donationPurposeRel?->name_ar ?? $lead->donation_purpose ?? ''),
 
             'source' => (string)
                     $lead->source,
@@ -2610,10 +2816,33 @@ class LeadTransferController extends Controller
                 ?? $lead->assigned_employee
             ),
 
+            'branch' => (string) ($lead->branch?->name_ar ?? ''),
+
+            'campaign' => (string) ($lead->campaigns->pluck('name')->implode(', ')),
+
+            'contact_date' => $this->formatDate(
+                $lead->contact_date
+            ),
+
             'next_follow_up_at' => $this->formatDate(
                 $lead
                     ->next_follow_up_at
             ),
+
+            'response_details' => (string) ($lead->response_details ?? ''),
+
+            'users_count' => $lead->users_count === null
+                    ? ''
+                    : (string)
+                        $lead->users_count,
+
+            'branches_count' => $lead->branches_count === null
+                    ? ''
+                    : (string)
+                        $lead->branches_count,
+
+            'job_title' => (string)
+                    $lead->job_title,
 
             'solution_type' => match (
                 (string)

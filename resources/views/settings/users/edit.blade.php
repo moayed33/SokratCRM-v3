@@ -3,6 +3,134 @@
 @section('title', __('crm.edit_user'))
 @section('heading', __('crm.edit_user'))
 @section('subheading', $managedUser->name.' · '.$managedUser->username)
+@push('head')
+<style>
+.voip-filter-form {
+    margin-bottom: 20px;
+    padding: 16px;
+    background: var(--bg, #f8fafc);
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 12px;
+}
+.voip-filter-form #voip-filters-heading {
+    font-weight: 900;
+    color: var(--ink, #334155);
+}
+.voip-stat-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-top: 16px;
+}
+.voip-stat-card {
+    border-radius: 12px;
+    padding: 14px;
+    text-align: center;
+    border: 1px solid var(--line, #e2e8f0);
+    background: var(--bg, #f8fafc);
+}
+.voip-stat-card.is-total {
+    background: var(--bg, #f8fafc);
+    border-color: var(--line, #e2e8f0);
+}
+.voip-stat-card.is-total .voip-stat-label { color: var(--muted, #64748b); font-size: 12px; font-weight: 700; }
+.voip-stat-card.is-total .voip-stat-val { font-size: 24px; font-weight: 800; color: var(--ink, #1e293b); margin-top: 4px; }
+
+.voip-stat-card.is-answered {
+    background: #e7f8ed;
+    border-color: #bbf7d0;
+}
+.voip-stat-card.is-answered .voip-stat-label { color: #166534; font-size: 12px; font-weight: 700; }
+.voip-stat-card.is-answered .voip-stat-val { font-size: 24px; font-weight: 800; color: #14532d; margin-top: 4px; }
+
+.voip-stat-card.is-outgoing {
+    background: #e0f2fe;
+    border-color: #bae6fd;
+}
+.voip-stat-card.is-outgoing .voip-stat-label { color: #0369a1; font-size: 12px; font-weight: 700; }
+.voip-stat-card.is-outgoing .voip-stat-val { font-size: 24px; font-weight: 800; color: #0c4a6e; margin-top: 4px; }
+
+.voip-stat-card.is-talk {
+    background: #fef3c7;
+    border-color: #fde68a;
+}
+.voip-stat-card.is-talk .voip-stat-label { color: #92400e; font-size: 12px; font-weight: 700; }
+.voip-stat-card.is-talk .voip-stat-val { font-size: 18px; font-weight: 800; color: #78350f; margin-top: 8px; }
+
+.voip-direction-mix {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg, #f8fafc);
+    border: 1px solid var(--line, #e2e8f0);
+    border-radius: 12px;
+}
+.voip-direction-mix h4, .voip-calls-head h4 {
+    margin: 0 0 14px;
+    font-size: 14px;
+    color: var(--ink, #334155);
+}
+.voip-direction-label {
+    font-size: 12px;
+    font-weight: 800;
+    color: #475569;
+}
+.voip-progress-track {
+    height: 8px;
+    background: #e2e8f0;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+html.dark-mode .voip-filter-form {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark-mode .voip-filter-form #voip-filters-heading {
+    color: #f4f4f5 !important;
+}
+html.dark-mode .voip-stat-card.is-total {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark-mode .voip-stat-card.is-total .voip-stat-label { color: #a1a1aa !important; }
+html.dark-mode .voip-stat-card.is-total .voip-stat-val { color: #f4f4f5 !important; }
+
+html.dark-mode .voip-stat-card.is-answered {
+    background: rgba(34, 197, 94, 0.12) !important;
+    border-color: rgba(34, 197, 94, 0.3) !important;
+}
+html.dark-mode .voip-stat-card.is-answered .voip-stat-label { color: #86efac !important; }
+html.dark-mode .voip-stat-card.is-answered .voip-stat-val { color: #4ade80 !important; }
+
+html.dark-mode .voip-stat-card.is-outgoing {
+    background: rgba(56, 189, 248, 0.12) !important;
+    border-color: rgba(56, 189, 248, 0.3) !important;
+}
+html.dark-mode .voip-stat-card.is-outgoing .voip-stat-label { color: #7dd3fc !important; }
+html.dark-mode .voip-stat-card.is-outgoing .voip-stat-val { color: #38bdf8 !important; }
+
+html.dark-mode .voip-stat-card.is-talk {
+    background: rgba(245, 158, 11, 0.12) !important;
+    border-color: rgba(245, 158, 11, 0.3) !important;
+}
+html.dark-mode .voip-stat-card.is-talk .voip-stat-label { color: #fcd34d !important; }
+html.dark-mode .voip-stat-card.is-talk .voip-stat-val { color: #fbbf24 !important; }
+
+html.dark-mode .voip-direction-mix {
+    background: rgba(255, 255, 255, 0.03) !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+}
+html.dark-mode .voip-direction-mix h4, html.dark-mode .voip-calls-head h4 {
+    color: #f4f4f5 !important;
+}
+html.dark-mode .voip-direction-label {
+    color: #cbd5e1 !important;
+}
+html.dark-mode .voip-progress-track {
+    background: rgba(255, 255, 255, 0.1) !important;
+}
+</style>
+@endpush
 
 @section('content')
 <section class="panel">
@@ -22,12 +150,12 @@
     </form>
 </section>
 
-@if (!empty($isVoipConnected) && $managedUser->voip_extension)
+@if (!empty($isVoipConnected) && !empty($canViewVoip) && $managedUser->voip_extension)
 <section class="panel" style="margin-top:24px">
     <div class="panel-head" style="display:flex;justify-content:space-between;align-items:center">
         <div>
             <h2 style="display:flex;align-items:center;gap:8px">
-                <span>📞</span>
+                <i class="bi bi-telephone-fill" aria-hidden="true"></i>
                 <span>{{ __('crm.pbx_call_statistics') }} ({{ __('crm.extension_short') }} {{ $managedUser->voip_extension }})</span>
             </h2>
             <p>{{ __('crm.statistics_for_user') }} {{ $managedUser->name }} {{ __('crm.on_extension') }} {{ $managedUser->voip_extension }}</p>
@@ -38,9 +166,9 @@
     @php
         $voipFilters = $voipFilters ?? [];
     @endphp
-    <form method="GET" action="{{ route('v2.settings.users.edit', $managedUser) }}" class="form-grid" aria-labelledby="voip-filters-heading" style="margin-bottom:20px;padding:16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px">
+    <form method="GET" action="{{ route('v2.settings.users.edit', $managedUser) }}" class="form-grid voip-filter-form" aria-labelledby="voip-filters-heading">
         <div class="field full" style="margin-bottom:0">
-            <div id="voip-filters-heading" style="font-weight:900;color:#334155">{{ __('crm.voip_filters') }}</div>
+            <div id="voip-filters-heading">{{ __('crm.voip_filters') }}</div>
             <div class="hint">{{ __('crm.voip_filter_hint') }}</div>
         </div>
         <div class="field">
@@ -84,28 +212,46 @@
             $talkSecs = ($s['total_talk_seconds'] ?? 0) % 60;
             $talkFormatted = $talkMinutes > 0 ? $talkMinutes.' '.__('crm.minutes').' '.$talkSecs.' '.__('crm.seconds') : $talkSecs.' '.__('crm.seconds');
         @endphp
-        <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(180px, 1fr));gap:14px;margin-top:16px">
-            <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:14px;text-align:center">
-                <div style="color:#64748b;font-size:12px;font-weight:700">{{ __('crm.total_calls') }}</div>
-                <div style="font-size:24px;font-weight:800;color:#1e293b;margin-top:4px">{{ number_format($s['total_calls'] ?? 0) }}</div>
+        <div class="voip-stat-grid">
+            <div class="voip-stat-card is-total">
+                <div class="voip-stat-label">{{ __('crm.total_calls') }}</div>
+                <div class="voip-stat-val">{{ number_format($s['total_calls'] ?? 0) }}</div>
             </div>
-            <div style="background:#e7f8ed;border:1px solid #bbf7d0;border-radius:12px;padding:14px;text-align:center">
-                <div style="color:#166534;font-size:12px;font-weight:700">{{ __('crm.answered_calls') }}</div>
-                <div style="font-size:24px;font-weight:800;color:#14532d;margin-top:4px">{{ number_format($s['answered_calls'] ?? 0) }} ({{ $s['answer_rate_percent'] ?? 0 }}%)</div>
+            <div class="voip-stat-card is-answered">
+                <div class="voip-stat-label">{{ __('crm.answered_calls') }}</div>
+                <div class="voip-stat-val">{{ number_format($s['answered_calls'] ?? 0) }} ({{ $s['answer_rate_percent'] ?? 0 }}%)</div>
             </div>
-            <div style="background:#e0f2fe;border:1px solid #bae6fd;border-radius:12px;padding:14px;text-align:center">
-                <div style="color:#0369a1;font-size:12px;font-weight:700">{{ __('crm.outgoing_calls') }}</div>
-                <div style="font-size:24px;font-weight:800;color:#0c4a6e;margin-top:4px">{{ number_format($s['outbound_calls'] ?? 0) }}</div>
+            <div class="voip-stat-card is-outgoing">
+                <div class="voip-stat-label">{{ __('crm.outgoing_calls') }}</div>
+                <div class="voip-stat-val">{{ number_format($s['outbound_calls'] ?? 0) }}</div>
             </div>
-            <div style="background:#fef3c7;border:1px solid #fde68a;border-radius:12px;padding:14px;text-align:center">
-                <div style="color:#92400e;font-size:12px;font-weight:700">{{ __('crm.total_talk_time') }}</div>
-                <div style="font-size:18px;font-weight:800;color:#78350f;margin-top:8px">{{ $talkFormatted }}</div>
+            <div class="voip-stat-card is-talk">
+                <div class="voip-stat-label">{{ __('crm.total_talk_time') }}</div>
+                <div class="voip-stat-val">{{ $talkFormatted }}</div>
             </div>
         </div>
 
-        @if (!empty($voipStats['recent_calls']))
-            <div style="margin-top:20px">
-                <h4 style="margin:0 0 12px;font-size:14px;color:#334155">{{ __('crm.latest_inbound_outbound_calls') }}</h4>
+        @if (!empty($voipStats['calls']))
+            @php
+                $directions = $voipStats['charts']['directions'] ?? [];
+                $directionTotal = max(1, array_sum($directions));
+            @endphp
+            <div class="voip-direction-mix">
+                <h4>{{ __('crm.call_direction_mix') }}</h4>
+                <div style="display:grid;gap:10px">
+                    @foreach (['outbound' => ['label' => __('crm.outgoing'), 'color' => '#0284c7'], 'inbound' => ['label' => __('crm.incoming'), 'color' => '#16a34a'], 'internal' => ['label' => __('crm.internal'), 'color' => '#64748b']] as $directionKey => $directionMeta)
+                        @php $directionCount = (int) ($directions[$directionKey] ?? 0); @endphp
+                        <div style="display:grid;grid-template-columns:90px 1fr 42px;gap:10px;align-items:center">
+                            <span class="voip-direction-label">{{ $directionMeta['label'] }}</span>
+                            <span class="voip-progress-track"><span style="display:block;width:{{ ($directionCount / $directionTotal) * 100 }}%;height:100%;background:{{ $directionMeta['color'] }};border-radius:inherit"></span></span>
+                            <strong style="font-variant-numeric:tabular-nums;text-align:end">{{ $directionCount }}</strong>
+                        </div>
+                    @endforeach
+                </div>
+            </div>
+
+            <div style="margin-top:20px" class="voip-calls-head">
+                <h4>{{ __('crm.latest_inbound_outbound_calls') }}</h4>
                 <div class="table-wrap">
                     <table>
                         <thead>
@@ -115,16 +261,17 @@
                                 <th>{{ __('crm.other_party') }}</th>
                                 <th>{{ __('crm.duration') }}</th>
                                 <th>{{ __('crm.call_status') }}</th>
+                                <th>{{ __('crm.call_recording') }}</th>
                             </tr>
                         </thead>
                         <tbody>
-                            @foreach (array_slice($voipStats['recent_calls'], 0, 10) as $rc)
+                            @foreach (array_slice($voipStats['calls'], 0, 20) as $rc)
                                 @php
                                     $direction = strtolower((string) ($rc['direction'] ?? ''));
                                     $isOutbound = in_array($direction, ['outbound', 'outgoing'], true);
                                     $isInbound = in_array($direction, ['inbound', 'incoming'], true);
                                     $other = $isOutbound ? ($rc['customer_number'] ?? '—') : ($rc['customer_number'] ?? $rc['agent_extension'] ?? '—');
-                                    $date = isset($rc['started_at']) ? str_replace('T', ' ', substr($rc['started_at'], 0, 19)) : '—';
+                                    $date = $rc['call_date'] ?? '—';
                                     $status = strtoupper((string) ($rc['disposition'] ?? ''));
                                     $statusLabel = match ($status) {
                                         'ANSWERED' => __('crm.status_answered'),
@@ -153,6 +300,13 @@
                                             <span class="badge active">{{ $statusLabel }}</span>
                                         @else
                                             <span class="badge inactive">{{ $statusLabel }}</span>
+                                        @endif
+                                    </td>
+                                    <td>
+                                        @if (!empty($rc['recording_url']))
+                                            <audio controls preload="none" src="{{ $rc['recording_url'] }}" style="width:190px;height:32px"></audio>
+                                        @else
+                                            <span style="color:#94a3b8">—</span>
                                         @endif
                                     </td>
                                 </tr>

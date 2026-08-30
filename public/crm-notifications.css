@@ -32,6 +32,10 @@
 .crm-notification-copy strong{display:block;color:#1f2937;font-size:14px;line-height:1.45}
 .crm-notification-copy p{margin:5px 0 0;color:#566175;font-size:12px;line-height:1.7}
 .crm-notification-meta{display:flex;align-items:center;gap:8px;margin-top:8px;color:#8a94a4;font-size:10px;font-weight:700;font-variant-numeric:tabular-nums}
+.crm-notification-stage{display:flex;align-items:center;flex-wrap:wrap;gap:6px;margin-top:6px;font-size:11px;line-height:1.4}
+.crm-notification-stage-label{font-weight:700;color:#697386}
+.crm-notification-stage-badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border:1px solid #dce2ea;border-radius:6px;background:#f4f6f8;color:#354155;font-size:11px;font-weight:800}
+.crm-notification-stage-badge i{font-size:12px}
 .crm-notification-actions{display:flex;align-items:center;flex-wrap:wrap;gap:7px;margin:12px 20px 0}
 .crm-notification-actions button,.crm-notification-actions a,.crm-notification-actions select{min-height:32px;border:1px solid #dce2ea;border-radius:8px;background:#fff;color:#354155;font:inherit;font-size:11px;font-weight:800}
 .crm-notification-actions button,.crm-notification-actions a{display:inline-flex;align-items:center;padding:0 10px;cursor:pointer;text-decoration:none}
@@ -41,6 +45,15 @@
 .crm-notification-footer a,.crm-notification-footer button{display:inline-flex;align-items:center;gap:6px;border:0;background:transparent;color:#566175;font:inherit;font-size:12px;font-weight:800;text-decoration:none;cursor:pointer}
 .crm-notification-footer button[hidden]{display:none}
 .crm-notification-footer a:hover,.crm-notification-footer button:hover{color:#c92032}
+.crm-notification-feedback{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 22px;border-bottom:1px solid #dbe4ed;background:#eef6ff;color:#1e4f7a;font-size:11px;font-weight:800}
+.crm-notification-feedback[hidden]{display:none}
+.crm-notification-feedback.success{border-color:#bde7ce;background:#edf9f2;color:#176b3a}
+.crm-notification-feedback.error{border-color:#f4c2c7;background:#fff2f3;color:#9f1f2d}
+.crm-notification-feedback button,.crm-notification-state-action,.crm-notification-action-error button{min-height:32px;padding:0 10px;border:1px solid currentColor;border-radius:8px;background:transparent;color:inherit;font:inherit;font-size:11px;font-weight:900;cursor:pointer}
+.crm-notification-item.is-busy{opacity:.72}
+.crm-notification-actions a.is-disabled{pointer-events:none;opacity:.55}
+.crm-notification-action-error{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:10px 20px 0;padding:9px 10px;border:1px solid #f4c2c7;border-radius:9px;background:#fff2f3;color:#9f1f2d;font-size:11px;font-weight:800}
+.crm-notification-state-action{display:inline-flex;align-items:center;justify-content:center;margin-top:14px;color:#bd1e2e}
 .crm-notification-toast{position:fixed;inset-inline-end:24px;inset-block-end:24px;z-index:100000!important;width:min(360px,calc(100vw - 32px));padding:15px 17px;border:1px solid #e4e8ef;border-radius:13px;background:#182033;color:#fff;box-shadow:0 14px 35px rgba(18,32,51,.24)}
 .crm-notification-toast strong,.crm-notification-toast span{display:block}
 .crm-notification-toast strong{font-size:13px}.crm-notification-toast span{margin-top:5px;color:#dce3ec;font-size:11px;line-height:1.55}
@@ -53,5 +66,342 @@ body.crm-notification-open .transfer-topbar,
 body.crm-notification-open .crm-profile,
 body.crm-notification-open .crm-topbar-user{z-index:0!important}
 ::selection{background:#f7c9ce;color:#182033}
-@media (max-width:600px){.crm-notification-drawer{width:100vw}.crm-notification-head{padding:20px 17px 15px}.crm-notification-controls,.crm-notification-item,.crm-notification-footer{padding-inline:17px}.crm-notification-toast{inset-inline:16px;width:auto}}
+@media (max-width:600px){
+ .crm-notification-drawer{width:100vw}
+ .crm-notification-head{padding:20px 17px 15px}
+ .crm-notification-controls,.crm-notification-item,.crm-notification-footer{padding-inline:17px}
+ .crm-notification-toast{inset-inline:16px;width:auto}
+ .crm-notification-close{width:44px;height:44px;flex-basis:44px}
+ .crm-notification-tabs button{min-height:44px;padding-inline:14px}
+ .crm-notification-read-all{min-height:44px;padding-inline:8px}
+ .crm-notification-actions button,.crm-notification-actions a,.crm-notification-actions select{min-height:44px}
+ .crm-notification-footer a,.crm-notification-footer button{min-height:44px}
+ .crm-notification-feedback button,.crm-notification-state-action,.crm-notification-action-error button{min-height:44px}
+}
+
+/* ==========================================================================
+   NOTIFICATION SYSTEM — DARK MODE & MONOCHROME THEME COVERAGE
+   ========================================================================== */
+
+html.dark-mode .crm-notification-backdrop {
+  background: rgba(0, 0, 0, 0.7) !important;
+}
+
+html.dark-mode .crm-notification-drawer {
+  background: #111113 !important;
+  color: #f4f4f5 !important;
+  box-shadow: -10px 0 45px rgba(0, 0, 0, 0.7) !important;
+  border-inline-start: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+[dir=rtl] html.dark-mode .crm-notification-drawer {
+  box-shadow: 10px 0 45px rgba(0, 0, 0, 0.7) !important;
+}
+
+html.dark-mode .crm-notification-head {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  background: #111113 !important;
+}
+
+html.dark-mode .crm-notification-head h2 {
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-notification-head p {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-close {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-close:hover {
+  background: rgba(220, 38, 55, 0.18) !important;
+  border-color: rgba(220, 38, 55, 0.4) !important;
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-notification-controls {
+  background: #141416 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-mode .crm-notification-tabs {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+}
+
+html.dark-mode .crm-notification-tabs button {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-tabs button.active {
+  background: rgba(220, 38, 55, 0.22) !important;
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-notification-read-all {
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-notification-read-all:hover {
+  color: #fca5a5 !important;
+}
+
+html.dark-mode .crm-notification-list {
+  scrollbar-color: #3f3f46 #18181b !important;
+}
+
+html.dark-mode .crm-notification-state {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-state i {
+  color: #71717a !important;
+}
+
+html.dark-mode .crm-notification-state strong {
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-notification-state span {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-item {
+  background: #111113 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-mode .crm-notification-item.is-unread {
+  background: rgba(220, 38, 55, 0.06) !important;
+}
+
+html.dark-mode .crm-notification-copy strong {
+  color: #f4f4f5 !important;
+}
+
+html.dark-mode .crm-notification-copy p {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-meta {
+  color: #71717a !important;
+}
+
+html.dark-mode .crm-notification-stage-label {
+  color: #a1a1aa !important;
+}
+html.dark-mode .crm-notification-stage-badge {
+  border-color: #3f3f46 !important;
+  background: #27272a !important;
+  color: #f4f4f5 !important;
+}
+html.dark-mode .crm-notification-actions button,
+html.dark-mode .crm-notification-actions a,
+html.dark-mode .crm-notification-actions select {
+  background: #18181b !important;
+  border-color: rgba(255, 255, 255, 0.12) !important;
+  color: #e4e4e7 !important;
+}
+
+html.dark-mode .crm-notification-actions button:hover,
+html.dark-mode .crm-notification-actions a:hover {
+  background: #27272a !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
+}
+
+html.dark-mode .crm-notification-actions .primary {
+  background: #dc2637 !important;
+  border-color: #dc2637 !important;
+  color: #ffffff !important;
+}
+
+html.dark-mode .crm-notification-actions .primary:hover {
+  background: #b81829 !important;
+  border-color: #b81829 !important;
+}
+
+html.dark-mode .crm-notification-footer {
+  background: #141416 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08) !important;
+}
+
+html.dark-mode .crm-notification-footer a,
+html.dark-mode .crm-notification-footer button {
+  color: #a1a1aa !important;
+}
+
+html.dark-mode .crm-notification-footer a:hover,
+html.dark-mode .crm-notification-footer button:hover {
+  color: #f87171 !important;
+}
+
+html.dark-mode .crm-notification-feedback {
+  background: #172033 !important;
+  border-color: rgba(96, 165, 250, 0.28) !important;
+  color: #bfdbfe !important;
+}
+
+html.dark-mode .crm-notification-feedback.success {
+  background: rgba(16, 185, 129, 0.12) !important;
+  border-color: rgba(16, 185, 129, 0.26) !important;
+  color: #6ee7b7 !important;
+}
+
+html.dark-mode .crm-notification-feedback.error,
+html.dark-mode .crm-notification-action-error {
+  background: rgba(220, 38, 55, 0.14) !important;
+  border-color: rgba(220, 38, 55, 0.34) !important;
+  color: #fca5a5 !important;
+}
+
+html.dark-mode .crm-notification-state-action {
+  color: #f87171 !important;
+}
+
+/* ---- Monochrome Mode ---- */
+html.crm-monochrome .crm-notification-drawer {
+  border-radius: 0;
+}
+
+html.crm-monochrome .crm-notification-close {
+  border-radius: 4px;
+}
+
+html.crm-monochrome .crm-notification-tabs {
+  border-radius: 4px;
+}
+
+html.crm-monochrome .crm-notification-tabs button {
+  border-radius: 3px;
+}
+
+html.crm-monochrome .crm-notification-tabs button.active {
+  background: #171717;
+  color: #fff;
+}
+
+html.crm-monochrome .crm-notification-stage-badge {
+  border-radius: 3px;
+}
+
+html.crm-monochrome .crm-notification-read-all {
+  color: #171717;
+}
+
+html.crm-monochrome .crm-notification-actions button,
+html.crm-monochrome .crm-notification-actions a,
+html.crm-monochrome .crm-notification-actions select {
+  border-radius: 4px;
+}
+
+html.crm-monochrome .crm-notification-actions .primary {
+  background: #171717;
+  border-color: #171717;
+  color: #fff;
+}
+
+html.crm-monochrome .crm-notification-item.is-unread {
+  background: #fafafa;
+}
+
+/* ---- Monochrome Dark Mode ---- */
+html.crm-monochrome.dark-mode .crm-notification-drawer {
+  background: #111111 !important;
+  color: #f5f5f5 !important;
+  border-inline-start: 1px solid #333333 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-head {
+  border-bottom-color: #262626 !important;
+  background: #111111 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-head h2 {
+  color: #f5f5f5 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-head p {
+  color: #a3a3a3 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-close {
+  background: #1c1c1c !important;
+  border-color: #333333 !important;
+  color: #a3a3a3 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-close:hover {
+  background: #2a2a2a !important;
+  color: #ffffff !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-controls {
+  background: #141414 !important;
+  border-bottom-color: #262626 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-tabs {
+  background: #1c1c1c !important;
+  border-color: #333333 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-tabs button.active {
+  background: #333333 !important;
+  color: #ffffff !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-read-all {
+  color: #e5e5e5 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-item {
+  background: #111111 !important;
+  border-bottom-color: #222222 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-item.is-unread {
+  background: #181818 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-copy strong {
+  color: #f5f5f5 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-copy p {
+  color: #a3a3a3 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-actions button,
+html.crm-monochrome.dark-mode .crm-notification-actions a,
+html.crm-monochrome.dark-mode .crm-notification-actions select {
+  background: #1f1f1f !important;
+  border-color: #383838 !important;
+  color: #f5f5f5 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-actions .primary {
+  background: #ffffff !important;
+  border-color: #ffffff !important;
+  color: #000000 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-footer {
+  background: #141414 !important;
+  border-top-color: #262626 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-footer a,
+html.crm-monochrome.dark-mode .crm-notification-footer button {
+  color: #a3a3a3 !important;
+}
+
+html.crm-monochrome.dark-mode .crm-notification-footer a:hover,
+html.crm-monochrome.dark-mode .crm-notification-footer button:hover {
+  color: #ffffff !important;
+}
 @media (prefers-reduced-motion:reduce){.crm-notification-backdrop,.crm-notification-drawer{transition:none}}

@@ -385,6 +385,7 @@ class CampaignController extends Controller
                 },
             ])
             ->with('stage:id,name_ar')
+            ->whereHas('stage', static fn ($q) => $q->where('is_active', true))
             ->orderBy('position')
             ->get(['id', 'pipeline_stage_id', 'code', 'name_ar', 'color']);
         $statusParam = trim((string) $request->query('status', ''));

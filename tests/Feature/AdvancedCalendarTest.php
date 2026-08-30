@@ -12,12 +12,12 @@ use App\Models\User;
 use App\Security\CrmPermission;
 use App\Services\CalendarSyncService;
 use Carbon\Carbon;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class AdvancedCalendarTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_user_can_reschedule_calendar_event_via_drag_and_drop_endpoint(): void
     {
@@ -190,6 +190,100 @@ class AdvancedCalendarTest extends TestCase
         $this->assertEquals('google', $event->provider);
     }
 
+
+    public function test_calendar_events_include_scheduled_collection_cases_with_details(): void
+    {
+        $collector = $this->userWithPermissions(['calendar.view', 'collections.view', 'collections.collect']);
+        $lead = $this->createLead($collector);
+
+        $case = \App\Models\CollectionCase::query()->create([
+            'lead_id' => $lead->id,
+            'assigned_collector_user_id' => $collector->id,
+            'created_by_user_id' => $collector->id,
+            'donation_type' => 'نقدي',
+            'expected_amount' => 3500.00,
+            'cycle' => 'one_time',
+            'status' => 'assigned',
+            'due_at' => '2026-09-15 11:30:00',
+            'collection_address' => 'شارع الجمهورية - عمارة الأمل',
+            'notes' => 'الاتصال قبل الوصول بربع ساعة',
+        ]);
+
+        $response = $this->actingAs($collector)->getJson(route('v2.calendar.events', [
+            'start' => '2026-09-01T00:00:00Z',
+            'end' => '2026-09-30T23:59:59Z',
+        ]));
+
+        $response->assertOk();
+        $data = $response->json();
+        $list = $response->json('data') ?? $response->json();
+
+        $collectionItem = collect($list)->firstWhere('id', 'collection_case_' . $case->id);
+        $this->assertNotNull($collectionItem);
+        $this->assertSame('collection', $collectionItem['type']);
+        $this->assertSame('3,500.00', $collectionItem['expected_amount']);
+        $this->assertStringContainsString('شارع الجمهورية', $collectionItem['collection_address']);
+    }
+
+    public function test_calendar_conflict_detection_endpoint_identifies_overlapping_events(): void
+    {
+        $user = $this->userWithPermissions(['calendar.view', 'calendar.manage']);
+
+        CalendarEvent::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'جلسة نقاش العميل',
+            'start_time' => '2026-09-10 10:00:00',
+            'end_time' => '2026-09-10 11:00:00',
+            'type' => 'meeting',
+            'status' => 'scheduled',
+        ]);
+
+        // 1. Overlapping window -> conflict
+        $resConflict = $this->actingAs($user)->postJson(route('v2.calendar.conflict'), [
+            'user_id' => $user->id,
+            'start_time' => '2026-09-10 10:30:00',
+            'end_time' => '2026-09-10 11:30:00',
+        ]);
+
+        $resConflict->assertOk()
+            ->assertJsonPath('has_conflict', true)
+            ->assertJsonPath('conflicting_event.title', 'جلسة نقاش العميل');
+
+        // 2. Non-overlapping window -> no conflict
+        $resFree = $this->actingAs($user)->postJson(route('v2.calendar.conflict'), [
+            'user_id' => $user->id,
+            'start_time' => '2026-09-10 12:00:00',
+            'end_time' => '2026-09-10 13:00:00',
+        ]);
+
+        $resFree->assertOk()
+            ->assertJsonPath('has_conflict', false);
+    }
+
+    public function test_calendar_ical_feed_exports_valid_vcalendar_payload(): void
+    {
+        $user = $this->userWithPermissions(['calendar.view']);
+        CalendarEvent::factory()->create([
+            'user_id' => $user->id,
+            'title' => 'اجتماع تغذية التقويم',
+            'start_time' => '2026-09-20 09:00:00',
+            'end_time' => '2026-09-20 10:00:00',
+            'status' => 'scheduled',
+        ]);
+
+        $validToken = hash_hmac('sha256', (string) $user->id, (string) config('app.key'));
+
+        // 1. Valid Token -> Returns VCALENDAR
+        $resValid = $this->get(route('v2.calendar.feed', ['user' => $user->id, 'token' => $validToken]));
+        $resValid->assertOk();
+        $this->assertStringContainsString('text/calendar', $resValid->headers->get('content-type'));
+        $this->assertStringContainsString('BEGIN:VCALENDAR', $resValid->getContent());
+        $this->assertStringContainsString('اجتماع تغذية التقويم', $resValid->getContent());
+
+        // 2. Invalid Token -> 403
+        $resInvalid = $this->get(route('v2.calendar.feed', ['user' => $user->id, 'token' => 'fake-invalid-token']));
+        $resInvalid->assertForbidden();
+    }
     private function userWithPermissions(array $permissionCodes): User
     {
         $group = Group::query()->create([

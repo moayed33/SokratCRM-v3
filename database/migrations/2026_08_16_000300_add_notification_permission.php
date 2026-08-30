@@ -11,6 +11,10 @@ return new class extends Migration
 
     public function up(): void
     {
+        if (! \Illuminate\Support\Facades\Schema::hasTable('permissions')) {
+            return;
+        }
+
         $now = now();
         DB::table('permissions')->insertOrIgnore([
             'code' => self::CODE,

@@ -11,30 +11,32 @@ use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class UserAttributionTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     public function test_created_lead_is_attributed_to_authenticated_user(): void
     {
-        $permission = Permission::query()->create([
-            'code' => CrmPermission::LEADS_CREATE->value,
-            'module' => CrmPermission::LEADS_CREATE->module(),
-            'name_ar' => CrmPermission::LEADS_CREATE->label(),
-        ]);
-        $group = Group::query()->create([
-            'name' => 'موظف المبيعات',
-            'code' => 'sales-agent',
-        ]);
-        $group->permissions()->attach($permission);
+        $permission = Permission::query()->where('code', CrmPermission::LEADS_CREATE->value)->first()
+            ?? Permission::query()->create([
+                'code' => CrmPermission::LEADS_CREATE->value,
+                'module' => CrmPermission::LEADS_CREATE->module(),
+                'name_ar' => CrmPermission::LEADS_CREATE->label(),
+            ]);
+        $group = Group::query()->where('code', 'sales-agent')->first()
+            ?? Group::query()->create([
+                'name' => 'موظف المبيعات',
+                'code' => 'sales-agent',
+            ]);
+        $group->permissions()->syncWithoutDetaching([$permission->id]);
 
         $user = User::factory()->create([
             'name' => 'Sales User',
         ]);
-        $user->groups()->attach($group);
+        $user->groups()->syncWithoutDetaching([$group->id]);
 
         $stage = PipelineStage::query()->firstOrCreate(
             ['code' => 'new'],

@@ -271,6 +271,18 @@ html.dark-mode .crm-loader-line {
         animation: crmLoaderAutomaticHide 0.2s linear 0.4s forwards !important;
     }
 }
+@media (max-width: 900px) {
+    #crm-page-loader {
+        display: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        pointer-events: none !important;
+    }
+    .crm-loading,
+    .crm-loading body {
+        overflow: visible !important;
+    }
+}
 </style>
 
 <div
@@ -313,9 +325,12 @@ html.dark-mode .crm-loader-line {
 (() => {
     const loader = document.getElementById('crm-page-loader');
     if (!loader) return;
+    if (window.innerWidth <= 900) {
+        loader.style.display = 'none';
+        return;
+    }
 
     document.documentElement.classList.add('crm-loading');
-
     const minimumVisibleTime = 450;
     const startedAt = Date.now();
     let hideScheduled = false;

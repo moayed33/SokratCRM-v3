@@ -28,6 +28,14 @@ class NotificationRule extends Model
 
     public const EVENT_CALENDAR_CANCELED = 'calendar.canceled';
 
+    public const EVENT_COLLECTION_DUE = 'collection.due';
+
+    public const EVENT_COLLECTION_ASSIGNED = 'collection.assigned';
+
+    public const EVENT_COLLECTION_RESCHEDULED = 'collection.rescheduled';
+
+    public const EVENT_COLLECTION_COMPLETED = 'collection.completed';
+
     public const EVENT_SYSTEM_TEST = 'system.test';
 
     public const EVENTS = [
@@ -38,6 +46,10 @@ class NotificationRule extends Model
         self::EVENT_CALENDAR_DUE,
         self::EVENT_CALENDAR_UPDATED,
         self::EVENT_CALENDAR_CANCELED,
+        self::EVENT_COLLECTION_DUE,
+        self::EVENT_COLLECTION_ASSIGNED,
+        self::EVENT_COLLECTION_RESCHEDULED,
+        self::EVENT_COLLECTION_COMPLETED,
         self::EVENT_SYSTEM_TEST,
     ];
 

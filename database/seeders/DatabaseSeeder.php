@@ -15,7 +15,10 @@ class DatabaseSeeder extends Seeder
             BranchSeeder::class,
             CrmV2PipelineSeeder::class,
             CrmAccessControlSeeder::class,
-            CalendarEventSeeder::class,
+            // Demo seeders disabled for clean client handoff:
+            // CalendarEventSeeder::class,
+            // DummyWorkflowSeeder::class,
+            // ComprehensiveDummyDataSeeder::class,
         ]);
     }
 }

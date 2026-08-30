@@ -28,4 +28,9 @@ class DonationType extends Model
     {
         return $this->hasMany(Lead::class);
     }
+
+    public function donations(): HasMany
+    {
+        return $this->hasMany(Donation::class);
+    }
 }

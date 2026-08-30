@@ -88,7 +88,6 @@
   "لن يتم تغيير حالة العميل إلا بعد حفظ المتابعة.": "Lead status will not change until follow-up is saved.",
   "إلغاء وإغلاق": "Cancel & Close",
   "لوحة المراقبة المباشرة للسنترال": "Live PBX Monitor",
-  "مراقبة فورية للتحويلات والمكالمات في السنترال": "Real-time monitoring for extensions and calls in PBX",
   "مدير النظام": "System Admin",
   "إجمالي التحويلات": "Total Extensions",
   "الخطوط المتصلة": "Online Lines",
@@ -269,5 +268,12 @@
   "تبديل الفرع": "Switch Branch",
   "الفرع المعين": "Assigned Branch",
   "اختر الفرع": "Select Branch",
-  "متبرع": "Donor"
+  "متبرع": "Donor",
+  "Lead ID": "Lead ID",
+  "Registered At": "Registered At",
+  "Lead Details": "Lead Details",
+  "Back to Leads": "Back to Leads",
+  "Edit Details": "Edit Details",
+  "Record Donation": "Record Donation",
+  "Log New Follow-up": "Log New Follow-up"
 }

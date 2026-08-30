@@ -189,4 +189,24 @@ class PipelineStage extends Model
             'id'
         );
     }
+
+    public function fields(): HasMany
+    {
+        return $this->hasMany(PipelineStageField::class, 'pipeline_stage_id')
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function activeFields(): HasMany
+    {
+        return $this->hasMany(PipelineStageField::class, 'pipeline_stage_id')
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->orderBy('id');
+    }
+
+    public function stageValues(): HasMany
+    {
+        return $this->hasMany(LeadStageFieldValue::class, 'pipeline_stage_id');
+    }
 }

@@ -8,21 +8,6 @@
 )
 
 @section('top-actions')
- @can('leads.import')
- <a
-  class="btn soft"
-  href="{{ route('v2.leads.import') }}"
- >
-  {{ __('crm.import_leads') }}
- </a>
- @endcan
-
- <a
-  class="btn soft"
-  href="{{ route('v2.leads') }}"
- >
-  {{ __('crm.view_leads') }}
- </a>
 @endsection
 
 @section('content')

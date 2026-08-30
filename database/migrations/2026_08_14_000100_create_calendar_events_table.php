@@ -11,35 +11,41 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('calendar_events', function (Blueprint $table): void {
-            $table->id();
+        if (! Schema::hasTable('calendar_events')) {
+            Schema::create('calendar_events', function (Blueprint $table): void {
+                $table->id();
 
-            $table->foreignId('user_id')
-                ->constrained('users')
-                ->cascadeOnUpdate()
-                ->cascadeOnDelete();
+                $table->foreignId('user_id')
+                    ->constrained('users')
+                    ->cascadeOnUpdate()
+                    ->cascadeOnDelete();
 
-            $table->foreignId('lead_id')
-                ->nullable()
-                ->constrained('leads')
-                ->cascadeOnUpdate()
-                ->nullOnDelete();
+                $table->foreignId('lead_id')
+                    ->nullable()
+                    ->constrained('leads')
+                    ->cascadeOnUpdate()
+                    ->nullOnDelete();
 
-            $table->string('title', 255);
-            $table->text('description')->nullable();
+                $table->string('title', 255);
+                $table->text('description')->nullable();
 
-            $table->dateTime('start_time')->index();
-            $table->dateTime('end_time')->index();
+                $table->dateTime('start_time');
+                $table->dateTime('end_time');
 
-            $table->enum('type', ['meeting', 'call', 'task', 'reminder'])->default('meeting')->index();
-            $table->enum('status', ['scheduled', 'completed', 'canceled'])->default('scheduled')->index();
+                $table->enum('type', ['meeting', 'call', 'task', 'reminder'])->default('meeting');
+                $table->enum('status', ['scheduled', 'completed', 'canceled'])->default('scheduled');
 
-            $table->softDeletes();
-            $table->timestamps();
+                $table->softDeletes();
+                $table->timestamps();
 
-            $table->index(['user_id', 'start_time']);
-            $table->index(['lead_id', 'start_time']);
-        });
+                $table->index('start_time');
+                $table->index('end_time');
+                $table->index('type');
+                $table->index('status');
+                $table->index(['user_id', 'start_time']);
+                $table->index(['lead_id', 'start_time']);
+            });
+        }
 
         // Insert default permissions for calendar module
         $now = now();

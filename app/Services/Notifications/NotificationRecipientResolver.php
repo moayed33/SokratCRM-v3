@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Services\Notifications;
 
 use App\Models\CalendarEvent;
+use App\Models\CollectionCase;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\NotificationRule;
@@ -15,7 +16,7 @@ use Illuminate\Support\Collection;
 class NotificationRecipientResolver
 {
     /** @return Collection<int, User> */
-    public function resolve(NotificationRule $rule, Lead|CalendarEvent $source): Collection
+    public function resolve(NotificationRule $rule, Lead|CalendarEvent|CollectionCase $source): Collection
     {
         $rule->loadMissing('recipients');
         $users = collect();
@@ -45,32 +46,51 @@ class NotificationRecipientResolver
             ->values();
     }
 
-    private function assignedUser(Lead|CalendarEvent $source): ?User
+    private function assignedUser(Lead|CalendarEvent|CollectionCase $source): ?User
     {
-        return $source instanceof Lead
-            ? $source->assignedUser
-            : $source->user;
+        return match (true) {
+            $source instanceof Lead => $source->assignedUser,
+            $source instanceof CollectionCase => $source->assignedCollector,
+            default => $source->user,
+        };
     }
 
-    private function eventOwner(Lead|CalendarEvent $source): ?User
+    private function eventOwner(Lead|CalendarEvent|CollectionCase $source): ?User
     {
-        return $source instanceof Lead
-            ? $source->creator
-            : $source->user;
+        return match (true) {
+            $source instanceof Lead => $source->creator,
+            $source instanceof CollectionCase => $source->createdBy,
+            default => $source->user,
+        };
     }
 
-    public function canReceive(User $user, Lead|CalendarEvent|User $source): bool
+    public function canReceive(User $user, Lead|CalendarEvent|CollectionCase|User $source): bool
     {
         if ($source instanceof User) {
             return $user->is($source);
         }
 
+        if ($user->isSuperAdmin()) {
+            return true;
+        }
+
         if ($source instanceof Lead) {
-            return $user->hasPermission(CrmPermission::TASKS_VIEW)
+            return ($user->hasPermission(CrmPermission::TASKS_VIEW)
+                || $user->hasPermission(CrmPermission::LEADS_VIEW)
+                || $user->hasPermission(CrmPermission::LEADS_FOLLOWUPS_VIEW))
                 && $source->isAccessibleTo($user);
         }
 
-        return $user->hasPermission(CrmPermission::CALENDAR_VIEW)
+        if ($source instanceof CollectionCase) {
+            return ($user->hasPermission(CrmPermission::COLLECTIONS_VIEW)
+                || $user->hasPermission(CrmPermission::COLLECTIONS_COLLECT)
+                || $user->hasPermission(CrmPermission::COLLECTIONS_MANAGE)
+                || $user->hasPermission(CrmPermission::COLLECTIONS_ASSIGN))
+                && CollectionCase::query()->whereKey($source->getKey())->accessibleTo($user)->exists();
+        }
+
+        return ($user->hasPermission(CrmPermission::CALENDAR_VIEW)
+            || ($source->type === 'task' && $user->hasPermission(CrmPermission::TASKS_VIEW)))
             && $source->isAccessibleTo($user);
     }
 }

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Settings\Concerns\BuildsAccessPage;
 use App\Http\Requests\Settings\StoreGroupRequest;
 use App\Http\Requests\Settings\UpdateGroupRequest;
 use App\Models\Group;
@@ -15,15 +16,11 @@ use Illuminate\Validation\ValidationException;
 
 class GroupController extends Controller
 {
-    public function index(): View
+    use BuildsAccessPage;
+
+    public function index(Request $request): View
     {
-        return view('settings.groups.index', [
-            'groups' => Group::query()
-                ->withCount(['users', 'permissions'])
-                ->orderByDesc('is_system')
-                ->orderBy('name')
-                ->get(),
-        ]);
+        return $this->buildAccessPage($request, 'groups');
     }
 
     public function create(): View

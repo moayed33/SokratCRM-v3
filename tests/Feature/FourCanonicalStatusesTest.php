@@ -4,19 +4,20 @@ declare(strict_types=1);
 
 namespace Tests\Feature;
 
+use App\Models\DonationType;
 use App\Models\Group;
 use App\Models\Lead;
 use App\Models\LeadStatus;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Illuminate\Http\UploadedFile;
 use Tests\TestCase;
 
 class FourCanonicalStatusesTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $admin;
     private PipelineStage $stageNew;
@@ -31,11 +32,10 @@ class FourCanonicalStatusesTest extends TestCase
     {
         parent::setUp();
 
-        $group = Group::query()->create([
-            'name' => 'Super Admin Group',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $group = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'Super Admin Group', 'is_system' => true]
+        );
 
         $this->admin = User::factory()->create(['is_active' => true]);
         $this->admin->groups()->attach($group);
@@ -145,6 +145,7 @@ class FourCanonicalStatusesTest extends TestCase
 
     public function test_donor_status_preserves_donation_recording_workflow(): void
     {
+        $donationType = DonationType::query()->where('is_active', true)->firstOrFail();
         $lead = Lead::query()->create([
             'name' => 'Donor Converted Lead',
             'phone' => '01000000003',
@@ -156,13 +157,21 @@ class FourCanonicalStatusesTest extends TestCase
             'lead_status_id' => $this->statusDonor->id,
             'communication_type' => 'call',
             'outcome' => 'Confirmed donation pledge of 5000 EGP',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 5000,
+            'donation_cycle' => 'one_time',
         ]);
 
         $response->assertSessionHasNoErrors();
-        $this->assertSame($this->statusDonor->id, $lead->fresh()->lead_status_id);
+        $lead->refresh();
+        $this->assertSame($this->statusDonor->id, $lead->lead_status_id);
+        $this->assertSame($donationType->id, $lead->donation_type_id);
+        $this->assertSame('5000.00', (string) $lead->donation_value);
+        $this->assertSame('one_time', $lead->donation_cycle);
+        $this->assertNull($lead->next_follow_up_at);
     }
 
-    public function test_quick_followup_enforces_no_answer_and_not_interested_rules(): void
+    public function test_canonical_followup_enforces_no_answer_and_not_interested_rules(): void
     {
         $lead = Lead::query()->create([
             'name' => 'Quick Followup Lead',
@@ -172,8 +181,8 @@ class FourCanonicalStatusesTest extends TestCase
             'next_follow_up_at' => now()->addDay(),
         ]);
 
-        // 1. Quick followup to no_answer without date -> fails
-        $responseNoDate = $this->actingAs($this->admin)->post(route('v2.tasks.quick_followup', $lead), [
+        // 1. No-answer transition without a callback date fails.
+        $responseNoDate = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
             'communication_type' => 'call',
             'outcome' => 'No answer',
             'lead_status_id' => $this->statusNoAnswer->id,
@@ -181,11 +190,12 @@ class FourCanonicalStatusesTest extends TestCase
         ]);
         $responseNoDate->assertSessionHasErrors('next_follow_up_at');
 
-        // 2. Quick followup to not_interested -> clears next_follow_up_at
-        $responseNotInterested = $this->actingAs($this->admin)->post(route('v2.tasks.quick_followup', $lead), [
+        // 2. Not-interested transition clears the future callback.
+        $responseNotInterested = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
             'communication_type' => 'call',
             'outcome' => 'Client explicitly refused',
             'lead_status_id' => $this->statusNotInterested->id,
+            'disinterest_reason' => 'Client declined the offer',
             'next_follow_up_at' => now()->addDay()->format('Y-m-d H:i'),
         ]);
         $responseNotInterested->assertSessionHasNoErrors();
@@ -317,6 +327,208 @@ class FourCanonicalStatusesTest extends TestCase
                 && in_array('donor', $codes, true);
         });
     }
+    public function test_kanban_popup_and_filtering_controls_are_rendered(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.kanban', ['popup' => 1]));
+        $response->assertOk();
+        $response->assertViewHas('employees');
+        $response->assertSee('kanban-toolbar');
+        $response->assertSee('kanbanSearchInput');
+        $response->assertSee('kanbanScopeFilterSelect');
+        $response->assertSee('kanbanEmployeeFilterSelect');
+        $response->assertSee('kanbanLimitSelect');
+        $response->assertSee('kanban-column-pagination');
+    }
+
+    public function test_make_donation_query_parameter_preselects_donor_status_and_renders_donation_fields(): void
+    {
+        $this->actingAs($this->admin);
+        $lead = Lead::query()->create([
+            'name' => 'متبرع تجريبي',
+            'phone' => '01099887766',
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->get(route('v2.leads.followups.index', [$lead, 'make_donation' => 1]));
+        $response->assertOk();
+        $response->assertSee('donationReceiptField');
+        $response->assertSee('receiptDropzone');
+        $response->assertSee('Ctrl + V');
+    }
+
+    public function test_instant_donation_with_receipt_upload_records_donation_and_transitions_lead_to_donor(): void
+    {
+        $this->actingAs($this->admin);
+        \Illuminate\Support\Facades\Storage::fake('local');
+
+        $donationType = DonationType::query()->where('is_active', true)->firstOrFail();
+        $instantMethod = \App\Models\InstantDonationMethod::query()->firstOrCreate(
+            ['code' => 'instapay'],
+            ['name_ar' => 'إنستاباي', 'name_en' => 'InstaPay', 'is_active' => true, 'position' => 1]
+        );
+
+        $lead = Lead::query()->create([
+            'name' => 'محمد سعيد المتبرع',
+            'phone' => '01234567890',
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $receiptFile = UploadedFile::fake()->image('instapay_transfer.png', 400, 400);
+
+        $response = $this->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'outcome' => 'تم تحويل مبلغ 1500 جنيه عبر إنستاباي وإرسال لقطة الشاشة.',
+            'communication_type' => 'call',
+            'donation_way' => 'instant',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 1500,
+            'donation_cycle' => 'monthly',
+            'instant_donation_method_id' => $instantMethod->id,
+            'donation_receipt' => $receiptFile,
+        ]);
+
+        $response->assertRedirect();
+
+        $lead->refresh();
+        $this->assertEquals($this->statusDonor->id, $lead->lead_status_id);
+        $this->assertEquals('donor', $lead->status?->stage?->code);
+
+        $this->assertDatabaseHas('donations', [
+            'lead_id' => $lead->id,
+            'amount' => 1500.00,
+            'cycle' => 'monthly',
+            'donation_way' => 'instant',
+            'instant_donation_method_id' => $instantMethod->id,
+        ]);
+    }
+
+    public function test_collection_donation_spawns_collection_case_with_due_date_and_address(): void
+    {
+        $this->actingAs($this->admin);
+        $donationType = DonationType::query()->where('is_active', true)->firstOrFail();
+
+        $lead = Lead::query()->create([
+            'name' => 'أحمد محمود كاش',
+            'phone' => '01122334455',
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusDonor->id,
+            'outcome' => 'طلب تحصيل بمندوب على العنوان المحدد.',
+            'communication_type' => 'call',
+            'donation_way' => 'collection',
+            'donation_type_id' => $donationType->id,
+            'donation_value' => 3000,
+            'donation_cycle' => 'one_time',
+            'collection_due_at' => now()->addDays(2)->format('Y-m-d H:i'),
+            'collection_address' => 'شارع التحرير، الدقي، الجيزة',
+        ]);
+
+        $response->assertRedirect();
+
+        $lead->refresh();
+        $this->assertDatabaseHas('collection_cases', [
+            'lead_id' => $lead->id,
+            'expected_amount' => 3000.00,
+            'collection_address' => 'شارع التحرير، الدقي، الجيزة',
+        ]);
+    }
+
+    public function test_call_buttons_support_microsip_via_sip_protocol(): void
+    {
+        $this->actingAs($this->admin);
+        $lead = Lead::query()->create([
+            'name' => 'عميل السنترال',
+            'phone' => '01099887766',
+            'lead_status_id' => $this->statusNew->id,
+            'created_by' => $this->admin->name,
+            'created_by_user_id' => $this->admin->id,
+        ]);
+
+        $kanbanResponse = $this->get(route('v2.leads.kanban'));
+        $kanbanResponse->assertOk();
+        $kanbanResponse->assertSee('sip:01099887766');
+        $kanbanResponse->assertSee('data-sip-href');
+
+        $showResponse = $this->get(route('v2.leads.show', $lead));
+        $showResponse->assertOk();
+        $showResponse->assertSee('sip:01099887766');
+    }
+
+    public function test_normal_employee_cannot_create_or_import_or_export_and_sees_only_assigned_leads(): void
+    {
+        $employeeGroup = Group::query()->create([
+            'code' => 'tele-sales-agent',
+            'name' => 'Tele-sales Agent',
+            'is_system' => false,
+        ]);
+
+        // Only give basic permissions (view leads, create followups)
+        $viewPerm = \App\Models\Permission::query()->firstOrCreate(
+            ['code' => CrmPermission::LEADS_VIEW->value],
+            ['module' => 'leads', 'name_ar' => 'عرض العملاء', 'description' => 'عرض العملاء']
+        );
+        $followupPerm = \App\Models\Permission::query()->firstOrCreate(
+            ['code' => CrmPermission::LEADS_FOLLOWUPS_CREATE->value],
+            ['module' => 'leads', 'name_ar' => 'تسجيل المتابعات', 'description' => 'تسجيل المتابعات']
+        );
+        $employeeGroup->permissions()->sync([$viewPerm->id, $followupPerm->id]);
+        $agent = User::factory()->create(['is_active' => true]);
+        $agent->groups()->attach($employeeGroup->id);
+
+        $otherUser = User::factory()->create(['is_active' => true]);
+
+        $assignedLead = Lead::query()->create([
+            'name' => 'عميل مسند للموظف',
+            'phone' => '01000000001',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $agent->id,
+            'created_by' => 'Admin',
+        ]);
+
+        $unassignedLead = Lead::query()->create([
+            'name' => 'عميل لموظف آخر',
+            'phone' => '01000000002',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $otherUser->id,
+            'created_by' => 'Admin',
+        ]);
+
+        $this->actingAs($agent);
+
+        // 1. Cannot access create lead page or POST lead store
+        $this->get(route('v2.leads.create'))->assertForbidden();
+        $this->post(route('v2.leads.store'), ['name' => 'Fake Lead', 'phone' => '01099999999'])->assertForbidden();
+
+        // 2. Cannot access import page
+        $this->get(route('v2.leads.import'))->assertForbidden();
+
+        // Super admin can access create and store
+        $this->actingAs($this->admin)->get(route('v2.leads.create'))->assertOk();
+        $this->actingAs($agent);
+        // 3. Cannot export leads
+        $this->get(route('v2.leads.export'))->assertForbidden();
+
+        // 4. Leads view only shows assigned lead
+        $leadsResponse = $this->get(route('v2.leads'));
+        $leadsResponse->assertOk();
+        $leadsResponse->assertSee('عميل مسند للموظف');
+        $leadsResponse->assertDontSee('عميل لموظف آخر');
+
+        // 5. Kanban view only shows assigned lead
+        $kanbanResponse = $this->get(route('v2.leads.kanban'));
+        $kanbanResponse->assertOk();
+        $kanbanResponse->assertSee('عميل مسند للموظف');
+        $kanbanResponse->assertDontSee('عميل لموظف آخر');
+    }
+
 
     public function test_daily_tasks_receives_all_four_canonical_statuses(): void
     {
@@ -404,5 +616,204 @@ class FourCanonicalStatusesTest extends TestCase
         $this->assertEquals(1, $countsByCode['donor']);
 
         $this->assertEquals(5, $response->viewData('totalLeads'));
+    }
+
+    public function test_leads_index_includes_whatsapp_action_for_local_egyptian_phone(): void
+    {
+        Lead::query()->create([
+            'name' => 'WhatsApp Lead',
+            'phone' => '01000000099',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $this->actingAs($this->admin)
+            ->get(route('v2.leads'))
+            ->assertOk()
+            ->assertSee('href="https://wa.me/201000000099"', false)
+            ->assertSee('bi bi-whatsapp', false);
+    }
+
+    public function test_transition_popup_resolves_each_canonical_target_code(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'Popup Target Lead',
+            'phone' => '01000000111',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        foreach ([
+            'new' => $this->statusNew,
+            'no_answer' => $this->statusNoAnswer,
+            'not_interested' => $this->statusNotInterested,
+            'donor' => $this->statusDonor,
+        ] as $code => $status) {
+            $this->actingAs($this->admin)
+                ->get(route('v2.leads.followups.index', [
+                    'lead' => $lead,
+                    'kanban_popup' => 1,
+                    'target_status_code' => $code,
+                ]))
+                ->assertOk()
+                ->assertViewHas('defaultStatusId', $status->id);
+        }
+    }
+
+    public function test_kanban_transition_success_returns_saved_popup_response_and_post_message_contract(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'Kanban Move Candidate',
+            'phone' => '01011112233',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusNoAnswer->id,
+            'communication_type' => 'call',
+            'outcome' => 'Tried to reach out via kanban move',
+            'next_follow_up_at' => now()->addDays(2)->format('Y-m-d H:i'),
+            'kanban_popup' => 1,
+            'context' => 'kanban',
+        ]);
+        $redirectUrl = (string) $response->headers->get('Location');
+        $this->assertStringContainsString('kanban_popup=1', $redirectUrl);
+        $this->assertStringContainsString('saved=1', $redirectUrl);
+        $this->assertStringContainsString('context=kanban', $redirectUrl);
+        $response->assertSessionHas('success');
+
+        $lead->refresh();
+        $this->assertSame($this->statusNoAnswer->id, $lead->lead_status_id);
+
+        // Follow redirect using the session flash from the POST
+        $viewResponse = $this->get($redirectUrl);
+        $viewResponse->assertOk();
+        $viewResponse->assertSee('crm-kanban-followup-saved');
+        $viewResponse->assertSee('kanban');
+    }
+
+    public function test_kanban_transition_validation_failure_keeps_form_open_and_does_not_change_status(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'Kanban Invalid Candidate',
+            'phone' => '01033334455',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        // Attempt no_answer without mandatory callback date
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead), [
+            'lead_status_id' => $this->statusNoAnswer->id,
+            'communication_type' => 'call',
+            'outcome' => 'Invalid attempt',
+            'kanban_popup' => 1,
+            'context' => 'kanban',
+        ]);
+
+        $response->assertSessionHasErrors(['next_follow_up_at']);
+        $lead->refresh();
+        $this->assertSame($this->statusNew->id, $lead->lead_status_id);
+    }
+
+    public function test_daily_task_context_preserves_next_lead_redirect_payload(): void
+    {
+        $lead1 = Lead::query()->create([
+            'name' => 'Task Lead 1',
+            'phone' => '01044445566',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+            'next_follow_up_at' => now()->subHour(),
+        ]);
+
+        $lead2 = Lead::query()->create([
+            'name' => 'Task Lead 2 Waiting in Queue',
+            'phone' => '01077778899',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+            'next_follow_up_at' => now()->subMinutes(30),
+        ]);
+
+        $response = $this->actingAs($this->admin)->post(route('v2.leads.followups.store', $lead1), [
+            'lead_status_id' => $this->statusNotInterested->id,
+            'communication_type' => 'call',
+            'outcome' => 'Declined service',
+            'disinterest_reason' => 'price_high',
+            'kanban_popup' => 1,
+            'context' => 'daily_tasks',
+        ]);
+
+        $response->assertSessionHas('next_lead_url');
+        $response->assertSessionHas('next_lead_id', $lead2->id);
+    }
+
+    public function test_followup_popup_displays_customer_donor_information_and_hides_company_centric_fields(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'فاطمة محمود المتبرعة',
+            'phone' => '01012345678',
+            'governorate' => 'الإسكندرية',
+            'address' => 'شارع جمال عبد الناصر',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => $this->admin->id,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.followups.index', [
+            'lead' => $lead->id,
+            'kanban_popup' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('بيانات العميل / المتبرع');
+        $response->assertSee('فاطمة محمود المتبرعة');
+        $response->assertSee('01012345678');
+        $response->assertSee('الإسكندرية');
+        $response->assertSee('شارع جمال عبد الناصر');
+        $response->assertDontSee('اسم الشركة');
+        $response->assertDontSee('عدد المستخدمين');
+        $response->assertDontSee('عدد الفروع');
+        $response->assertDontSee('المنصب');
+    }
+
+    public function test_followup_popup_displays_donation_fields_when_donation_info_exists(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'متبرع دوري نشط',
+            'phone' => '01099887766',
+            'lead_status_id' => $this->statusDonor->id,
+            'assigned_user_id' => $this->admin->id,
+            'donation_type' => 'كفالة أيتام',
+            'donation_cycle' => 'monthly',
+            'donation_value' => '1500.00',
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.followups.index', [
+            'lead' => $lead->id,
+            'kanban_popup' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('كفالة أيتام');
+        $response->assertSee('إجمالي التبرعات');
+        $response->assertSee('1,500.00');
+    }
+
+    public function test_followup_popup_shows_unassigned_fallback_and_dynamic_stage(): void
+    {
+        $lead = Lead::query()->create([
+            'name' => 'عميل بدون موظف',
+            'phone' => '01122334455',
+            'lead_status_id' => $this->statusNew->id,
+            'assigned_user_id' => null,
+        ]);
+
+        $response = $this->actingAs($this->admin)->get(route('v2.leads.followups.index', [
+            'lead' => $lead->id,
+            'kanban_popup' => 1,
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('غير معين');
+        $response->assertSee($this->statusNew->stage->localizedName());
     }
 }

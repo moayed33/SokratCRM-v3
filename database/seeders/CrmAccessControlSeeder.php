@@ -52,19 +52,20 @@ class CrmAccessControlSeeder extends Seeder
     {
         $definitions = [
             Group::SUPER_ADMIN_CODE => [
-                'name' => 'مدير النظام',
-                'description' => 'وصول كامل ومحمي إلى جميع وظائف النظام.',
+                'name' => 'سوبر أدمن',
+                'description' => 'وصول كامل ومحمي إلى جميع وظائف وفروع النظام (Super Admin)',
                 'is_system' => true,
                 'permissions' => CrmPermission::values(),
             ],
-            'sales-manager' => [
-                'name' => 'مدير المبيعات',
-                'description' => 'إدارة المبيعات والعملاء والمتابعات والتقارير.',
-                'is_system' => false,
+            'branch-admin' => [
+                'name' => 'أدمن الفرع',
+                'description' => 'إدارة كاملة لعمليات وموظفي وتحصيلات الفرع (Branch Admin)',
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'leads.view',
                     'leads.scope.all',
+                    'leads.scope.group',
                     'leads.assign',
                     'leads.create',
                     'leads.update',
@@ -74,15 +75,82 @@ class CrmAccessControlSeeder extends Seeder
                     'leads.followups.view',
                     'leads.followups.create',
                     'tasks.view',
-                    'quotations.view',
-                    'quotations.create',
+                    'campaigns.view',
+                    'campaigns.create',
+                    'campaigns.reports',
                     'reports.view',
+                    'reports.employees.view',
+                    'users.view',
+                    'users.create',
+                    'users.update',
+                    'users.activate',
+                    'users.reset_password',
+                    'voip.view',
+                    'voip.recordings',
+                    'voip.live_panel',
+                    'calendar.view',
+                    'calendar.manage',
+                    'collections.view',
+                    'collections.collect',
+                    'collections.assign',
+                    'collections.manage',
+                    'collections.complete',
+                    'collections.cancel',
+                    'collections.reports',
+                    'collections.methods.manage',
+                    'branches.view',
+                    'branches.update',
                 ],
             ],
-            'sales-agent' => [
-                'name' => 'موظف المبيعات',
-                'description' => 'التعامل اليومي مع العملاء والمتابعات وعروض الأسعار.',
-                'is_system' => false,
+            'manager' => [
+                'name' => 'مدير',
+                'description' => 'إشراف وإدارة فرق المبيعات والتحصيل والمتابعات والتقارير التشغيلية (Manager)',
+                'is_system' => true,
+                'permissions' => [
+                    'dashboard.view',
+                    'leads.view',
+                    'leads.scope.group',
+                    'leads.assign',
+                    'leads.create',
+                    'leads.update',
+                    'leads.export',
+                    'leads.followups.view',
+                    'leads.followups.create',
+                    'tasks.view',
+                    'campaigns.view',
+                    'campaigns.reports',
+                    'reports.view',
+                    'reports.employees.view',
+                    'voip.view',
+                    'voip.recordings',
+                    'calendar.view',
+                    'calendar.manage',
+                    'collections.view',
+                    'collections.assign',
+                    'collections.manage',
+                    'collections.complete',
+                    'collections.cancel',
+                    'collections.reports',
+                ],
+            ],
+            'collector' => [
+                'name' => 'محصل',
+                'description' => 'تنفيذ حالات التحصيل المسندة وتأكيد استلام التبرعات (Collector)',
+                'is_system' => true,
+                'permissions' => [
+                    'dashboard.view',
+                    'collections.view',
+                    'collections.collect',
+                    'collections.complete',
+                    'calendar.view',
+                    'tasks.view',
+                    'leads.followups.view',
+                ],
+            ],
+            'employee' => [
+                'name' => 'موظف',
+                'description' => 'التعامل اليومي مع العملاء والمتابعات والمهام والتقويم (Employee)',
+                'is_system' => true,
                 'permissions' => [
                     'dashboard.view',
                     'leads.view',
@@ -91,24 +159,8 @@ class CrmAccessControlSeeder extends Seeder
                     'leads.followups.view',
                     'leads.followups.create',
                     'tasks.view',
-                    'quotations.view',
-                    'quotations.create',
-                ],
-            ],
-            'read-only' => [
-                'name' => 'مشاهدة فقط',
-                'description' => 'عرض بيانات CRM دون تعديلها.',
-                'is_system' => false,
-                'permissions' => [
-                    'dashboard.view',
-                    'leads.scope.all',
-                    'leads.view',
-                    'leads.followups.view',
-                    'tasks.view',
-                    'quotations.view',
-                    'campaigns.view',
-                    'campaigns.reports',
-                    'reports.view',
+                    'calendar.view',
+                    'voip.view',
                 ],
             ],
         ];
@@ -131,17 +183,15 @@ class CrmAccessControlSeeder extends Seeder
                 $group->update(['is_system' => true]);
             }
 
-            if ($group->wasRecentlyCreated || $group->isSuperAdmin()) {
-                $group->permissions()->sync(
-                    collect($definition['permissions'])
-                        ->map(
-                            static fn (string $permissionCode): int => (int) $permissionIds->get($permissionCode),
-                        )
-                        ->filter()
-                        ->values()
-                        ->all(),
-                );
-            }
+            $group->permissions()->sync(
+                collect($definition['permissions'])
+                    ->map(
+                        static fn (string $permissionCode): int => (int) $permissionIds->get($permissionCode),
+                    )
+                    ->filter()
+                    ->values()
+                    ->all(),
+            );
 
             $groups[$code] = $group;
         }
@@ -162,31 +212,34 @@ class CrmAccessControlSeeder extends Seeder
                 Permission::query()->pluck('id')->all(),
             );
 
-        $salesManager = $groups['sales-manager'];
-
-        if (! $salesManager->wasRecentlyCreated) {
-            return;
+        $allPerms = Permission::query()->pluck('id', 'code');
+        $assignablePermCodes = [];
+        foreach (['employee', 'collector', 'manager', 'branch-admin'] as $gCode) {
+            if (isset($groups[$gCode])) {
+                $assignablePermCodes[] = LeadAssignment::groupPermissionCode($groups[$gCode]);
+            }
         }
 
-        $targetCodes = [
-            LeadAssignment::groupPermissionCode($groups['sales-manager']),
-            LeadAssignment::groupPermissionCode($groups['sales-agent']),
-        ];
+        $assignablePermIds = collect($assignablePermCodes)
+            ->map(fn (string $code) => $allPerms->get($code))
+            ->filter()
+            ->values()
+            ->all();
 
-        $salesManager->permissions()->syncWithoutDetaching(
-            Permission::query()
-                ->whereIn('code', $targetCodes)
-                ->pluck('id')
-                ->all(),
-        );
+        if (isset($groups['manager'])) {
+            $groups['manager']->permissions()->syncWithoutDetaching($assignablePermIds);
+        }
+        if (isset($groups['branch-admin'])) {
+            $groups['branch-admin']->permissions()->syncWithoutDetaching($assignablePermIds);
+        }
     }
 
     private function seedCurrentAdministrator(): User
     {
-        $name = trim((string) config('crm.bootstrap_admin.name'));
-        $username = trim((string) config('crm.bootstrap_admin.username'));
-        $email = trim((string) config('crm.bootstrap_admin.email'));
-        $password = (string) config('crm.bootstrap_admin.password');
+        $name = trim((string) config('crm.bootstrap_admin.name', 'مدير النظام'));
+        $username = trim((string) config('crm.bootstrap_admin.username', 'admin'));
+        $email = trim((string) config('crm.bootstrap_admin.email', 'admin@localhost.invalid'));
+        $password = (string) (config('crm.bootstrap_admin.password') ?: 'Admin@123456');
 
         if ($username === '' || $password === '') {
             throw new RuntimeException(
@@ -194,7 +247,6 @@ class CrmAccessControlSeeder extends Seeder
                 .'to provision the default Super Admin.',
             );
         }
-
         $user = User::query()
             ->where('username', $username)
             ->first();
@@ -267,13 +319,6 @@ class CrmAccessControlSeeder extends Seeder
                 ->whereNull('changed_by_user_id')
                 ->whereIn('changed_by', $identifiers)
                 ->update(['changed_by_user_id' => $admin->id]);
-        }
-
-        if (Schema::hasColumn('quotations', 'created_by_user_id')) {
-            DB::table('quotations')
-                ->whereNull('created_by_user_id')
-                ->whereIn('created_by', $identifiers)
-                ->update(['created_by_user_id' => $admin->id]);
         }
     }
 }

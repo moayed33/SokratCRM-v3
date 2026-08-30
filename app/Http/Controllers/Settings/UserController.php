@@ -5,11 +5,16 @@ declare(strict_types=1);
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Settings\Concerns\BuildsAccessPage;
 use App\Http\Requests\Settings\StoreUserRequest;
 use App\Http\Requests\Settings\UpdateUserRequest;
 use App\Models\Branch;
 use App\Models\Group;
 use App\Models\User;
+use App\Security\CrmPermission;
+use App\Services\VoipCallAnalytics;
+use App\Services\VoipExtensionManager;
+use App\Services\VoipService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,42 +25,24 @@ use Illuminate\Validation\ValidationException;
 
 class UserController extends Controller
 {
+    use BuildsAccessPage;
+
     public function index(Request $request): View
     {
-        $search = mb_substr(
-            trim((string) $request->query('q', '')),
-            0,
-            150,
-        );
-
-        $users = User::query()
-            ->with(['groups:id,name,code', 'branch:id,name_ar,name_en,code'])
-            ->when(
-                $search !== '',
-                static function ($query) use ($search): void {
-                    $query->where(function ($query) use ($search): void {
-                        $query->where('name', 'like', '%'.$search.'%')
-                            ->orWhere('username', 'like', '%'.$search.'%')
-                            ->orWhere('email', 'like', '%'.$search.'%');
-                    });
-                },
-            )
-            ->orderByDesc('is_active')
-            ->orderBy('name')
-            ->paginate(20)
-            ->withQueryString();
-        $isVoipConnected = app(\App\Services\VoipService::class)->isConfigured();
-
-        return view('settings.users.index', compact('users', 'search', 'isVoipConnected'));
+        return $this->buildAccessPage($request, 'users');
     }
 
     public function create(Request $request): View
     {
-        $isVoipConnected = app(\App\Services\VoipService::class)->isConfigured();
+        $isVoipConnected = app(VoipService::class)->isConfigured();
 
         return view('settings.users.create', [
             'branches' => Branch::query()->where('is_active', true)->orderBy('name_ar')->get(),
+            'managers' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']),
             'groups' => $this->availableGroups($request->user()),
+            'salesEmployees' => $this->getSalesEmployees(),
+            'collectors' => $this->getCollectors(),
+            'currentSubordinateIds' => collect(),
             'voipExtensions' => $this->getVoipExtensions(),
             'isVoipConnected' => $isVoipConnected,
         ]);
@@ -70,19 +57,27 @@ class UserController extends Controller
             array_map('intval', $validated['group_ids']),
         );
 
-        $user = DB::transaction(function () use ($validated, $email): User {
+        $subordinateIds = $validated['subordinate_ids'] ?? [];
+        $subordinatesRendered = $request->boolean('subordinates_section_rendered');
+
+        $user = DB::transaction(function () use ($validated, $email, $subordinateIds, $subordinatesRendered): User {
             $voipExt = ! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null;
+            $collectionZone = ! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null;
             $user = User::query()->create([
                 'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
+                'manager_id' => ! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null,
                 'name' => trim($validated['name']),
                 'username' => trim($validated['username']),
                 'email' => $email !== '' ? $email : null,
                 'voip_extension' => $voipExt,
+                'collection_zone' => $collectionZone,
                 'password' => $validated['password'],
                 'is_active' => true,
             ]);
 
             $user->groups()->sync($validated['group_ids']);
+            $this->syncSubordinates($user, $subordinateIds, $subordinatesRendered);
+            app(VoipExtensionManager::class)->sync($user, null, $voipExt);
 
             return $user;
         });
@@ -109,31 +104,32 @@ class UserController extends Controller
         );
 
         $voipStats = null;
-        if (! empty($user->voip_extension)) {
-            /** @var \App\Services\VoipService $voip */
-            $voip = app(\App\Services\VoipService::class);
-            if ($voip->isConfigured()) {
-                try {
-                    $voipStats = $voip->getExtensionStats($user->voip_extension, $voipFilters);
-                } catch (\Throwable) {
-                    $voipStats = null;
-                }
+        $canViewVoip = $request->user()?->hasPermission(CrmPermission::VOIP_VIEW) ?? false;
+        if ($canViewVoip && ! empty($user->voip_extension)) {
+            try {
+                $voipStats = app(VoipCallAnalytics::class)->forUser($user, $voipFilters);
+            } catch (\Throwable) {
+                $voipStats = null;
             }
         }
 
-        $isVoipConnected = app(\App\Services\VoipService::class)->isConfigured();
+        $isVoipConnected = app(VoipService::class)->isConfigured();
 
         return view('settings.users.edit', [
             'managedUser' => $user,
             'branches' => Branch::query()->orderBy('name_ar')->get(),
+            'managers' => User::query()->where('is_active', true)->where('id', '!=', $user->id)->orderBy('name')->get(['id', 'name', 'username']),
             'groups' => $this->availableGroups($request->user()),
+            'salesEmployees' => $this->getSalesEmployees($user),
+            'collectors' => $this->getCollectors($user),
+            'currentSubordinateIds' => $user->subordinates()->pluck('id'),
             'voipExtensions' => $this->getVoipExtensions(),
             'voipStats' => $voipStats,
             'voipFilters' => $voipFilters,
             'isVoipConnected' => $isVoipConnected,
+            'canViewVoip' => $canViewVoip,
         ]);
     }
-
     public function update(
         UpdateUserRequest $request,
         User $user,
@@ -146,24 +142,38 @@ class UserController extends Controller
 
         $this->ensureSuperAdminRemains($user, $groupIds);
 
+        $subordinateIds = $validated['subordinate_ids'] ?? [];
+        $subordinatesRendered = $request->boolean('subordinates_section_rendered');
+
         DB::transaction(function () use (
             $user,
             $validated,
             $email,
             $groupIds,
+            $subordinateIds,
+            $subordinatesRendered,
         ): void {
-            $voipExt = ! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null;
+            $previousVoipExt = $user->voip_extension;
+            $voipExt = array_key_exists('voip_extension', $validated)
+                ? (! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null)
+                : $previousVoipExt;
+            $collectionZone = array_key_exists('collection_zone', $validated)
+                ? (! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null)
+                : $user->collection_zone;
             $user->update([
                 'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
+                'manager_id' => array_key_exists('manager_id', $validated) ? (! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null) : $user->manager_id,
                 'name' => trim($validated['name']),
                 'username' => trim($validated['username']),
                 'email' => $email !== '' ? $email : null,
                 'voip_extension' => $voipExt,
+                'collection_zone' => $collectionZone,
             ]);
+            app(VoipExtensionManager::class)->sync($user, $previousVoipExt, $voipExt);
             $user->groups()->sync($groupIds);
+            $this->syncSubordinates($user, $subordinateIds, $subordinatesRendered);
             $user->unsetRelation('groups');
         });
-
         return back()->with('success', 'تم تحديث المستخدم بنجاح.');
     }
 
@@ -219,6 +229,7 @@ class UserController extends Controller
     private function availableGroups(User $actor)
     {
         return Group::query()
+            ->where('is_active', true)
             ->when(
                 ! $actor->isSuperAdmin(),
                 static fn ($query) => $query->where(
@@ -310,19 +321,100 @@ class UserController extends Controller
             ]);
         }
     }
+
     private function getVoipExtensions(): array
     {
-        /** @var \App\Services\VoipService $voip */
-        $voip = app(\App\Services\VoipService::class);
+        /** @var VoipService $voip */
+        $voip = app(VoipService::class);
         if (! $voip->isConfigured()) {
             return [];
         }
 
         try {
             $res = $voip->getExtensions();
+
             return $res['extensions'] ?? [];
         } catch (\Throwable) {
             return [];
+        }
+    }
+
+    private function getSalesEmployees(?User $excludeUser = null)
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->when($excludeUser?->id, static fn ($q) => $q->where('id', '!=', $excludeUser->id))
+            ->where(static function ($q): void {
+                $q->whereHas('groups', static function ($gq): void {
+                    $gq->whereIn('code', ['employee', 'sales-agent', 'sales-supervisor', 'sales_agent', 'sales_supervisor']);
+                })->orWhereHas('groups.permissions', static function ($pq): void {
+                    $pq->whereIn('code', [
+                        CrmPermission::LEADS_CREATE->value,
+                        CrmPermission::LEADS_FOLLOWUPS_CREATE->value,
+                        CrmPermission::TASKS_VIEW->value,
+                    ]);
+                });
+            })
+            ->whereDoesntHave('groups', static function ($gq): void {
+                $gq->whereIn('code', [Group::SUPER_ADMIN_CODE, Group::BRANCH_ADMIN_CODE, 'collection-manager', 'collector', 'field-collector']);
+            })
+            ->with(['manager:id,name,username', 'branch:id,name_ar,name_en'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'branch_id', 'manager_id']);
+    }
+
+    private function getCollectors(?User $excludeUser = null)
+    {
+        return User::query()
+            ->where('is_active', true)
+            ->when($excludeUser?->id, static fn ($q) => $q->where('id', '!=', $excludeUser->id))
+            ->where(static function ($q): void {
+                $q->whereHas('groups', static function ($gq): void {
+                    $gq->whereIn('code', ['collector', 'field-collector']);
+                })->orWhereHas('groups.permissions', static function ($pq): void {
+                    $pq->whereIn('code', [
+                        CrmPermission::COLLECTIONS_COLLECT->value,
+                        CrmPermission::COLLECTIONS_COMPLETE->value,
+                    ]);
+                });
+            })
+            ->with(['manager:id,name,username', 'branch:id,name_ar,name_en'])
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'branch_id', 'manager_id', 'collection_zone']);
+    }
+
+    /**
+     * @param list<int|string> $subordinateIds
+     */
+    private function syncSubordinates(User $leader, array $subordinateIds, bool $wasRendered): void
+    {
+        if (! $wasRendered) {
+            return;
+        }
+
+        $validIds = collect($subordinateIds)
+            ->map(static fn ($id) => (int) $id)
+            ->filter(static fn ($id) => $id > 0 && $id !== (int) $leader->id)
+            ->unique()
+            ->values();
+
+        // 1. Detach unselected subordinates previously assigned to this leader
+        $detachIds = User::query()
+            ->where('manager_id', $leader->id)
+            ->whereNotIn('id', $validIds)
+            ->pluck('id')
+            ->all();
+
+        if (! empty($detachIds)) {
+            User::query()->whereIn('id', $detachIds)->update(['manager_id' => null]);
+        }
+
+        // 2. Assign newly selected subordinates to this leader (guarantees exactly 1 manager)
+        if ($validIds->isNotEmpty()) {
+            User::query()
+                ->whereIn('id', $validIds)
+                ->where('id', '!=', $leader->id)
+                ->update(['manager_id' => $leader->id]);
         }
     }
 }

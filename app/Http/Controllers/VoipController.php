@@ -6,15 +6,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Lead;
 use App\Models\User;
+use App\Services\VoipCallAnalytics;
 use App\Services\VoipService;
 use App\Support\CrmDatabaseGuard;
+use App\Support\VoipCredentials;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Artisan;
 use Illuminate\View\View;
 use Throwable;
 
@@ -28,6 +30,7 @@ class VoipController extends Controller
         $health = null;
         $capabilities = null;
         $error = null;
+        $credentials = VoipCredentials::all();
 
         if ($isConfigured) {
             try {
@@ -40,8 +43,8 @@ class VoipController extends Controller
 
         return view('settings.voip', [
             'isConfigured' => $isConfigured,
-            'apiUrl' => config('voip.api_url'),
-            'clientId' => config('voip.client_id'),
+            'apiUrl' => $credentials['api_url'] ?? config('voip.api_url'),
+            'clientId' => $credentials['client_id'] ?? config('voip.client_id'),
             'health' => $health,
             'capabilities' => $capabilities,
             'error' => $error,
@@ -92,11 +95,12 @@ class VoipController extends Controller
                 return back()->with('error', 'فشل الاقتران: لم يتم إرجاع بيانات الاعتماد.');
             }
 
-            $this->updateEnvFile([
-                'VOIP_API_URL' => $apiUrl,
-                'VOIP_CLIENT_ID' => $clientId,
-                'VOIP_CLIENT_SECRET' => $clientSecret,
+            VoipCredentials::update([
+                'api_url' => $apiUrl,
+                'client_id' => $clientId,
+                'client_secret' => $clientSecret,
             ]);
+            \Illuminate\Support\Facades\Cache::forget('voip.server.connected');
 
             return back()->with('success', 'تم الاقتران بنجاح مع خادم Sokrat VoIP!');
         } catch (Throwable $e) {
@@ -107,7 +111,7 @@ class VoipController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
-            return back()->with('error', 'خطأ في الاقتران: ' . $e->getMessage());
+            return back()->with('error', 'خطأ في الاقتران: '.$e->getMessage());
         }
     }
 
@@ -116,22 +120,24 @@ class VoipController extends Controller
         $this->assertCrmDatabase();
 
         try {
-            $this->updateEnvFile([
-                'VOIP_CLIENT_ID' => '',
-                'VOIP_CLIENT_SECRET' => '',
+            VoipCredentials::update([
+                'client_id' => '',
+                'client_secret' => '',
             ]);
+            \Illuminate\Support\Facades\Cache::forget('voip.server.connected');
 
             return back()->with('success', 'تم فصل الارتباط عن خادم Sokrat VoIP بنجاح.');
         } catch (Throwable $e) {
-            return back()->with('error', 'تعذر فصل الارتباط: ' . $e->getMessage());
+            return back()->with('error', 'تعذر فصل الارتباط: '.$e->getMessage());
         }
     }
 
-    public function leadCalls(Lead $lead, Request $request, VoipService $voip): JsonResponse
+    public function leadCalls(Lead $lead, Request $request, VoipCallAnalytics $analytics): JsonResponse
     {
         $this->assertCrmDatabase();
+        Gate::authorize('view', $lead);
 
-        if (empty($lead->phone)) {
+        if (empty($lead->phone) && $lead->additionalPhones()->doesntExist()) {
             return response()->json([
                 'success' => false,
                 'error' => 'لا يوجد رقم هاتف للعميل.',
@@ -139,80 +145,53 @@ class VoipController extends Controller
             ], 400);
         }
 
+        $filters = $request->validate([
+            'start_date' => ['nullable', 'date_format:Y-m-d'],
+            'end_date' => ['nullable', 'date_format:Y-m-d', 'after_or_equal:start_date'],
+            'direction' => ['nullable', 'in:inbound,outbound,internal'],
+            'limit' => ['nullable', 'integer', 'min:1', 'max:250'],
+        ]);
+        $filters = array_filter($filters, static fn ($value): bool => $value !== null && $value !== '');
+
         try {
-            $filters = $request->only(['start_date', 'end_date', 'direction', 'limit']);
-            $raw = $voip->getCustomerCallHistory($lead->phone, $filters);
-            $rawCalls = $raw['calls'] ?? $raw['data'] ?? (is_array($raw) && array_is_list($raw) ? $raw : []);
-
-            if (empty($rawCalls)) {
-                $cleanPhone = preg_replace('/[^\d+]/', '', trim($lead->phone));
-                if (! empty($cleanPhone) && $cleanPhone !== $lead->phone) {
-                    $raw = $voip->getCustomerCallHistory($cleanPhone, $filters);
-                    $rawCalls = $raw['calls'] ?? $raw['data'] ?? (is_array($raw) && array_is_list($raw) ? $raw : []);
-                }
-            }
-            $userMap = User::query()
-                ->whereNotNull('voip_extension')
-                ->where('voip_extension', '!=', '')
-                ->pluck('name', 'voip_extension')
-                ->all();
-
-            $calls = array_map(function ($c) use ($userMap) {
-                $hasRec = ! empty($c['has_recording']) || ! empty($c['recording']['available']);
-                $mediaId = $c['media_id'] ?? ($c['recording']['media_id'] ?? null);
-
-                $ext = $c['agent_extension'] ?? null;
-                $crmUserName = $ext !== null ? ($userMap[(string) $ext] ?? null) : null;
-                $agentDisplayName = $crmUserName ?: ($c['agent_name'] ?? '');
-
-                $agentInfo = $ext !== null && $ext !== ''
-                    ? ($agentDisplayName !== '' ? "{$ext} ({$agentDisplayName})" : (string) $ext)
-                    : ($c['agent_name'] ?? '—');
-
-                $src = $c['direction'] === 'inbound'
-                    ? ($c['customer_number'] ?? '—')
-                    : $agentInfo;
-
-                $dst = $c['direction'] === 'outbound'
-                    ? ($c['customer_number'] ?? '—')
-                    : $agentInfo;
-
-                return [
-                    'id' => $c['id'] ?? null,
-                    'call_date' => $c['call_date'] ?? $c['started_at'] ?? '—',
-                    'direction' => $c['direction'] ?? 'unknown',
-                    'src' => $src,
-                    'dst' => $dst,
-                    'customer_number' => $c['customer_number'] ?? null,
-                    'agent_extension' => $c['agent_extension'] ?? null,
-                    'agent_name' => $crmUserName ?: ($c['agent_name'] ?? null),
-                    'duration_formatted' => $c['duration_formatted'] ?? (isset($c['duration_seconds']) ? $c['duration_seconds'] . ' ثانية' : (isset($c['billsec']) ? $c['billsec'] . ' ثانية' : '0 ثانية')),
-                    'disposition' => $c['disposition'] ?? '—',
-                    'has_recording' => $hasRec,
-                    'media_id' => $mediaId,
-                ];
-            }, $rawCalls);
+            $insights = $analytics->forLead($lead, $filters);
 
             return response()->json([
                 'success' => true,
-                'calls' => $calls,
-                'meta' => $raw['meta'] ?? [],
+                ...$insights,
             ]);
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'error' => $e->getMessage(),
                 'calls' => [],
-            ], 200);
+                'summary' => [
+                    'total_calls' => 0,
+                    'total_duration' => 0,
+                    'total_duration_minutes' => 0,
+                    'answered_calls' => 0,
+                    'missed_calls' => 0,
+                    'inbound_calls' => 0,
+                    'outbound_calls' => 0,
+                    'total_talk_seconds' => 0,
+                    'answer_rate_percent' => 0,
+                ],
+                'charts' => [
+                    'timeline' => ['labels' => [], 'calls' => [], 'talk_time' => []],
+                    'dispositions' => ['labels' => [], 'data' => []],
+                    'directions' => ['labels' => [], 'data' => []],
+                    'duration' => ['under_30s' => 0, 'from_30s_to_2m' => 0, 'from_2m_to_5m' => 0, 'over_5m' => 0],
+                ],
+            ]);
         }
     }
 
-    public function streamRecording(string $mediaId, VoipService $voip): Response|JsonResponse
+    public function streamRecording(Request $request, string $mediaId, VoipService $voip): Response|JsonResponse
     {
         $this->assertCrmDatabase();
 
         try {
-            $voipResponse = $voip->streamRecording($mediaId);
+            $voipResponse = $voip->streamRecording($mediaId, $request->header('Range'));
 
             if ($voipResponse->failed()) {
                 return response()->json([
@@ -251,51 +230,139 @@ class VoipController extends Controller
     {
         $this->assertCrmDatabase();
 
-        $user = Auth::user();
-        if (! $user) {
+        if (! Auth::check()) {
             return redirect()->route('login');
         }
 
-        try {
-            $requestedScopes = [
-                'live:read',
-                'live:listen',
-                'live:whisper',
-                'live:barge',
-                'live:hangup',
-                'stats:read',
-                'calls:read',
-                'extensions:read',
-            ];
+        return view('voip.live', $this->liveState($voip));
+    }
 
-            if ($user->hasPermission('voip.recordings')) {
-                $requestedScopes[] = 'recordings:read';
-            }
+    public function liveData(VoipService $voip): JsonResponse
+    {
+        $this->assertCrmDatabase();
 
-            $supervisorExt = ! empty($user->voip_extension) ? (string) $user->voip_extension : null;
+        $state = $this->liveState($voip);
 
-            $ticketData = $voip->createEmbedTicket(
-                $user->id,
-                $user->name,
-                $supervisorExt,
-                $requestedScopes
-            );
-
-            $rawTicket = $ticketData['ticket'] ?? '';
-            $voipHost = preg_replace('#/api/integrations/crm/v1/?$#', '', config('voip.api_url'));
-            $embedUrl = "{$voipHost}/embed/crm/live?ticket=" . urlencode($rawTicket) . "&lang=ar";
-
-            return view('voip.live', [
-                'embedUrl' => $embedUrl,
-                'expiresAt' => $ticketData['expires_at'] ?? null,
-                'scopes' => $ticketData['effective_scopes'] ?? [],
-            ]);
-        } catch (Throwable $e) {
-            return view('voip.live', [
-                'embedUrl' => null,
-                'error' => 'تعذر إنشاء تذكرة المراقبة المباشرة: ' . $e->getMessage(),
-            ]);
+        if (! $state['isConfigured']) {
+            return response()->json([
+                'success' => false,
+                'error' => 'VoIP PBX is not configured.',
+            ], 409);
         }
+
+        if ($state['errorMessage'] !== null) {
+            return response()->json([
+                'success' => false,
+                'error' => 'Live PBX state is temporarily unavailable.',
+            ], 502);
+        }
+
+        return response()->json([
+            'success' => true,
+            'html' => view('voip.partials.extension-grid', [
+                'extensions' => $state['extensions'],
+            ])->render(),
+            'counts' => $state['counts'],
+            'refreshed_at' => now()->toIso8601String(),
+        ])->header('Cache-Control', 'private, no-store');
+    }
+
+    /**
+     * @return array{
+     *     isConfigured: bool,
+     *     extensions: \Illuminate\Support\Collection<int, array<string, mixed>>,
+     *     counts: array{total: int, online: int, in_call: int, offline: int},
+     *     errorMessage: ?string
+     * }
+     */
+    private function liveState(VoipService $voip): array
+    {
+        $isConfigured = $voip->isConfigured();
+        $extensionsList = [];
+        $errorMessage = null;
+
+        $crmUsersByExtension = User::query()
+            ->whereNotNull('voip_extension')
+            ->where('is_active', true)
+            ->get(['id', 'name', 'voip_extension'])
+            ->keyBy(static fn (User $user): string => (string) $user->voip_extension);
+
+        if ($isConfigured) {
+            try {
+                $rawExtensions = $voip->getExtensions();
+                $extensionsList = $rawExtensions['extensions'] ?? $rawExtensions['data'] ?? $rawExtensions;
+                if (! is_array($extensionsList)) {
+                    $extensionsList = [];
+                }
+            } catch (Throwable $exception) {
+                $errorMessage = $exception->getMessage();
+            }
+        }
+
+        $extensions = collect($extensionsList)
+            ->map(static function (mixed $extension) use ($crmUsersByExtension): array {
+                $data = is_array($extension) ? $extension : [];
+                $extensionNumber = is_array($extension)
+                    ? (string) ($data['extension'] ?? $data['id'] ?? $data['ext'] ?? '')
+                    : (string) $extension;
+                $crmUser = $crmUsersByExtension->get($extensionNumber);
+                $rawStatus = strtolower((string) ($data['status'] ?? $data['state'] ?? ''));
+                $call = is_array($data['call'] ?? null) ? $data['call'] : [];
+                $inCall = ! empty($data['in_call'])
+                    || ! empty($data['incall'])
+                    || $call !== []
+                    || in_array($rawStatus, ['incall', 'in_call', 'in-call', 'busy', 'talking', 'active', 'ringing'], true);
+                $online = $inCall
+                    || ! empty($data['online'])
+                    || ! empty($data['registered'])
+                    || in_array($rawStatus, ['online', 'registered', 'available', 'idle', 'ready'], true);
+                $callPartner = trim((string) ($call['partner'] ?? $data['partner'] ?? ''));
+                $callState = trim((string) ($call['state'] ?? $data['call_state'] ?? ''));
+
+                return [
+                    'extension' => $extensionNumber,
+                    'name' => $crmUser?->name
+                        ?? (string) ($data['name'] ?? $data['display_name'] ?? $data['callerid'] ?? $extensionNumber),
+                    'crm_user_name' => $crmUser?->name,
+                    'online' => $online,
+                    'in_call' => $inCall,
+                    'status' => $inCall ? 'incall' : ($online ? 'online' : 'offline'),
+                    'call_partner' => $callPartner !== '' ? $callPartner : null,
+                    'call_state' => $callState !== '' ? $callState : null,
+                    'call_started_at' => $call['started_at'] ?? null,
+                    'call_duration_seconds' => max(0, (int) ($call['duration_seconds'] ?? 0)),
+                ];
+            })
+            ->filter(static fn (array $extension): bool => $extension['extension'] !== '')
+            ->values();
+
+        if ($extensions->isEmpty() && $crmUsersByExtension->isNotEmpty()) {
+            $extensions = $crmUsersByExtension
+                ->map(static fn (User $crmUser): array => [
+                    'extension' => (string) $crmUser->voip_extension,
+                    'name' => $crmUser->name,
+                    'crm_user_name' => $crmUser->name,
+                    'online' => false,
+                    'in_call' => false,
+                    'status' => 'offline',
+                    'call_partner' => null,
+                    'call_state' => null,
+                    'call_started_at' => null,
+                    'call_duration_seconds' => 0,
+                ])
+                ->values();
+        }
+
+        $counts = [
+            'total' => $extensions->count(),
+            'online' => $extensions->where('online', true)->count(),
+            'in_call' => $extensions->where('in_call', true)->count(),
+            'offline' => $extensions
+                ->filter(static fn (array $extension): bool => ! $extension['online'] && ! $extension['in_call'])
+                ->count(),
+        ];
+
+        return compact('isConfigured', 'extensions', 'counts', 'errorMessage');
     }
 
     public function extensionStats(string $extension, Request $request, VoipService $voip): JsonResponse
@@ -318,35 +385,5 @@ class VoipController extends Controller
     private function assertCrmDatabase(): void
     {
         CrmDatabaseGuard::ensureConnected();
-    }
-
-    private function updateEnvFile(array $data): void
-    {
-        $envPath = base_path('.env');
-        if (! file_exists($envPath)) {
-            return;
-        }
-
-        $content = file_get_contents($envPath);
-        foreach ($data as $key => $value) {
-            $value = '"' . addcslashes($value, '"\\') . '"';
-            if (preg_match("/^{$key}=.*/m", $content)) {
-                $content = preg_replace("/^{$key}=.*/m", "{$key}={$value}", $content);
-            } else {
-                $content .= "\n{$key}={$value}";
-            }
-        }
-
-        file_put_contents($envPath, $content);
-
-        if (file_exists(app()->getCachedConfigPath())) {
-            @unlink(app()->getCachedConfigPath());
-        }
-        Artisan::call('config:clear');
-
-        foreach ($data as $key => $value) {
-            $configKey = 'voip.' . strtolower(str_replace('VOIP_', '', $key));
-            config([$configKey => $value]);
-        }
     }
 }

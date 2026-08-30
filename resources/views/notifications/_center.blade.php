@@ -8,6 +8,7 @@
  data-locale="{{ app()->getLocale() }}"
  data-index-url="{{ route('v2.notifications.index') }}"
  data-count-url="{{ route('v2.notifications.unread-count') }}"
+ data-stream-url="{{ route('v2.notifications.stream') }}"
  data-read-all-url="{{ route('v2.notifications.read-all') }}"
  data-base-url="{{ url('/notifications') }}"
  data-preferences-url="{{ route('v2.notifications.preferences.edit') }}"
@@ -20,6 +21,15 @@
  data-label-snooze="{{ __('crm.notification_snooze') }}"
  data-label-snoozed="{{ __('crm.notification_snoozed') }}"
  data-label-load-more="{{ __('crm.load_more') }}"
+ data-label-mark-read="{{ __('crm.notification_mark_read') }}"
+ data-label-mark-unread="{{ __('crm.notification_mark_unread') }}"
+ data-label-action-working="{{ __('crm.notification_action_working') }}"
+ data-label-action-failed="{{ __('crm.notification_action_failed') }}"
+ data-label-retry="{{ __('crm.retry') }}"
+ data-label-marked-read="{{ __('crm.notification_marked_read') }}"
+ data-label-marked-unread="{{ __('crm.notification_marked_unread') }}"
+ data-label-dismissed="{{ __('crm.notification_dismissed') }}"
+ data-label-all-read="{{ __('crm.notification_all_read') }}"
 >
  <div class="crm-notification-backdrop" data-notification-close hidden></div>
  <section
@@ -47,6 +57,14 @@
    </div>
    <button class="crm-notification-read-all" type="button" id="crmNotificationReadAll">{{ __('crm.mark_all_read') }}</button>
   </div>
+
+  <div
+   class="crm-notification-feedback"
+   id="crmNotificationFeedback"
+   role="status"
+   aria-live="polite"
+   hidden
+  ></div>
 
   <div class="crm-notification-list" id="crmNotificationList" aria-live="polite"></div>
 

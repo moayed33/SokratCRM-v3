@@ -30,10 +30,8 @@ return new class extends Migration
     {
         $this->verifyDatabase();
 
-        if (Schema::hasColumn('leads', 'quotation_sent')) {
-            throw new RuntimeException(
-                'leads.quotation_sent already exists.'
-            );
+        if (! Schema::hasTable('leads') || Schema::hasColumn('leads', 'quotation_sent')) {
+            return;
         }
 
         Schema::table(
@@ -56,7 +54,7 @@ return new class extends Migration
     {
         $this->verifyDatabase();
 
-        if (! Schema::hasColumn('leads', 'quotation_sent')) {
+        if (! Schema::hasTable('leads') || ! Schema::hasColumn('leads', 'quotation_sent')) {
             return;
         }
 

@@ -12,12 +12,12 @@ use App\Models\Permission;
 use App\Models\PipelineStage;
 use App\Models\User;
 use App\Security\CrmPermission;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LeadPermissionsTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private User $superAdmin;
 
@@ -46,47 +46,42 @@ class LeadPermissionsTest extends TestCase
         }
 
         // Setup groups
-        $superAdminGroup = Group::query()->create([
-            'name' => 'مدير النظام',
-            'code' => Group::SUPER_ADMIN_CODE,
-            'is_system' => true,
-        ]);
+        $superAdminGroup = Group::query()->firstOrCreate(
+            ['code' => Group::SUPER_ADMIN_CODE],
+            ['name' => 'مدير النظام', 'is_system' => true]
+        );
         $superAdminGroup->permissions()->sync(Permission::pluck('id'));
 
-        $salesManagerGroup = Group::query()->create([
-            'name' => 'مدير المبيعات',
-            'code' => 'sales-manager',
-            'is_system' => false,
-        ]);
+        $salesManagerGroup = Group::query()->firstOrCreate(
+            ['code' => 'sales-manager'],
+            ['name' => 'مدير المبيعات', 'is_system' => false]
+        );
         $managerPermCodes = [
             'dashboard.view', 'leads.view', 'leads.create', 'leads.update', 'leads.delete',
             'leads.scope.all', 'leads.assign',
             'leads.import', 'leads.export', 'leads.followups.view', 'leads.followups.create',
-            'tasks.view', 'quotations.view', 'quotations.create', 'reports.view',
+            'tasks.view', 'reports.view',
         ];
         $salesManagerGroup->permissions()->sync(Permission::whereIn('code', $managerPermCodes)->pluck('id'));
 
-        $salesAgentGroup = Group::query()->create([
-            'name' => 'موظف المبيعات',
-            'code' => 'sales-agent',
-            'is_system' => false,
-        ]);
+        $salesAgentGroup = Group::query()->firstOrCreate(
+            ['code' => 'sales-agent'],
+            ['name' => 'موظف المبيعات', 'is_system' => false]
+        );
         $agentPermCodes = [
             'dashboard.view', 'leads.view', 'leads.create', 'leads.update',
             'leads.followups.view', 'leads.followups.create', 'tasks.view',
-            'quotations.view', 'quotations.create',
         ];
         $salesAgentGroup->permissions()->sync(Permission::whereIn('code', $agentPermCodes)->pluck('id'));
 
-        $readOnlyGroup = Group::query()->create([
-            'name' => 'مشاهدة فقط',
-            'code' => 'read-only',
-            'is_system' => false,
-        ]);
+        $readOnlyGroup = Group::query()->firstOrCreate(
+            ['code' => 'read-only'],
+            ['name' => 'مشاهدة فقط', 'is_system' => false]
+        );
         $readOnlyPermCodes = [
             'leads.scope.all',
             'dashboard.view', 'leads.view', 'leads.followups.view', 'tasks.view',
-            'quotations.view', 'campaigns.view', 'campaigns.reports', 'reports.view',
+            'campaigns.view', 'campaigns.reports', 'reports.view',
         ];
         $readOnlyGroup->permissions()->sync(Permission::whereIn('code', $readOnlyPermCodes)->pluck('id'));
 

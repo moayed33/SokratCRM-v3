@@ -5,12 +5,13 @@ namespace Tests\Feature;
 use App\Models\Group;
 use App\Models\Permission;
 use App\Models\User;
-use Illuminate\Foundation\Testing\RefreshDatabase;
+use App\Models\VoipExtensionAssignment;
+use Illuminate\Foundation\Testing\DatabaseTransactions;
 use Tests\TestCase;
 
 class LocalizationTest extends TestCase
 {
-    use RefreshDatabase;
+    use DatabaseTransactions;
 
     private function userWithPermissions(array $permissionCodes): User
     {
@@ -62,6 +63,10 @@ class LocalizationTest extends TestCase
         $response->assertSee('dir="ltr"', false);
         $response->assertSee('lang="en"', false);
         $response->assertSee('Dashboard');
+        $response->assertSee('Colorful light');
+        $response->assertSee('Colorful dark');
+        $response->assertSee('Monotone light');
+        $response->assertSee('Monotone dark');
     }
 
     public function test_arabic_locale_default_and_rtl_direction(): void
@@ -82,7 +87,12 @@ class LocalizationTest extends TestCase
     public function test_voip_live_panel_translations_in_english_and_arabic(): void
     {
         $user = $this->userWithPermissions(['voip.live_panel']);
-
+        $user->update(['voip_extension' => '101']);
+        VoipExtensionAssignment::query()->create([
+            'user_id' => $user->id,
+            'extension' => '101',
+            'assigned_from' => now()->subDay(),
+        ]);
         // Test English locale
         $responseEn = $this->actingAs($user)
             ->withSession(['locale' => 'en'])
@@ -102,7 +112,8 @@ class LocalizationTest extends TestCase
         $responseEn->assertSee('Offline');
         $responseEn->assertSee('Search by name or extension number...');
         $responseEn->assertSee('Extension:');
-        $responseEn->assertSee('Call Actions');
+        $responseEn->assertDontSee('Call Actions');
+        $responseEn->assertDontSee('class="action-btn"', false);
 
         // Test Arabic locale
         $responseAr = $this->actingAs($user)
@@ -123,7 +134,8 @@ class LocalizationTest extends TestCase
         $responseAr->assertSee('غير متصل');
         $responseAr->assertSee('بحث بالاسم أو رقم التحويلة...');
         $responseAr->assertSee('التحويلة :');
-        $responseAr->assertSee('إجراءات المكالمة');
+        $responseAr->assertDontSee('إجراءات المكالمة');
+        $responseAr->assertDontSee('class="action-btn"', false);
     }
 
     public function test_settings_page_displays_language_switcher_options(): void
