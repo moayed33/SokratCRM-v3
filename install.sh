@@ -68,9 +68,13 @@ trap cleanup_on_error ERR
 [ -r /etc/os-release ] || fail "Cannot detect operating system."
 . /etc/os-release
 
-[ "${ID:-}" = "ubuntu" ] || fail "This installer supports Ubuntu 24.04 only. Detected OS: ${ID:-unknown}."
-[ "${VERSION_ID:-}" = "24.04" ] || fail "This installer supports Ubuntu 24.04 only. Detected: ${VERSION_ID:-unknown}."
+[ "${ID:-}" = "ubuntu" ] || fail "This installer supports Ubuntu (24.04 or 22.04 LTS). Detected OS: ${ID:-unknown}."
+if [ "${VERSION_ID:-}" != "24.04" ] && [ "${VERSION_ID:-}" != "22.04" ]; then
+    fail "This installer supports Ubuntu 24.04 LTS or 22.04 LTS. Detected: ${VERSION_ID:-unknown}."
+fi
 
+SERVER_HOST="${SERVER_HOST:-localhost}"
+VOIP_HOST="${VOIP_HOST:-192.168.100.128}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR_IS_CURRENT=0
 
@@ -82,6 +86,32 @@ fi
 
 if [ -f "$SITE_CONF" ]; then
     fail "$SITE_CONF already exists. Fresh installation only."
+fi
+
+log "Checking system memory and swap"
+TOTAL_RAM_KB=$(awk '/MemTotal/{print $2}' /proc/meminfo 2>/dev/null || echo "4000000")
+TOTAL_SWAP_KB=$(awk '/SwapTotal/{print $2}' /proc/meminfo 2>/dev/null || echo "0")
+if [ "$TOTAL_RAM_KB" -lt 2500000 ] && [ "$TOTAL_SWAP_KB" -lt 1000000 ]; then
+    log "Low memory detected (${TOTAL_RAM_KB} kB RAM, ${TOTAL_SWAP_KB} kB swap)"
+    if [ ! -f /swapfile ]; then
+        log "Creating 2GB swapfile to prevent Out-Of-Memory during composer/npm builds..."
+        fallocate -l 2G /swapfile 2>/dev/null || dd if=/dev/zero of=/swapfile bs=1M count=2048
+        chmod 600 /swapfile
+        mkswap /swapfile >/dev/null 2>&1
+        swapon /swapfile >/dev/null 2>&1 || true
+        if ! grep -q '/swapfile' /etc/fstab 2>/dev/null; then
+            echo '/swapfile none swap sw 0 0' >> /etc/fstab || true
+        fi
+        log "Swapfile enabled successfully."
+    fi
+fi
+
+if [ "${VERSION_ID:-}" = "22.04" ]; then
+    log "Configuring ondrej/php PPA for PHP 8.3 on Ubuntu 22.04"
+    export DEBIAN_FRONTEND=noninteractive
+    apt-get update
+    apt-get install -y software-properties-common
+    add-apt-repository -y ppa:ondrej/php
 fi
 
 log "Installing Apache, MySQL, PHP 8.3, Composer, and system packages"
@@ -140,10 +170,10 @@ log "Preparing application files in ${APP_DIR}"
 if [ "$APP_DIR_IS_CURRENT" -eq 1 ]; then
     log "Using current directory as APP_DIR (${APP_DIR})"
 else
-    mkdir -p "$(dirname "$APP_DIR")"
+    mkdir -p "$APP_DIR"
     if [ -d "$SCRIPT_DIR/.git" ] || [ -f "$SCRIPT_DIR/composer.json" ]; then
         log "Copying repository contents from ${SCRIPT_DIR} to ${APP_DIR}"
-        cp -a "$SCRIPT_DIR" "$APP_DIR"
+        cp -a "$SCRIPT_DIR/." "$APP_DIR/"
     else
         log "Cloning repository from ${REPO_URL} into ${APP_DIR}"
         git clone --depth 1 "$REPO_URL" "$APP_DIR"
@@ -198,7 +228,8 @@ set_env() {
 set_env APP_NAME "$APP_NAME"
 set_env APP_ENV production
 set_env APP_DEBUG false
-set_env APP_URL "http://localhost"
+set_env APP_URL "http://${SERVER_HOST}"
+set_env VOIP_API_URL "http://${VOIP_HOST}:8090/api/integrations/crm/v1"
 set_env DB_CONNECTION mysql
 set_env DB_HOST 127.0.0.1
 set_env DB_PORT 3306
@@ -222,7 +253,7 @@ php artisan db:seed --force --no-interaction
 php artisan storage:link --no-interaction >/dev/null 2>&1 || true
 
 log "Caching views and routes"
-mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs
+mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions storage/logs storage/app/private storage/app/public
 php artisan view:clear --no-ansi || true
 php artisan view:cache --no-ansi || true
 php artisan route:cache --no-ansi || true
@@ -236,6 +267,7 @@ find "$APP_DIR" -type f -exec chmod 664 {} +
 chmod +x "${APP_DIR}/artisan"
 
 log "Configuring Apache VirtualHost for HTTP (port 80) and HTTPS (port 443)"
+mkdir -p /etc/ssl/certs /etc/ssl/private
 if [ ! -f /etc/ssl/certs/crm-selfsigned.crt ] || [ ! -f /etc/ssl/private/crm-selfsigned.key ]; then
     log "Generating self-signed SSL certificate for HTTPS (port 443)"
     openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
@@ -246,8 +278,8 @@ fi
 
 cat > "$SITE_CONF" <<APACHE
 <VirtualHost *:80>
-    ServerName localhost
-    ServerAlias 127.0.0.1
+    ServerName ${SERVER_HOST}
+    ServerAlias localhost 127.0.0.1
     DocumentRoot ${APP_DIR}/public
 
     <Directory ${APP_DIR}/public>
@@ -258,23 +290,23 @@ cat > "$SITE_CONF" <<APACHE
 
     # Sokrat Voice WebRTC Reverse Proxy
     ProxyPreserveHost Off
-    ProxyPass /phone/ http://192.168.100.128:8090/
-    ProxyPassReverse /phone/ http://192.168.100.128:8090/
+    ProxyPass /phone/ http://${VOIP_HOST}:8090/
+    ProxyPassReverse /phone/ http://${VOIP_HOST}:8090/
 
     # Asterisk WebSocket Reverse Proxy
     RewriteEngine On
     RewriteRule ^/phone$ /phone/ [R=301,L]
     RewriteCond %{HTTP:Upgrade} =websocket [NC]
     RewriteCond %{HTTP:Connection} upgrade [NC]
-    RewriteRule ^/ws$ ws://192.168.100.128:8088/ws [P,L]
+    RewriteRule ^/ws$ ws://${VOIP_HOST}:8088/ws [P,L]
 
     ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-error.log
     CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-access.log combined
 </VirtualHost>
 
 <VirtualHost *:443>
-    ServerName localhost
-    ServerAlias 127.0.0.1
+    ServerName ${SERVER_HOST}
+    ServerAlias localhost 127.0.0.1
     DocumentRoot ${APP_DIR}/public
 
     SSLEngine on
@@ -289,15 +321,15 @@ cat > "$SITE_CONF" <<APACHE
 
     # Sokrat Voice WebRTC Reverse Proxy
     ProxyPreserveHost Off
-    ProxyPass /phone/ http://192.168.100.128:8090/
-    ProxyPassReverse /phone/ http://192.168.100.128:8090/
+    ProxyPass /phone/ http://${VOIP_HOST}:8090/
+    ProxyPassReverse /phone/ http://${VOIP_HOST}:8090/
 
     # Asterisk WebSocket Reverse Proxy (WSS -> WS)
     RewriteEngine On
     RewriteRule ^/phone$ /phone/ [R=301,L]
     RewriteCond %{HTTP:Upgrade} =websocket [NC]
     RewriteCond %{HTTP:Connection} upgrade [NC]
-    RewriteRule ^/ws$ ws://192.168.100.128:8088/ws [P,L]
+    RewriteRule ^/ws$ ws://${VOIP_HOST}:8088/ws [P,L]
 
     ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-ssl-error.log
     CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-ssl-access.log combined
