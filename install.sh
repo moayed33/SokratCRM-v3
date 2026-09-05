@@ -248,13 +248,25 @@ cat > "$SITE_CONF" <<APACHE
         Require all granted
     </Directory>
 
+    # Sokrat Voice WebRTC Reverse Proxy
+    ProxyPreserveHost Off
+    ProxyPass /phone/ http://192.168.100.128:8090/
+    ProxyPassReverse /phone/ http://192.168.100.128:8090/
+
+    # Asterisk WebSocket Reverse Proxy
+    RewriteEngine On
+    RewriteRule ^/phone$ /phone/ [R=301,L]
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/ws$ ws://192.168.100.128:8088/ws [P,L]
+
     ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-error.log
     CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-access.log combined
 </VirtualHost>
 APACHE
 SITE_CREATED=1
 
-a2enmod rewrite >/dev/null
+a2enmod rewrite proxy proxy_http proxy_wstunnel >/dev/null
 if a2query -s 000-default >/dev/null 2>&1; then
     a2dissite 000-default >/dev/null
     DEFAULT_DISABLED=1
