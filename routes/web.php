@@ -32,6 +32,7 @@ use App\Http\Controllers\TaskStatusController;
 use App\Http\Controllers\TwilioNotificationStatusController;
 use App\Http\Controllers\VoipController;
 use App\Http\Controllers\VoipInsightsController;
+use App\Http\Controllers\Settings\GovernorateController;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -179,6 +180,12 @@ Route::middleware(['auth', 'active'])->group(function (): void {
     Route::get('/my/calls', [VoipInsightsController::class, 'profile'])
         ->middleware('can:voip.view')
         ->name('v2.voip.profile');
+    Route::get('/voip/softphone', [VoipController::class, 'softphone'])
+        ->middleware('can:voip.view')
+        ->name('v2.voip.softphone');
+
+    Route::get('/api/leads/by-phone', [LeadController::class, 'findByPhone'])
+        ->name('v2.leads.by-phone');
 
     Route::middleware('can:calendar.view')->group(function (): void {
         Route::get('/calendar', [CalendarController::class, 'index'])
@@ -193,6 +200,8 @@ Route::middleware(['auth', 'active'])->group(function (): void {
         Route::post('/calendar/check-conflict', [CalendarController::class, 'checkConflict'])
             ->name('v2.calendar.conflict');
     });
+    Route::get('/api/governorates/{governorate}/subregions', [GovernorateController::class, 'subregionsApi'])
+        ->name('v2.governorates.subregions.api');
 
     Route::middleware('can:calendar.manage')->group(function (): void {
         Route::post('/calendar/events', [CalendarController::class, 'store'])
@@ -476,6 +485,48 @@ Route::middleware(['auth', 'active'])->group(function (): void {
                 ->whereNumber('branch')
                 ->middleware('can:branches.delete')
                 ->name('.branches.destroy');
+
+            // Geography & Governorates
+            Route::get('/governorates', [GovernorateController::class, 'index'])
+                ->name('.governorates.index');
+            Route::post('/governorates', [GovernorateController::class, 'store'])
+                ->name('.governorates.store');
+            Route::patch('/governorates/{governorate}', [GovernorateController::class, 'update'])
+                ->whereNumber('governorate')
+                ->name('.governorates.update');
+            Route::patch('/governorates/{governorate}/toggle', [GovernorateController::class, 'toggle'])
+                ->whereNumber('governorate')
+                ->name('.governorates.toggle');
+            Route::delete('/governorates/{governorate}', [GovernorateController::class, 'destroy'])
+                ->whereNumber('governorate')
+                ->name('.governorates.destroy');
+
+            // Subregions
+            Route::post('/governorates/{governorate}/subregions', [GovernorateController::class, 'storeSubregion'])
+                ->whereNumber('governorate')
+                ->name('.governorates.subregions.store');
+            Route::patch('/governorates/{governorate}/subregions/{subregion}', [GovernorateController::class, 'updateSubregion'])
+                ->whereNumber('governorate')
+                ->whereNumber('subregion')
+                ->name('.governorates.subregions.update');
+            Route::patch('/governorates/{governorate}/subregions/{subregion}/toggle', [GovernorateController::class, 'toggleSubregion'])
+                ->whereNumber('governorate')
+                ->whereNumber('subregion')
+                ->name('.governorates.subregions.toggle');
+            Route::delete('/governorates/{governorate}/subregions/{subregion}', [GovernorateController::class, 'destroySubregion'])
+                ->whereNumber('governorate')
+                ->whereNumber('subregion')
+                ->name('.governorates.subregions.destroy');
+
+            Route::patch('/subregions/{subregion}/toggle', [GovernorateController::class, 'toggleActiveSubregion'])
+                ->whereNumber('subregion')
+                ->name('.subregions.toggle');
+            Route::delete('/subregions/{subregion}', [GovernorateController::class, 'destroySubregion'])
+                ->whereNumber('subregion')
+                ->name('.subregions.destroy');
+            Route::patch('/subregions/{subregion}', [GovernorateController::class, 'updateSubregion'])
+                ->whereNumber('subregion')
+                ->name('.subregions.update');
             Route::get('/stages', [PipelineStageController::class, 'index'])
                 ->name('.stages.index');
             Route::post('/stages', [PipelineStageController::class, 'store'])

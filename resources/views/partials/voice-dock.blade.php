@@ -1134,7 +1134,7 @@ html.dark-mode .btn-dial-inline:hover {
                                     </div>
                                 </div>
                                 <div class="sokrat-pop-actions">
-                                    <a href="${lead.url}" class="sokrat-pop-btn sokrat-pop-btn-primary">
+                                    <a href="${lead.url}" target="_blank" class="sokrat-pop-btn sokrat-pop-btn-primary">
                                         <i class="bi bi-box-arrow-up-right"></i> عرض ملف العميل وسجل المتابعات
                                     </a>
                                     ${!lead.is_other_branch ? `

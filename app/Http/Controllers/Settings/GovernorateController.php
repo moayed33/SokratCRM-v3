@@ -104,6 +104,11 @@ class GovernorateController extends Controller
         return redirect()->route('v2.settings.governorates.index', ['gov_id' => $governorate->id])->with('success', $msg);
     }
 
+    public function toggle(Governorate $governorate): RedirectResponse
+    {
+        return $this->toggleActive($governorate);
+    }
+
     public function destroy(Governorate $governorate): RedirectResponse
     {
         if ($governorate->subregions()->exists()) {
@@ -194,6 +199,11 @@ class GovernorateController extends Controller
         return redirect()->route('v2.settings.governorates.index', ['gov_id' => $subregion->governorate_id])->with('success', $msg);
     }
 
+    public function toggleSubregion(GovernorateSubregion $subregion): RedirectResponse
+    {
+        return $this->toggleActiveSubregion($subregion);
+    }
+
     public function destroySubregion(GovernorateSubregion $subregion): RedirectResponse
     {
         $govId = $subregion->governorate_id;
@@ -224,5 +234,10 @@ class GovernorateController extends Controller
             ]);
 
         return response()->json(['subregions' => $subregions]);
+    }
+
+    public function subregionsApi(Governorate $governorate): JsonResponse
+    {
+        return $this->apiSubregions($governorate);
     }
 }
