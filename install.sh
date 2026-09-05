@@ -235,7 +235,15 @@ find "$APP_DIR" -type d -exec chmod 775 {} +
 find "$APP_DIR" -type f -exec chmod 664 {} +
 chmod +x "${APP_DIR}/artisan"
 
-log "Configuring Apache VirtualHost for http://localhost/"
+log "Configuring Apache VirtualHost for HTTP (port 80) and HTTPS (port 443)"
+if [ ! -f /etc/ssl/certs/crm-selfsigned.crt ] || [ ! -f /etc/ssl/private/crm-selfsigned.key ]; then
+    log "Generating self-signed SSL certificate for HTTPS (port 443)"
+    openssl req -x509 -nodes -days 3650 -newkey rsa:2048 \
+        -keyout /etc/ssl/private/crm-selfsigned.key \
+        -out /etc/ssl/certs/crm-selfsigned.crt \
+        -subj "/CN=localhost/O=SokratCRM" >/dev/null 2>&1
+fi
+
 cat > "$SITE_CONF" <<APACHE
 <VirtualHost *:80>
     ServerName localhost
@@ -263,10 +271,41 @@ cat > "$SITE_CONF" <<APACHE
     ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-error.log
     CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-access.log combined
 </VirtualHost>
+
+<VirtualHost *:443>
+    ServerName localhost
+    ServerAlias 127.0.0.1
+    DocumentRoot ${APP_DIR}/public
+
+    SSLEngine on
+    SSLCertificateFile /etc/ssl/certs/crm-selfsigned.crt
+    SSLCertificateKeyFile /etc/ssl/private/crm-selfsigned.key
+
+    <Directory ${APP_DIR}/public>
+        Options FollowSymLinks
+        AllowOverride All
+        Require all granted
+    </Directory>
+
+    # Sokrat Voice WebRTC Reverse Proxy
+    ProxyPreserveHost Off
+    ProxyPass /phone/ http://192.168.100.128:8090/
+    ProxyPassReverse /phone/ http://192.168.100.128:8090/
+
+    # Asterisk WebSocket Reverse Proxy (WSS -> WS)
+    RewriteEngine On
+    RewriteRule ^/phone$ /phone/ [R=301,L]
+    RewriteCond %{HTTP:Upgrade} =websocket [NC]
+    RewriteCond %{HTTP:Connection} upgrade [NC]
+    RewriteRule ^/ws$ ws://192.168.100.128:8088/ws [P,L]
+
+    ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-ssl-error.log
+    CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-ssl-access.log combined
+</VirtualHost>
 APACHE
 SITE_CREATED=1
 
-a2enmod rewrite proxy proxy_http proxy_wstunnel >/dev/null
+a2enmod rewrite ssl proxy proxy_http proxy_wstunnel headers >/dev/null
 if a2query -s 000-default >/dev/null 2>&1; then
     a2dissite 000-default >/dev/null
     DEFAULT_DISABLED=1
