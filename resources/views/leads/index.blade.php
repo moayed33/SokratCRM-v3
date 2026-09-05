@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v5">
 <style>
 :root {
   --red: #dc2637;
@@ -849,9 +849,16 @@ html.dark-mode .flash.success {
                             <tr>
                                 <!-- 1. Customer Name -->
                                 <td class="customer-name-cell">
-                                    <a href="{{ route('v2.leads.show', $lead) }}">
-                                        <strong>{{ $lead->name }}</strong>
-                                    </a>
+                                    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                                        <a href="{{ route('v2.leads.show', $lead) }}">
+                                            <strong>{{ $lead->name }}</strong>
+                                        </a>
+                                        @if ($lead->branch_id && auth()->user()->branch_id && (int) $lead->branch_id !== (int) auth()->user()->branch_id)
+                                            <span class="badge-branch" style="font-size:10px;padding:2px 6px;border-radius:6px;" title="{{ __('crm.lead_branch') ?? 'الفرع' }}: {{ $lead->branch?->name_ar }}">
+                                                <i class="bi bi-geo-alt-fill"></i> {{ $lead->branch?->name_ar ?? 'فرع آخر' }}
+                                            </span>
+                                        @endif
+                                    </div>
                                     @if ($lead->donation_purpose)
                                         <small><i class="bi bi-bullseye" style="color:var(--red)"></i> {{ $lead->donation_purpose }}</small>
                                     @elseif ($lead->company_name)
@@ -862,7 +869,10 @@ html.dark-mode .flash.success {
                                 <!-- 2. Primary Phone & Extra count -->
                                 <td>
                                     <div style="display:flex;align-items:center;gap:6px">
-                                        <span dir="ltr" style="font-weight:700">{{ $lead->phone }}</span>
+                                        <span dir="ltr" style="font-weight:700">{{ $lead->display_phone }}</span>
+                                        @if (!empty($lead->phone))
+                                            <button type="button" class="btn-dial-inline" data-voice-dial="{{ $lead->phone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}"><i class="bi bi-telephone-outbound-fill"></i></button>
+                                        @endif
                                         @if ($lead->phones->count() > 1)
                                             <span class="badge" title="{{ __('crm.additional_phone_count', ['count' => $lead->phones->count() - 1]) }}">
                                                 +{{ $lead->phones->count() - 1 }}
@@ -945,10 +955,10 @@ html.dark-mode .flash.success {
                                         @can('createFollowup', $lead)
                                             <a href="{{ route('v2.leads.followups.index', $lead) }}"
                                                class="btn-action call"
-                                               title="{{ $phoneDigits ? __('crm.open_microsip_and_followup') : __('crm.log_followup') }}"
+                                               title="{{ $phoneDigits ? __('crm.call_and_followup') : __('crm.log_followup') }}"
                                                data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
                                                data-lead-name="{{ $lead->name }}"
-                                               @if ($phoneDigits) data-sip-href="sip:{{ $phoneDigits }}" @endif
+                                               @if ($phoneDigits) data-voice-dial="{{ $phoneDigits }}" @endif
                                             >
                                                 <i class="bi bi-telephone-outbound"></i>
                                             </a>

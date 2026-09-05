@@ -114,8 +114,8 @@
           href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
           data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
           data-lead-name="{{ $lead->name }}"
-          data-sip-href="sip:{{ $rawPhone }}"
-          title="{{ __('crm.call_via_microsip') }}"
+          data-voice-dial="{{ $rawPhone }}"
+          title="{{ __('crm.call_and_followup') }}"
          >
           <i class="bi bi-telephone-fill"></i>
          </a>

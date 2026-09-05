@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
+    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v5">
     <style>
         *{box-sizing:border-box}
         :root{--red:#dc2637;--ink:#172033;--muted:#697386;--line:#e5e9f0;--bg:#f4f6fa;--card:#ffffff}
@@ -173,6 +173,9 @@
             <a class="{{ request()->routeIs('v2.settings.option-sets.*') ? 'active' : '' }}" href="{{ route('v2.settings.option-sets.index') }}">{{ __('crm.option_sets') }}</a>
             @can('branches.view')
                 <a class="{{ request()->routeIs('v2.settings.branches.*') ? 'active' : '' }}" href="{{ route('v2.settings.branches.index') }}">{{ __('crm.branches') }}</a>
+            @endcan
+            @can('settings.access')
+                <a class="{{ request()->routeIs('v2.settings.governorates.*', 'v2.settings.subregions.*') ? 'active' : '' }}" href="{{ route('v2.settings.governorates.index') }}">{{ __('crm.geography_and_zones') }}</a>
             @endcan
             @canany(['users.view', 'groups.view'])
                 <a class="{{ request()->routeIs('v2.settings.users.*', 'v2.settings.groups.*', 'v2.settings.permissions.*') ? 'active' : '' }}" href="{{ route('v2.settings.users.index', ['tab' => auth()->user()->can('groups.view') && !auth()->user()->can('users.view') ? 'groups' : 'users']) }}">{{ __('crm.access_control') }}</a>

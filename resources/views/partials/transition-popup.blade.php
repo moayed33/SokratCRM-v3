@@ -258,11 +258,21 @@ html.crm-monochrome:not(.dark-mode) .crm-transition-frame{
   const context = trigger.getAttribute('data-transition-context')
    || (trigger.closest('.board-shell, [data-kanban-column]') ? 'kanban' : '');
 
-  const sipHref = trigger.getAttribute('data-sip-href');
-  if (sipHref) {
-   const sipLink = document.createElement('a');
-   sipLink.href = sipHref;
-   sipLink.click();
+  // Trigger WebRTC softphone dial if phone number is present
+  const rawPhone = trigger.getAttribute('data-voice-dial')
+   || (trigger.getAttribute('data-sip-href') ? trigger.getAttribute('data-sip-href').replace(/^sip:|^callto:|^tel:/, '') : '')
+   || trigger.getAttribute('data-phone')
+   || '';
+
+  if (rawPhone) {
+   const cleanPhone = String(rawPhone).replace(/[^0-9+]/g, '');
+   if (cleanPhone) {
+    if (typeof window.sokratVoiceDial === 'function') {
+     window.sokratVoiceDial(cleanPhone, heading);
+    } else if (typeof window.parent?.sokratVoiceDial === 'function') {
+     window.parent.sokratVoiceDial(cleanPhone, heading);
+    }
+   }
   }
 
   open(url, heading, description, context);

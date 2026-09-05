@@ -37,6 +37,12 @@
                 <b style="font-size:20px">{{ __('crm.manage_branches') }}</b>
             </a>
         @endcan
+        @can('settings.access')
+            <a class="stat-card action-card" href="{{ route('v2.settings.governorates.index') }}">
+                <span>{{ __('crm.geography_and_zones') }}</span>
+                <b style="font-size:20px">{{ __('crm.manage_governorates_and_subregions') }}</b>
+            </a>
+        @endcan
         <a class="stat-card action-card" href="{{ route('v2.settings.stages.index') }}">
             <span>{{ __('crm.custom_pipeline_stages') }}</span>
             <b style="font-size:20px">{{ __('crm.customize_pipeline_stages') }}</b>

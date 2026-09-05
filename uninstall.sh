@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP_NAME="SOKRAT CRM V2"
-APP_DIR="/var/www/html/crm-v2"
-DB_NAME="sokrat_crm_v2"
-DB_USER="sokrat_crm_v2_app"
-SITE_NAME="sokrat-crm-v2"
+APP_NAME="SOKRAT CRM V3"
+APP_DIR="/var/www/html/crm-v3"
+DB_NAME="sokrat_crm_v3"
+DB_USER="sokrat_crm_v3_app"
+SITE_NAME="sokrat-crm-v3"
 SITE_CONF="/etc/apache2/sites-available/${SITE_NAME}.conf"
-CREDENTIALS_FILE="/root/sokrat-crm-v2-credentials.txt"
+CREDENTIALS_FILE="/root/sokrat-crm-v3-credentials.txt"
 
 log() {
     printf '\n[%s] %s\n' "$(date '+%H:%M:%S')" "$*"

@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v5">
 <style>
 :root{
  --red:#dc2637;
@@ -236,7 +236,7 @@ textarea{resize:vertical;min-height:90px}
                         @if ($canAssignLead)
                             <select id="assignedUser" name="assigned_user_id">
                                 @foreach ($assignableUsers as $u)
-                                    <option value="{{ $u->id }}" {{ (string) old('assigned_user_id', auth()->id()) === (string) $u->id ? 'selected' : '' }}>
+                                    <option value="{{ $u->id }}" data-branch-id="{{ $u->branch_id ?? '' }}" {{ (string) old('assigned_user_id', auth()->id()) === (string) $u->id ? 'selected' : '' }}>
                                         {{ $u->name }}
                                     </option>
                                 @endforeach
@@ -365,6 +365,18 @@ textarea{resize:vertical;min-height:90px}
         phoneContainer.appendChild(row);
         row.querySelector('input').focus();
     });
+
+    const assignedUserSelect = document.getElementById('assignedUser');
+    const branchSelect = document.getElementById('branchSelect');
+    if (assignedUserSelect && branchSelect) {
+        assignedUserSelect.addEventListener('change', () => {
+            const selectedOpt = assignedUserSelect.options[assignedUserSelect.selectedIndex];
+            const branchId = selectedOpt?.dataset?.branchId;
+            if (branchId) {
+                branchSelect.value = branchId;
+            }
+        });
+    }
 
 })();
 </script>

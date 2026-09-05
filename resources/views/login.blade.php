@@ -98,8 +98,8 @@
             <div class="error">{{ __('crm.invalid_credentials') }}</div>
         @endif
 
-        <label for="username">{{ __('crm.username_label') }}</label>
-        <input id="username" name="username" value="{{ old('username') }}" autocomplete="username" required autofocus>
+        <label for="username">{{ __('crm.login_identifier_label') }}</label>
+        <input id="username" name="username" value="{{ old('username') }}" autocomplete="username" placeholder="{{ __('crm.login_identifier_placeholder') }}" required autofocus>
 
         <label for="password">{{ __('crm.password') }}</label>
         <input id="password" name="password" type="password" autocomplete="current-password" required>

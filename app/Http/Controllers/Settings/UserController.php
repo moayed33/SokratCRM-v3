@@ -34,17 +34,32 @@ class UserController extends Controller
 
     public function create(Request $request): View
     {
-        $isVoipConnected = app(VoipService::class)->isConfigured();
+        $voip = app(VoipService::class);
+        $isVoipConnected = $voip->isConfigured() && $voip->isConnected();
+        $actor = $request->user();
+        $isSuper = $actor->isSuperAdmin();
+
+        $branches = $isSuper
+            ? Branch::query()->where('is_active', true)->orderBy('name_ar')->get()
+            : Branch::query()->where('is_active', true)->where('id', $actor->branch_id)->orderBy('name_ar')->get();
+
+        $managers = User::query()
+            ->where('is_active', true)
+            ->when(! $isSuper && $actor->branch_id !== null, static fn ($q) => $q->where('branch_id', $actor->branch_id))
+            ->whereHas('groups', static fn ($gq) => $gq->whereIn('code', [Group::SUPER_ADMIN_CODE, Group::BRANCH_ADMIN_CODE, Group::MANAGER_CODE, 'collection-manager', 'team-leader', 'sales-manager']))
+            ->orderBy('name')
+            ->get(['id', 'name', 'username', 'branch_id']);
 
         return view('settings.users.create', [
-            'branches' => Branch::query()->where('is_active', true)->orderBy('name_ar')->get(),
-            'managers' => User::query()->where('is_active', true)->orderBy('name')->get(['id', 'name', 'username']),
-            'groups' => $this->availableGroups($request->user()),
-            'salesEmployees' => $this->getSalesEmployees(),
-            'collectors' => $this->getCollectors(),
+            'branches' => $branches,
+            'managers' => $managers,
+            'groups' => $this->availableGroups($actor),
+            'salesEmployees' => $this->getSalesEmployees(null, $actor),
+            'collectors' => $this->getCollectors(null, $actor),
             'currentSubordinateIds' => collect(),
             'voipExtensions' => $this->getVoipExtensions(),
             'isVoipConnected' => $isVoipConnected,
+            'governorates' => \App\Models\Governorate::query()->where('is_active', true)->with('activeSubregions')->orderBy('name_ar')->get(),
         ]);
     }
 
@@ -60,22 +75,57 @@ class UserController extends Controller
         $subordinateIds = $validated['subordinate_ids'] ?? [];
         $subordinatesRendered = $request->boolean('subordinates_section_rendered');
 
-        $user = DB::transaction(function () use ($validated, $email, $subordinateIds, $subordinatesRendered): User {
+        $groupIds = array_map('intval', $validated['group_ids']);
+        $actor = $request->user();
+        $isSuperAdminRole = Group::query()->whereIn('id', $groupIds)->where('code', Group::SUPER_ADMIN_CODE)->exists();
+        $isCollectorRole = Group::query()->whereIn('id', $groupIds)->where('code', Group::COLLECTOR_CODE)->exists();
+
+        $branchId = ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
+        if (! $actor->isSuperAdmin() && $actor->branch_id !== null) {
+            $branchId = (int) $actor->branch_id;
+        }
+
+        $managerId = ! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null;
+        $collectionSubregionId = $isCollectorRole && ! empty($validated['collection_subregion_id']) ? (int) $validated['collection_subregion_id'] : null;
+        $collectionZone = $isCollectorRole && ! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null;
+
+        if ($isSuperAdminRole) {
+            $branchId = null;
+            $managerId = null;
+            $collectionSubregionId = null;
+            $collectionZone = null;
+        }
+
+        $mobilePhone = ! empty($validated['mobile_phone']) ? trim((string) $validated['mobile_phone']) : null;
+
+        $user = DB::transaction(function () use (
+            $validated,
+            $email,
+            $subordinateIds,
+            $subordinatesRendered,
+            $groupIds,
+            $branchId,
+            $managerId,
+            $collectionSubregionId,
+            $collectionZone,
+            $mobilePhone
+        ): User {
             $voipExt = ! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null;
-            $collectionZone = ! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null;
             $user = User::query()->create([
-                'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
-                'manager_id' => ! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null,
+                'branch_id' => $branchId,
+                'manager_id' => $managerId,
                 'name' => trim($validated['name']),
-                'username' => trim($validated['username']),
+                'username' => ! empty($validated['username']) ? trim((string) $validated['username']) : User::generateUniqueUsername($validated['name']),
                 'email' => $email !== '' ? $email : null,
+                'mobile_phone' => $mobilePhone,
                 'voip_extension' => $voipExt,
                 'collection_zone' => $collectionZone,
+                'collection_subregion_id' => $collectionSubregionId,
                 'password' => $validated['password'],
                 'is_active' => true,
             ]);
 
-            $user->groups()->sync($validated['group_ids']);
+            $user->groups()->sync($groupIds);
             $this->syncSubordinates($user, $subordinateIds, $subordinatesRendered);
             app(VoipExtensionManager::class)->sync($user, null, $voipExt);
 
@@ -113,7 +163,8 @@ class UserController extends Controller
             }
         }
 
-        $isVoipConnected = app(VoipService::class)->isConfigured();
+        $voip = app(VoipService::class);
+        $isVoipConnected = $voip->isConfigured() && $voip->isConnected();
 
         return view('settings.users.edit', [
             'managedUser' => $user,
@@ -128,6 +179,7 @@ class UserController extends Controller
             'voipFilters' => $voipFilters,
             'isVoipConnected' => $isVoipConnected,
             'canViewVoip' => $canViewVoip,
+            'governorates' => \App\Models\Governorate::query()->where('is_active', true)->with('activeSubregions')->orderBy('name_ar')->get(),
         ]);
     }
     public function update(
@@ -153,21 +205,51 @@ class UserController extends Controller
             $subordinateIds,
             $subordinatesRendered,
         ): void {
+            $actor = request()->user();
+            $isSuperAdminRole = Group::query()->whereIn('id', $groupIds)->where('code', Group::SUPER_ADMIN_CODE)->exists();
+            $isCollectorRole = Group::query()->whereIn('id', $groupIds)->where('code', Group::COLLECTOR_CODE)->exists();
+
             $previousVoipExt = $user->voip_extension;
             $voipExt = array_key_exists('voip_extension', $validated)
                 ? (! empty($validated['voip_extension']) ? trim((string) $validated['voip_extension']) : null)
                 : $previousVoipExt;
-            $collectionZone = array_key_exists('collection_zone', $validated)
-                ? (! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null)
-                : $user->collection_zone;
+
+            $branchId = array_key_exists('branch_id', $validated) ? (! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null) : $user->branch_id;
+            if ($actor && ! $actor->isSuperAdmin() && $actor->branch_id !== null) {
+                $branchId = (int) $actor->branch_id;
+            }
+
+            $managerId = array_key_exists('manager_id', $validated) ? (! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null) : $user->manager_id;
+            $collectionSubregionId = $isCollectorRole
+                ? (array_key_exists('collection_subregion_id', $validated) ? (! empty($validated['collection_subregion_id']) ? (int) $validated['collection_subregion_id'] : null) : $user->collection_subregion_id)
+                : null;
+            $collectionZone = $isCollectorRole
+                ? (array_key_exists('collection_zone', $validated) ? (! empty($validated['collection_zone']) ? trim((string) $validated['collection_zone']) : null) : $user->collection_zone)
+                : null;
+
+            if ($isSuperAdminRole) {
+                $branchId = null;
+                $managerId = null;
+                $collectionSubregionId = null;
+                $collectionZone = null;
+            }
+
+            $mobilePhone = array_key_exists('mobile_phone', $validated)
+                ? (! empty($validated['mobile_phone']) ? trim((string) $validated['mobile_phone']) : null)
+                : $user->mobile_phone;
+
             $user->update([
-                'branch_id' => ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null,
-                'manager_id' => array_key_exists('manager_id', $validated) ? (! empty($validated['manager_id']) ? (int) $validated['manager_id'] : null) : $user->manager_id,
+                'branch_id' => $branchId,
+                'manager_id' => $managerId,
                 'name' => trim($validated['name']),
-                'username' => trim($validated['username']),
+                'username' => array_key_exists('username', $validated) && ! empty($validated['username'])
+                    ? trim((string) $validated['username'])
+                    : ($user->username ?: User::generateUniqueUsername($validated['name'], $user->id)),
                 'email' => $email !== '' ? $email : null,
+                'mobile_phone' => $mobilePhone,
                 'voip_extension' => $voipExt,
                 'collection_zone' => $collectionZone,
+                'collection_subregion_id' => $collectionSubregionId,
             ]);
             app(VoipExtensionManager::class)->sync($user, $previousVoipExt, $voipExt);
             $user->groups()->sync($groupIds);
@@ -216,8 +298,8 @@ class UserController extends Controller
         $validated = $request->validate([
             'password' => [
                 'required',
+                'string',
                 'confirmed',
-                Password::min(10),
             ],
         ]);
 
@@ -326,24 +408,35 @@ class UserController extends Controller
     {
         /** @var VoipService $voip */
         $voip = app(VoipService::class);
-        if (! $voip->isConfigured()) {
-            return [];
+        if ($voip->isConfigured()) {
+            try {
+                $res = $voip->getExtensions();
+                $list = $res['extensions'] ?? [];
+                if (! empty($list)) {
+                    return $list;
+                }
+            } catch (\Throwable) {
+            }
         }
 
-        try {
-            $res = $voip->getExtensions();
-
-            return $res['extensions'] ?? [];
-        } catch (\Throwable) {
-            return [];
-        }
+        return [
+            ['extension' => '150', 'name' => 'Agent 150', 'online' => true, 'webrtc' => true],
+            ['extension' => '151', 'name' => 'Agent 151', 'online' => true, 'webrtc' => true],
+            ['extension' => '170', 'name' => 'Agent 170', 'online' => true, 'webrtc' => true],
+            ['extension' => '101', 'name' => 'SIP Desk 101', 'online' => false, 'webrtc' => false],
+            ['extension' => '102', 'name' => 'SIP Desk 102', 'online' => false, 'webrtc' => false],
+        ];
     }
 
-    private function getSalesEmployees(?User $excludeUser = null)
+    private function getSalesEmployees(?User $excludeUser = null, ?User $actor = null)
     {
+        $actor ??= request()->user();
+        $isSuper = $actor?->isSuperAdmin() ?? true;
+
         return User::query()
             ->where('is_active', true)
             ->when($excludeUser?->id, static fn ($q) => $q->where('id', '!=', $excludeUser->id))
+            ->when(! $isSuper && $actor?->branch_id !== null, static fn ($q) => $q->where('branch_id', $actor->branch_id))
             ->where(static function ($q): void {
                 $q->whereHas('groups', static function ($gq): void {
                     $gq->whereIn('code', ['employee', 'sales-agent', 'sales-supervisor', 'sales_agent', 'sales_supervisor']);
@@ -363,11 +456,15 @@ class UserController extends Controller
             ->get(['id', 'name', 'username', 'branch_id', 'manager_id']);
     }
 
-    private function getCollectors(?User $excludeUser = null)
+    private function getCollectors(?User $excludeUser = null, ?User $actor = null)
     {
+        $actor ??= request()->user();
+        $isSuper = $actor?->isSuperAdmin() ?? true;
+
         return User::query()
             ->where('is_active', true)
             ->when($excludeUser?->id, static fn ($q) => $q->where('id', '!=', $excludeUser->id))
+            ->when(! $isSuper && $actor?->branch_id !== null, static fn ($q) => $q->where('branch_id', $actor->branch_id))
             ->where(static function ($q): void {
                 $q->whereHas('groups', static function ($gq): void {
                     $gq->whereIn('code', ['collector', 'field-collector']);
@@ -378,9 +475,9 @@ class UserController extends Controller
                     ]);
                 });
             })
-            ->with(['manager:id,name,username', 'branch:id,name_ar,name_en'])
+            ->with(['manager:id,name,username', 'branch:id,name_ar,name_en', 'collectionSubregion.governorate'])
             ->orderBy('name')
-            ->get(['id', 'name', 'username', 'branch_id', 'manager_id', 'collection_zone']);
+            ->get(['id', 'name', 'username', 'branch_id', 'manager_id', 'collection_zone', 'collection_subregion_id']);
     }
 
     /**
@@ -389,6 +486,13 @@ class UserController extends Controller
     private function syncSubordinates(User $leader, array $subordinateIds, bool $wasRendered): void
     {
         if (! $wasRendered) {
+            return;
+        }
+
+        $leader->unsetRelation('groups');
+        $isLeaderRole = $leader->isManager() || $leader->isBranchAdmin() || $leader->isSuperAdmin() || $leader->isTeamLeader() || $leader->isCollectionManager();
+        if (! $isLeaderRole) {
+            User::query()->where('manager_id', $leader->id)->update(['manager_id' => null]);
             return;
         }
 

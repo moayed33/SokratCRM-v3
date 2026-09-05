@@ -18,7 +18,7 @@
 .crm-notification-tabs button{min-height:31px;padding:0 12px;border:0;border-radius:7px;background:transparent;color:#697386;font:inherit;font-size:12px;font-weight:800;cursor:pointer}
 .crm-notification-tabs button.active{background:#182033;color:#fff}
 .crm-notification-read-all{border:0;background:transparent;color:#bd1e2e;font:inherit;font-size:12px;font-weight:800;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
-.crm-notification-list{flex:1;min-height:0;overflow:auto;scrollbar-color:#b8c0cc #f2f4f7;scrollbar-width:thin}
+.crm-notification-list{flex:1;min-height:0;overflow:auto;scrollbar-color:var(--scrollbar-thumb,#b8c0cc) transparent;scrollbar-width:thin}
 .crm-notification-state{min-height:280px;display:grid;place-items:center;padding:38px 24px;text-align:center;color:#697386}
 .crm-notification-state i{display:block;margin-bottom:12px;color:#9aa4b2;font-size:30px}
 .crm-notification-state strong{display:block;color:#354155;font-size:15px}
@@ -151,7 +151,7 @@ html.dark-mode .crm-notification-read-all:hover {
 }
 
 html.dark-mode .crm-notification-list {
-  scrollbar-color: #3f3f46 #18181b !important;
+  scrollbar-color: var(--scrollbar-thumb, #3f3f46) transparent !important;
 }
 
 html.dark-mode .crm-notification-state {

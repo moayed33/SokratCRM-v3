@@ -24,11 +24,12 @@ class UpdateUserRequest extends FormRequest
         $managedUser = $this->route('user');
 
         return [
-            'branch_id' => ['nullable', 'integer', 'exists:branches,id'],
-            'manager_id' => ['nullable', 'integer', 'exists:users,id'],
+            'branch_id' => ['nullable', 'integer', Rule::exists('branches', 'id')->where('is_active', true)],
+            'manager_id' => ['nullable', 'integer', Rule::exists('users', 'id')->where('is_active', true)],
+            'mobile_phone' => ['nullable', 'string', 'max:50'],
             'name' => ['required', 'string', 'max:150'],
             'username' => [
-                'required',
+                'nullable',
                 'string',
                 'max:100',
                 'alpha_dash:ascii',
@@ -47,6 +48,7 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique('users', 'voip_extension')->ignore($managedUser),
             ],
             'collection_zone' => ['nullable', 'string', 'max:255'],
+            'collection_subregion_id' => ['nullable', 'integer', 'exists:governorate_subregions,id'],
             'group_ids' => ['required', 'array', 'min:1'],
             'group_ids.*' => [
                 'integer',

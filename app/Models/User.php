@@ -26,6 +26,7 @@ use Illuminate\Notifications\Notifiable;
     'timezone',
     'mobile_phone',
     'collection_zone',
+    'collection_subregion_id',
     'whatsapp_opt_in_at',
     'password',
     'is_active',
@@ -47,6 +48,25 @@ class User extends Authenticatable
         ];
     }
 
+    public static function generateUniqueUsername(string $name, ?int $excludeUserId = null): string
+    {
+        $transliterated = \Illuminate\Support\Str::transliterate($name);
+        $base = \Illuminate\Support\Str::slug($transliterated, '_');
+        $base = preg_replace('/[^a-z0-9_]/i', '', (string) $base);
+        $base = mb_substr($base, 0, 70);
+        if (empty($base) || mb_strlen($base) < 2) {
+            $base = 'user_'.substr(md5(uniqid('', true)), 0, 6);
+        }
+
+        $candidate = $base;
+        $counter = 1;
+        while (self::query()->where('username', $candidate)->when($excludeUserId, fn ($q) => $q->where('id', '!=', $excludeUserId))->exists()) {
+            $counter++;
+            $candidate = "{$base}_{$counter}";
+        }
+
+        return $candidate;
+    }
 
     public function branch(): BelongsTo
     {
@@ -104,6 +124,16 @@ class User extends Authenticatable
     public function assignedCollectionCases(): HasMany
     {
         return $this->hasMany(CollectionCase::class, 'assigned_collector_user_id');
+    }
+
+    public function collectionSubregion(): BelongsTo
+    {
+        return $this->belongsTo(GovernorateSubregion::class, 'collection_subregion_id');
+    }
+
+    public function collectionGovernorate(): ?Governorate
+    {
+        return $this->collectionSubregion?->governorate;
     }
 
     public function createdCollectionCases(): HasMany

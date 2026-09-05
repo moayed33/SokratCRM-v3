@@ -111,8 +111,10 @@ class MultiBranchIsolationTest extends TestCase
         $resA->assertSee('عميل فرع أ السري');
         $resA->assertDontSee('عميل فرع ب السري');
 
-        // User A cannot view Lead B details -> 403 Forbidden
-        $this->actingAs($this->userBranchA)->get(route('v2.leads.show', $leadB))->assertForbidden();
+        // User A can view Lead B details in cross-branch read-only mode
+        $resShowB = $this->actingAs($this->userBranchA)->get(route('v2.leads.show', $leadB));
+        $resShowB->assertOk();
+        $resShowB->assertSee('عميل فرع ب السري');
 
         // User B sees Lead B in index
         $resB = $this->actingAs($this->userBranchB)->get(route('v2.leads'));
@@ -120,8 +122,10 @@ class MultiBranchIsolationTest extends TestCase
         $resB->assertSee('عميل فرع ب السري');
         $resB->assertDontSee('عميل فرع أ السري');
 
-        // User B cannot view Lead A details -> 403 Forbidden
-        $this->actingAs($this->userBranchB)->get(route('v2.leads.show', $leadA))->assertForbidden();
+        // User B can view Lead A details in cross-branch read-only mode
+        $resShowA = $this->actingAs($this->userBranchB)->get(route('v2.leads.show', $leadA));
+        $resShowA->assertOk();
+        $resShowA->assertSee('عميل فرع أ السري');
     }
 
     public function test_2_lead_mutations_and_followups_forbidden_across_branches(): void
@@ -330,24 +334,37 @@ class MultiBranchIsolationTest extends TestCase
         $this->actingAs($this->userBranchA)->getJson(route('v2.leads.calls', $leadB))->assertForbidden();
     }
 
-    public function test_9_search_and_filter_never_leak_foreign_branch_records(): void
+    public function test_9_search_allows_cross_branch_lookup_with_read_only_details(): void
     {
         $this->createLead($this->userBranchA, $this->status, $this->branchA, 'عميل القاهرة العادي', '01011119999');
-        $this->createLead($this->userBranchB, $this->status, $this->branchB, 'BRANCH_B_SECRET_LEAD', '01099998888');
+        $leadB = $this->createLead($this->userBranchB, $this->status, $this->branchB, 'BRANCH_B_SEARCHABLE_LEAD', '01099998888');
 
-        // Search by secret name as Branch A user
-        $response = $this->actingAs($this->userBranchA)->get(route('v2.leads', ['q' => 'BRANCH_B_SECRET_LEAD']));
+        // 1. Unsearched listing strictly hides foreign branch records
+        $unsearched = $this->actingAs($this->userBranchA)->get(route('v2.leads'));
+        $unsearched->assertOk();
+        $unsearched->assertDontSee('BRANCH_B_SEARCHABLE_LEAD');
+
+        // 2. Active search by name matches cross-branch lead
+        $response = $this->actingAs($this->userBranchA)->get(route('v2.leads', ['q' => 'BRANCH_B_SEARCHABLE_LEAD']));
         $response->assertOk();
         $leadsInView = $response->viewData('leads');
-        $this->assertCount(0, $leadsInView);
-        $this->assertFalse(collect($leadsInView->items())->contains('name', 'BRANCH_B_SECRET_LEAD'));
+        $this->assertTrue(collect($leadsInView->items())->contains('name', 'BRANCH_B_SEARCHABLE_LEAD'));
+        $response->assertSee($this->branchB->name_ar);
 
-        // Search by secret phone as Branch A user
+        // 3. Active search by phone matches cross-branch lead
         $response2 = $this->actingAs($this->userBranchA)->get(route('v2.leads', ['q' => '01099998888']));
         $response2->assertOk();
         $leadsInView2 = $response2->viewData('leads');
-        $this->assertCount(0, $leadsInView2);
-        $this->assertFalse(collect($leadsInView2->items())->contains('phone', '01099998888'));
+        $this->assertTrue(collect($leadsInView2->items())->contains('phone', '01099998888'));
+
+        // 4. Viewing cross-branch lead displays name, phone, branch, and protects mutation
+        $showRes = $this->actingAs($this->userBranchA)->get(route('v2.leads.show', $leadB));
+        $showRes->assertOk();
+        $showRes->assertSee('BRANCH_B_SEARCHABLE_LEAD');
+        $showRes->assertSee('01099998888');
+        $showRes->assertSee($this->branchB->name_ar);
+        $this->assertFalse($this->userBranchA->can('update', $leadB));
+        $this->assertFalse($this->userBranchA->can('delete', $leadB));
     }
 
     private function createLead(User $user, LeadStatus $status, Branch $branch, string $name, string $phone = '01000000000'): Lead

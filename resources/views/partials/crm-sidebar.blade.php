@@ -66,7 +66,7 @@
 @once
 <link
  rel="stylesheet"
- href="{{ asset('crm-sidebar-shared.css') . '?v=crm-theme-matrix-v4' }}"
+ href="{{ asset('crm-sidebar-shared.css') . '?v=crm-theme-matrix-v5' }}"
 >
 @endonce
 @once
@@ -367,6 +367,10 @@
 
 @once
 @include('notifications._center')
+@endonce
+
+@once
+@include('partials.voice-dock')
 @endonce
 
 

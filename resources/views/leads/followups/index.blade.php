@@ -541,7 +541,12 @@
   }
   html.dark-mode .panel-head h3{color:#f4f4f5!important;font-weight:800!important}
   html.dark-mode .panel-head p{color:var(--text-muted,#a1a1aa)!important}
+  .panel-body{
+   padding:20px 22px
+  }
   html.dark-mode .panel-body{color:var(--text-primary,#f4f4f5)!important}
+
+  .success-box{
    margin-bottom:15px;
    padding:13px 15px;
    border:1px solid #a9d8bd;
@@ -895,11 +900,16 @@
 
   .followup-stage-editor{
    grid-column:1/-1;
-   overflow:hidden;
+   overflow:visible;
    margin:4px 0;
    border:1px solid var(--line, #dfe5ed);
    border-radius:15px;
    background:var(--card, #fff)
+  }
+
+  .followup-stage-editor .followup-editor-head{
+   border-top-left-radius:14px;
+   border-top-right-radius:14px
   }
 
   .followup-stage-editor.is-hidden,
@@ -1281,6 +1291,10 @@ html.crm-monochrome.dark-mode body.kanban-followup-popup{
 body.kanban-followup-popup .crm-side,
 body.kanban-followup-popup .crm-side-overlay,
 body.kanban-followup-popup .topbar,
+body.kanban-followup-popup .sokrat-voice-dock,
+body.kanban-followup-popup .sokrat-voice-panel,
+body.kanban-followup-popup .sokrat-voice-toast,
+body.kanban-followup-popup .sokrat-lead-screen-pop,
 body.kanban-followup-popup
  .latest-followups-panel{
  display:none!important
@@ -1344,6 +1358,9 @@ body.kanban-followup-popup .client-data{
 body.kanban-followup-popup .panel{
  border-radius:14px!important;
  box-shadow:none!important
+}
+body.kanban-followup-popup .panel-body{
+ padding:18px 20px!important
 }
 
 body.kanban-followup-popup
@@ -1490,6 +1507,8 @@ body.kanban-followup-popup
  display: grid;
  grid-template-columns: 1fr 1fr;
  gap: 10px;
+ padding: 4px;
+ margin: 4px 0 8px;
 }
 @media (max-width: 600px) {
  .outcome-bar {
@@ -1501,19 +1520,19 @@ body.kanban-followup-popup
  align-items: center;
  justify-content: center;
  gap: 8px;
- min-height: 56px;
+ min-height: 54px;
  border-radius: 14px;
  border: 2px solid #e2e8f0;
  background: #fff;
  font-size: 15px;
  font-weight: 700;
  cursor: pointer;
- transition: border-color .2s, background .2s, transform .15s;
+ transition: border-color .18s, background .18s, box-shadow .18s, transform .15s;
  padding: 8px 12px;
  line-height: 1.3;
 }
 .outcome-btn:hover {
- transform: scale(1.02);
+ transform: translateY(-1px);
 }
 .outcome-btn:disabled {
  opacity: .45;
@@ -1556,8 +1575,20 @@ body.kanban-followup-popup
  background: #fef2f2;
 }
 .outcome-btn.active {
- transform: scale(1.03);
- box-shadow: 0 2px 8px rgba(0,0,0,.08);
+ transform: none !important;
+ border-width: 2px !important;
+}
+.outcome-btn--donated.active {
+ box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.16), 0 2px 6px rgba(22, 163, 74, 0.1) !important;
+}
+.outcome-btn--no-answer.active {
+ box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.16), 0 2px 6px rgba(217, 119, 6, 0.1) !important;
+}
+.outcome-btn--followup-later.active {
+ box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16), 0 2px 6px rgba(37, 99, 235, 0.1) !important;
+}
+.outcome-btn--not-interested.active {
+ box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.16), 0 2px 6px rgba(220, 38, 38, 0.1) !important;
 }
 
 /* ── Preset Chips ── */
@@ -1617,24 +1648,28 @@ html.dark-mode .outcome-btn--donated.active {
  background: #052e16;
  border-color: #16a34a;
  color: #4ade80;
+ box-shadow: 0 0 0 3px rgba(74, 222, 128, 0.25) !important;
 }
 html.dark-mode .outcome-btn--no-answer:hover,
 html.dark-mode .outcome-btn--no-answer.active {
  background: #451a03;
  border-color: #d97706;
  color: #fbbf24;
+ box-shadow: 0 0 0 3px rgba(251, 191, 36, 0.25) !important;
 }
 html.dark-mode .outcome-btn--followup-later:hover,
 html.dark-mode .outcome-btn--followup-later.active {
  background: #172554;
  border-color: #2563eb;
  color: #60a5fa;
+ box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25) !important;
 }
 html.dark-mode .outcome-btn--not-interested:hover,
 html.dark-mode .outcome-btn--not-interested.active {
  background: #450a0a;
  border-color: #dc2626;
  color: #f87171;
+ box-shadow: 0 0 0 3px rgba(248, 113, 113, 0.25) !important;
 }
 html.dark-mode .chip {
  background: #1e293b;
@@ -1796,12 +1831,25 @@ html.dark-mode .chip-group-label {
 
       <div class="client-data-item">
        <small>{{ __('crm.phone') }}</small>
-       <strong>{{ $lead->phone ?: '----' }}</strong>
+       <strong style="display:inline-flex;align-items:center;gap:6px;">
+        <span>{{ $lead->display_phone ?: '----' }}</span>
+        @if (!empty($lead->phone))
+            <button type="button" class="btn-dial-inline" data-voice-dial="{{ $lead->phone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}"><i class="bi bi-telephone-outbound-fill"></i></button>
+        @endif
+       </strong>
       </div>
 
       <div class="client-data-item">
-       <small>{{ __('crm.governorate') }}</small>
-       <strong>{{ $lead->governorate ?: '----' }}</strong>
+       <small>{{ __('crm.governorate') }} / {{ __('crm.subregion') }}</small>
+       <strong>
+        @if($lead->subregion)
+         {{ $lead->subregion->full_name }}
+        @elseif($lead->governorate)
+         {{ $lead->governorate }}
+        @else
+         ----
+        @endif
+       </strong>
       </div>
 
       <div class="client-data-item">
@@ -2382,8 +2430,46 @@ html.dark-mode .chip-group-label {
             </div>
 
             <div class="field collection-input">
+             <label for="collection_governorate_id">
+              {{ __('crm.governorate') }}
+              <span class="required">*</span>
+             </label>
+             <select class="control" id="collection_governorate_id" name="governorate_id">
+              <option value="">— {{ __('crm.select_governorate') }} —</option>
+              @if(!empty($governorates))
+               @foreach($governorates as $gov)
+                <option value="{{ $gov->id }}" @selected((string)old('governorate_id', $lead->governorate_id ?? '') === (string)$gov->id)>
+                 {{ $gov->name_ar }} @if($gov->name_en)({{ $gov->name_en }})@endif
+                </option>
+               @endforeach
+              @endif
+             </select>
+            </div>
+
+            <div class="field collection-input">
+             <label for="collection_subregion_id">
+              {{ __('crm.subregion') }}
+              <span class="required">*</span>
+             </label>
+             <select class="control" id="collection_subregion_id" name="subregion_id" @disabled(empty($lead->governorate_id) && empty(old('governorate_id')))>
+              <option value="">{{ (empty($lead->governorate_id) && empty(old('governorate_id'))) ? __('crm.select_governorate_first') : __('crm.select_subregion') }}</option>
+              @if(!empty($governorates))
+               @foreach($governorates as $gov)
+                @if((string)old('governorate_id', $lead->governorate_id ?? '') === (string)$gov->id)
+                 @foreach($gov->activeSubregions as $sub)
+                  <option value="{{ $sub->id }}" data-gov-id="{{ $gov->id }}" @selected((string)old('subregion_id', $lead->subregion_id ?? '') === (string)$sub->id)>
+                   {{ $sub->name_ar }} @if($sub->name_en)({{ $sub->name_en }})@endif
+                  </option>
+                 @endforeach
+                @endif
+               @endforeach
+              @endif
+             </select>
+            </div>
+
+            <div class="field full collection-input">
              <label for="collectionAddress">
-              {{ __('crm.collection_address') }}
+              {{ __('crm.collection_address') }} ({{ __('crm.collection_address_details') }})
               <span class="required">*</span>
              </label>
              <input
@@ -2391,11 +2477,11 @@ html.dark-mode .chip-group-label {
               id="collectionAddress"
               type="text"
               name="collection_address"
+              placeholder="{{ __('crm.collection_address_placeholder') }}"
               value="{{ old('collection_address', $lead->address) }}"
               maxlength="255"
              >
             </div>
-
             @if ($canAssignCollections)
              <div class="field full collection-input">
               <label for="assignedCollectorUserId">
@@ -2409,11 +2495,16 @@ html.dark-mode .chip-group-label {
               >
                <option value="">{{ __('crm.collection_manager_queue') }}</option>
                @foreach ($collectors as $collector)
+                @php
+                 $colSub = $collector->collectionSubregion;
+                 $zoneLabel = $colSub ? ' — [' . $colSub->full_name . ']' : (!empty($collector->collection_zone) ? ' — [' . $collector->collection_zone . ']' : '');
+                @endphp
                 <option
                  value="{{ $collector->id }}"
+                 data-subregion-id="{{ $collector->collection_subregion_id ?? '' }}"
                  @selected((int) old('assigned_collector_user_id') === (int) $collector->id)
                 >
-                 {{ $collector->name }}
+                 {{ $collector->name }}{{ $zoneLabel }}
                 </option>
                @endforeach
               </select>
@@ -2459,31 +2550,49 @@ html.dark-mode .chip-group-label {
 
           <div class="followup-editor-grid">
            <div class="field">
-            <label for="governorate">
+            <label for="lead_business_governorate_id">
              {{ __('crm.governorate') }}
             </label>
+            <select class="control" id="lead_business_governorate_id" name="lead_business_governorate_id">
+             <option value="">— {{ __('crm.select_governorate') }} —</option>
+             @if(!empty($governorates))
+              @foreach($governorates as $gov)
+               <option value="{{ $gov->id }}" @selected((string)old('lead_business_governorate_id', $lead->governorate_id ?? '') === (string)$gov->id)>
+                {{ $gov->name_ar }} @if($gov->name_en)({{ $gov->name_en }})@endif
+               </option>
+              @endforeach
+             @endif
+            </select>
+           </div>
 
-            <input
-             class="control"
-             id="governorate"
-             type="text"
-             name="governorate"
-             value="{{ old(
-              'governorate',
-              $lead->governorate
-             ) }}"
-             maxlength="100"
-            >
+           <div class="field">
+            <label for="lead_business_subregion_id">
+             {{ __('crm.subregion') }}
+            </label>
+            <select class="control" id="lead_business_subregion_id" name="lead_business_subregion_id" @disabled(empty($lead->governorate_id) && empty(old('lead_business_governorate_id')))>
+             <option value="">{{ (empty($lead->governorate_id) && empty(old('lead_business_governorate_id'))) ? __('crm.select_governorate_first') : __('crm.select_subregion') }}</option>
+             @if(!empty($governorates))
+              @foreach($governorates as $gov)
+               @if((string)old('lead_business_governorate_id', $lead->governorate_id ?? '') === (string)$gov->id)
+                @foreach($gov->activeSubregions as $sub)
+                 <option value="{{ $sub->id }}" data-gov-id="{{ $gov->id }}" @selected((string)old('lead_business_subregion_id', $lead->subregion_id ?? '') === (string)$sub->id)>
+                  {{ $sub->name_ar }} @if($sub->name_en)({{ $sub->name_en }})@endif
+                 </option>
+                @endforeach
+               @endif
+              @endforeach
+             @endif
+            </select>
            </div>
 
            <div class="field full">
-            <label for="address">
+            <label for="lead_business_address">
              {{ __('crm.address') }}
             </label>
 
             <input
              class="control"
-             id="address"
+             id="lead_business_address"
              type="text"
              name="address"
              value="{{ old(
@@ -4139,6 +4248,110 @@ window.parent.postMessage(
 </script>
 <!-- CRM AUTO-ADVANCE NEXT LEAD END -->
 @endif
+@php
+    $followupSubregionsMap = [];
+    if (!empty($governorates)) {
+        foreach ($governorates as $g) {
+            $followupSubregionsMap[$g->id] = $g->activeSubregions->map(static fn ($s) => [
+                'id' => $s->id,
+                'name_ar' => $s->name_ar,
+                'name_en' => $s->name_en,
+            ])->all();
+        }
+    }
+@endphp
+<script>
+(() => {
+    const subregionsByGov = @json($followupSubregionsMap);
+    const selectGovFirstText = @json(__('crm.select_governorate_first'));
+    const selectSubregionText = @json(__('crm.select_subregion'));
+    const matchingSubregionText = @json(__('crm.matching_subregion'));
+
+    const bindGeoCascade = (govSelectId, subSelectId, collectorSelectId) => {
+        const govSelect = document.getElementById(govSelectId);
+        const subSelect = document.getElementById(subSelectId);
+        const collectorSelect = collectorSelectId ? document.getElementById(collectorSelectId) : null;
+
+        if (!govSelect || !subSelect) return;
+
+        const populateSubregions = (isInitial = false) => {
+            const selectedGov = govSelect.value;
+            const previousSubId = subSelect.value;
+
+            subSelect.innerHTML = '';
+
+            if (!selectedGov || !subregionsByGov[selectedGov] || subregionsByGov[selectedGov].length === 0) {
+                const opt = document.createElement('option');
+                opt.value = '';
+                opt.textContent = selectGovFirstText;
+                subSelect.appendChild(opt);
+                subSelect.disabled = true;
+                highlightCollectors();
+                return;
+            }
+
+            subSelect.disabled = false;
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = selectSubregionText;
+            subSelect.appendChild(defaultOpt);
+
+            let hasMatchedSelection = false;
+            subregionsByGov[selectedGov].forEach(sub => {
+                const opt = document.createElement('option');
+                opt.value = sub.id;
+                opt.textContent = sub.name_ar + (sub.name_en ? ' (' + sub.name_en + ')' : '');
+                if (previousSubId && String(previousSubId) === String(sub.id)) {
+                    opt.selected = true;
+                    hasMatchedSelection = true;
+                }
+                subSelect.appendChild(opt);
+            });
+
+            if (!hasMatchedSelection && !isInitial) {
+                subSelect.value = '';
+            }
+
+            highlightCollectors();
+        };
+
+        const highlightCollectors = () => {
+            if (!collectorSelect) return;
+            const currentSubId = subSelect.value;
+            Array.from(collectorSelect.options).forEach((opt, idx) => {
+                if (idx === 0) return;
+                const collectorSub = opt.dataset.subregionId;
+                const isMatch = currentSubId && collectorSub && String(collectorSub) === String(currentSubId);
+
+                let baseName = opt.getAttribute('data-base-label');
+                if (!baseName) {
+                    baseName = opt.textContent.replace(/\s*★\s*\(.*?\)/g, '').trim();
+                    opt.setAttribute('data-base-label', baseName);
+                }
+                opt.textContent = isMatch ? baseName + ' ★ (' + matchingSubregionText + ')' : baseName;
+            });
+        };
+
+        govSelect.addEventListener('change', () => populateSubregions(false));
+        subSelect.addEventListener('change', highlightCollectors);
+
+        // Run once on load to ensure valid state
+        if (govSelect.value) {
+            populateSubregions(true);
+        } else {
+            subSelect.innerHTML = '';
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = selectGovFirstText;
+            subSelect.appendChild(opt);
+            subSelect.disabled = true;
+        }
+    };
+
+    bindGeoCascade('collection_governorate_id', 'collection_subregion_id', 'assignedCollectorUserId');
+    bindGeoCascade('lead_business_governorate_id', 'lead_business_subregion_id', null);
+})();
+</script>
 <script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 </body>
 </html>

@@ -388,10 +388,174 @@
         border-color: #525252 !important;
         color: #f5f5f5 !important;
     }
+    /* Profile Action Links & Buttons */
+    .crm-profile-action-link {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        inline-size: 100%;
+        min-block-size: 38px;
+        height: 38px;
+        border: 1px solid var(--line, #e2e8f0);
+        border-radius: 10px;
+        background: var(--bg, #f8fafc);
+        color: var(--dark, #334155);
+        font: inherit;
+        font-weight: 800;
+        font-size: 13px;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all .15s ease;
+        box-sizing: border-box;
+        margin-bottom: 6px;
+        padding: 0 12px;
+    }
+    .crm-profile-action-link:hover {
+        background: #f1f5f9;
+        border-color: #cbd5e1;
+        color: var(--red, #dc2637);
+    }
+    html.dark-mode .crm-profile-action-link {
+        background: var(--bg-input, #27272a) !important;
+        border-color: var(--line, rgba(255, 255, 255, 0.12)) !important;
+        color: var(--text-primary, #f4f4f5) !important;
+    }
+    html.dark-mode .crm-profile-action-link:hover {
+        background: rgba(220, 38, 55, 0.15) !important;
+        color: #f87171 !important;
+    }
+
+    /* Password Modal Dialog */
+    .crm-password-modal-backdrop {
+        position: fixed !important;
+        inset: 0 !important;
+        background: rgba(15, 23, 42, 0.6) !important;
+        backdrop-filter: blur(4px);
+        z-index: 999999 !important;
+        display: grid !important;
+        place-items: center !important;
+        padding: 16px !important;
+        box-sizing: border-box !important;
+    }
+    .crm-password-modal-backdrop[hidden] {
+        display: none !important;
+    }
+    .crm-password-modal-card {
+        background: var(--card, #fff) !important;
+        border: 1px solid var(--line, #e2e8f0) !important;
+        border-radius: 18px !important;
+        width: min(440px, 100%) !important;
+        padding: 24px !important;
+        box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25) !important;
+        box-sizing: border-box !important;
+        text-align: start !important;
+    }
+    html.dark-mode .crm-password-modal-card {
+        background: #18181b !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: #f4f4f5 !important;
+    }
+    .crm-password-modal-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 18px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--line, #e2e8f0);
+    }
+    html.dark-mode .crm-password-modal-header {
+        border-bottom-color: rgba(255, 255, 255, 0.08);
+    }
+    .crm-password-modal-header h3 {
+        margin: 0;
+        font-size: 17px;
+        font-weight: 900;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--ink, #182033);
+    }
+    html.dark-mode .crm-password-modal-header h3 {
+        color: #f4f4f5;
+    }
+    .crm-password-modal-close {
+        background: transparent;
+        border: 0;
+        cursor: pointer;
+        font-size: 16px;
+        color: var(--muted, #64748b);
+        padding: 4px 8px;
+        border-radius: 6px;
+    }
+    .crm-password-modal-close:hover {
+        color: var(--red, #dc2637);
+        background: rgba(220, 38, 55, 0.08);
+    }
+    .crm-password-field {
+        margin-bottom: 14px;
+    }
+    .crm-password-field label {
+        display: block;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 6px;
+        color: var(--ink, #334155);
+    }
+    html.dark-mode .crm-password-field label {
+        color: #f4f4f5;
+    }
+    .crm-password-field input {
+        width: 100% !important;
+        box-sizing: border-box !important;
+        height: 42px !important;
+        padding: 0 12px !important;
+        border-radius: 10px !important;
+        border: 1px solid var(--line, #cbd5e1) !important;
+        background: var(--card, #fff) !important;
+        color: var(--ink, #182033) !important;
+        font: inherit !important;
+    }
+    html.dark-mode .crm-password-field input {
+        background: #27272a !important;
+        border-color: rgba(255, 255, 255, 0.12) !important;
+        color: #f4f4f5 !important;
+    }
+    .crm-password-alert {
+        padding: 10px 14px;
+        border-radius: 10px;
+        font-size: 13px;
+        font-weight: 700;
+        margin-bottom: 14px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .crm-password-alert.success {
+        background: #e7f8ed;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+    }
+    .crm-password-alert.error {
+        background: #fff1f2;
+        color: #991b1b;
+        border: 1px solid #fecdd3;
+    }
+    .crm-password-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 10px;
+        margin-top: 20px;
+        padding-top: 14px;
+        border-top: 1px solid var(--line, #e2e8f0);
+    }
+    html.dark-mode .crm-password-actions {
+        border-top-color: rgba(255, 255, 255, 0.08);
+    }
 
     /* Profile Logout Button */
     .crm-profile-logout {
-        display: flex;
         align-items: center;
         justify-content: center;
         gap: 8px;
@@ -744,6 +908,10 @@
             </a>
         @endcan
 
+        <button type="button" class="crm-profile-action-link" id="crmOpenPasswordModalBtn" data-crm-open-password-modal>
+            <i class="bi bi-key-fill" aria-hidden="true" style="color:var(--red, #dc2637)"></i>
+            <span>{{ __('crm.change_my_password') }}</span>
+        </button>
         <form method="POST" action="{{ route('logout') }}" class="crm-profile-logout-form">
             @csrf
             <button class="crm-profile-logout" type="submit">
@@ -754,6 +922,66 @@
     </div>
 </div>
 </div>
+
+@once
+<div class="crm-password-modal-backdrop" id="crmPasswordModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="crmPasswordModalTitle" hidden>
+    <div class="crm-password-modal-card">
+        <div class="crm-password-modal-header">
+            <h3 id="crmPasswordModalTitle">
+                <i class="bi bi-shield-lock-fill" style="color:var(--red, #dc2637)"></i>
+                {{ __('crm.change_my_password') }}
+            </h3>
+            <button type="button" class="crm-password-modal-close" id="crmClosePasswordModalBtn" aria-label="{{ __('crm.close') }}">
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+
+        <form method="POST" action="{{ route('v2.my.password') }}" class="crm-password-modal-form">
+            @csrf
+            @method('PATCH')
+
+            @if (session('password_success'))
+                <div class="crm-password-alert success">
+                    <i class="bi bi-check-circle-fill"></i>
+                    {{ session('password_success') }}
+                </div>
+            @endif
+
+            @if ($errors->has('current_password') || $errors->has('password') || $errors->has('password_confirmation'))
+                <div class="crm-password-alert error">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                    <div>
+                        @foreach (['current_password', 'password', 'password_confirmation'] as $errorKey)
+                            @if ($errors->has($errorKey))
+                                <div>{{ $errors->first($errorKey) }}</div>
+                            @endif
+                        @endforeach
+                    </div>
+                </div>
+            @endif
+
+            <div class="crm-password-field">
+                <label for="my_current_password">{{ __('crm.current_password') }} <span style="color:var(--red)">*</span></label>
+                <input type="password" id="my_current_password" name="current_password" required autocomplete="current-password" placeholder="••••••••">
+            </div>
+
+            <div class="crm-password-field">
+                <label for="my_new_password">{{ __('crm.new_password') }} <span style="color:var(--red)">*</span></label>
+                <input type="password" id="my_new_password" name="password" required autocomplete="new-password" placeholder="••••••••">
+            </div>
+            <div class="crm-password-field">
+                <label for="my_new_password_confirmation">{{ __('crm.confirm_new_password') }} <span style="color:var(--red)">*</span></label>
+                <input type="password" id="my_new_password_confirmation" name="password_confirmation" required autocomplete="new-password" placeholder="••••••••">
+            </div>
+
+            <div class="crm-password-actions">
+                <button type="button" class="btn soft" id="crmCancelPasswordModalBtn">{{ __('crm.cancel') }}</button>
+                <button type="submit" class="btn primary" style="background:var(--red, #dc2637); color:#fff;">{{ __('crm.save_changes') }}</button>
+            </div>
+        </form>
+    </div>
+</div>
+@endonce
 
 @once
 <script>
@@ -858,6 +1086,44 @@
 
                 dropdown.addEventListener('click', (event) => event.stopPropagation());
             });
+            // Password Modal Event Listeners
+            const passwordModal = document.getElementById('crmPasswordModalBackdrop');
+            const passwordCard = passwordModal?.querySelector('.crm-password-modal-card');
+            const openBtn = document.querySelector('[data-crm-open-password-modal]');
+            const closeBtn = document.getElementById('crmClosePasswordModalBtn');
+            const cancelBtn = document.getElementById('crmCancelPasswordModalBtn');
+
+            const openPasswordModal = () => {
+                closeMenus();
+                if (passwordModal) {
+                    passwordModal.removeAttribute('hidden');
+                    document.getElementById('my_current_password')?.focus();
+                }
+            };
+
+            const closePasswordModal = () => {
+                if (passwordModal) {
+                    passwordModal.setAttribute('hidden', 'hidden');
+                }
+            };
+
+            openBtn?.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                openPasswordModal();
+            });
+
+            closeBtn?.addEventListener('click', closePasswordModal);
+            cancelBtn?.addEventListener('click', closePasswordModal);
+            passwordModal?.addEventListener('click', (e) => {
+                if (passwordCard && !passwordCard.contains(e.target)) {
+                    closePasswordModal();
+                }
+            });
+
+            @if(session('password_success') || $errors->has('current_password') || $errors->has('password') || $errors->has('password_confirmation'))
+                openPasswordModal();
+            @endif
 
             applyTheme(readTheme());
         };
@@ -871,7 +1137,13 @@
 
         document.addEventListener('click', closeMenus);
         document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') closeMenus();
+            if (event.key === 'Escape') {
+                closeMenus();
+                const passwordModal = document.getElementById('crmPasswordModalBackdrop');
+                if (passwordModal && !passwordModal.hasAttribute('hidden')) {
+                    passwordModal.setAttribute('hidden', 'hidden');
+                }
+            }
         });
     })();
 </script>

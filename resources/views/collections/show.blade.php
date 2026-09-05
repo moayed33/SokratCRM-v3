@@ -56,12 +56,25 @@
    <section class="collection-card">
     <h3><i class="bi bi-person-vcard"></i>{{ __('crm.collection_contact_details') }}</h3>
     <div class="collection-data">
-     <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="sip:{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
+     <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="#" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-lead-name="{{ $collectionCase->lead?->name }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
      <div><span>{{ __('crm.email') }}</span><strong>{{ $collectionCase->lead?->email ?: '—' }}</strong></div>
      <div><span>{{ __('crm.donor_address') }}</span><strong>{{ $collectionCase->collection_address }}</strong></div>
-     <div><span>{{ __('crm.governorate') }}</span><strong>{{ $collectionCase->lead?->governorate ?: '—' }}</strong></div>
+     <div><span>{{ __('crm.geography_and_zones') }}</span><strong>{{ $collectionCase->subregion?->full_name ?? ($collectionCase->lead?->subregion?->full_name ?? ($collectionCase->governorate?->name ?? ($collectionCase->lead?->governorate ?? '—'))) }}</strong></div>
+     <div>
+      <span>{{ __('crm.call_center_agent') }}</span>
+      <strong>{{ $collectionCase->lead?->assignedUser?->name ?? $collectionCase->lead?->assigned_employee ?? '—' }}</strong>
+      @if($collectionCase->lead?->assignedUser?->mobile_phone)
+       <small style="display:block;color:var(--cd-muted);font-size:11px"><a href="#" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', $collectionCase->lead->assignedUser->mobile_phone) }}"><i class="bi bi-telephone"></i> {{ $collectionCase->lead->assignedUser->mobile_phone }}</a></small>
+      @endif
+     </div>
+     <div>
+      <span>{{ __('crm.assigned_collector') }} ({{ __('crm.manager') }})</span>
+      <strong>{{ $collectionCase->assignedCollector?->name ?: __('crm.unassigned') }}</strong>
+      @if($collectionCase->assignedCollector?->manager)
+       <small style="display:block;color:var(--cd-muted);font-size:11px"><i class="bi bi-person-check"></i> {{ $collectionCase->assignedCollector->manager->name }}</small>
+      @endif
+     </div>
     </div>
-
     @if ($collectionCase->lead?->phone || $collectionCase->collection_address)
      @php
       $phoneClean = preg_replace('/[^0-9+]/', '', (string)($collectionCase->lead?->phone ?? ''));
@@ -69,7 +82,7 @@
      @endphp
      <div class="collector-mobile-actions-bar">
       @if ($phoneClean)
-       <a href="sip:{{ $phoneClean }}" class="collector-touch-btn call" title="{{ __('crm.call_via_microsip') }}">
+       <a href="#" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $collectionCase->lead?->name }}" class="collector-touch-btn call" title="{{ __('crm.call') }}">
         <i class="bi bi-telephone-fill"></i>
         <span>{{ __('crm.call') }}</span>
        </a>
@@ -127,26 +140,33 @@
         <option value="">{{ __('crm.select_collector') }}</option>
         @foreach($collectors as $collector)
          @php
-          $donorGov = $collectionCase->lead?->governorate ?? '';
-          $donorAddr = $collectionCase->collection_address ?? '';
-          $collectorZone = $collector->collection_zone ?? '';
-          $isMatch = false;
-          if (!empty($collectorZone)) {
-              $words = array_filter(preg_split('/[\s,،\-]+/u', (string) $collectorZone));
-              foreach ($words as $w) {
-                  $cleanW = trim($w);
-                  if (mb_strlen($cleanW) >= 3 && (
-                      (!empty($donorGov) && (str_contains(mb_strtolower($donorGov), mb_strtolower($cleanW)) || str_contains(mb_strtolower($cleanW), mb_strtolower($donorGov)))) ||
-                      (!empty($donorAddr) && str_contains(mb_strtolower($donorAddr), mb_strtolower($cleanW)))
-                  )) {
-                      $isMatch = true;
-                      break;
+          $caseSubId = $collectionCase->subregion_id ?? $collectionCase->lead?->subregion_id;
+          $caseGovId = $collectionCase->governorate_id ?? $collectionCase->lead?->governorate_id;
+          $isSubMatch = $caseSubId && $collector->collection_subregion_id === $caseSubId;
+          $isGovMatch = !$isSubMatch && $caseGovId && $collector->collectionSubregion?->governorate_id === $caseGovId;
+
+          if (!$isSubMatch && !$isGovMatch) {
+              $donorGov = (string) ($collectionCase->lead?->governorate ?? '');
+              $donorAddr = (string) ($collectionCase->collection_address ?? '');
+              $collectorZone = (string) ($collector->collection_zone ?? '');
+              if (!empty($collectorZone)) {
+                  $words = array_filter(preg_split('/[\s,،\-]+/u', $collectorZone));
+                  foreach ($words as $w) {
+                      $cleanW = trim($w);
+                      if (mb_strlen($cleanW) >= 3 && (
+                          (!empty($donorGov) && (str_contains(mb_strtolower($donorGov), mb_strtolower($cleanW)) || str_contains(mb_strtolower($cleanW), mb_strtolower($donorGov)))) ||
+                          (!empty($donorAddr) && str_contains(mb_strtolower($donorAddr), mb_strtolower($cleanW)))
+                      )) {
+                          $isGovMatch = true;
+                          break;
+                      }
                   }
               }
           }
+          $zoneBadge = $collector->collectionSubregion ? $collector->collectionSubregion->full_name : $collector->collection_zone;
          @endphp
          <option value="{{ $collector->id }}" @selected((int)$collectionCase->assigned_collector_user_id === (int)$collector->id)>
-          {{ $collector->name }}@if(!empty($collector->collection_zone)) — [{{ $collector->collection_zone }}]@endif @if($isMatch) ★ ({{ __('crm.matching_zone') }})@endif
+          {{ $collector->name }}@if($zoneBadge) — [{{ $zoneBadge }}]@endif @if($isSubMatch) ★ ({{ __('crm.matching_subregion') }})@elseif($isGovMatch) ★ ({{ __('crm.matching_zone') }})@endif
          </option>
         @endforeach
        </select>
@@ -156,47 +176,87 @@
      </section>
     @endcan
 
-    @canany(['manage', 'collect'], $collectionCase)
-     <section class="collection-card"><h3><i class="bi bi-calendar2-week"></i>{{ __('crm.reschedule_collection') }}</h3><form class="collection-form" method="POST" action="{{ route('v2.collections.reschedule', $collectionCase) }}">@csrf @method('PATCH')<input type="datetime-local" name="due_at" value="{{ $collectionCase->due_at->format('Y-m-d\TH:i') }}" required><textarea name="notes" rows="2" placeholder="{{ __('crm.optional_notes') }}"></textarea><button class="btn soft" type="submit">{{ __('crm.reschedule') }}</button></form></section>
-     <section class="collection-card"><h3><i class="bi bi-exclamation-circle"></i>{{ __('crm.report_failed_collection') }}</h3><form class="collection-form" method="POST" action="{{ route('v2.collections.fail', $collectionCase) }}">@csrf @method('PATCH')<textarea name="notes" rows="3" placeholder="{{ __('crm.failure_reason') }}" required></textarea><button class="btn soft" type="submit">{{ __('crm.mark_failed') }}</button></form></section>
-    @endcanany
-
-    @can('complete', $collectionCase)
-     <section class="collection-card" id="completeCollectionSection">
-      <h3><i class="bi bi-cash-coin"></i>{{ __('crm.complete_collection') }}</h3>
-      <form class="collection-form" method="POST" enctype="multipart/form-data" action="{{ route('v2.collections.complete', $collectionCase) }}">
-       @csrf
-       <label for="collectionReceipt">{{ __('crm.donation_receipt') }} <span class="required">*</span></label>
-       <div class="camera-upload-box" id="cameraUploadBox">
-        <label for="collectionReceipt" class="camera-trigger-label" id="cameraTriggerLabel">
-         <div class="camera-icon-wrap"><i class="bi bi-camera-fill"></i></div>
-         <strong>{{ __('crm.take_receipt_photo') }}</strong>
-         <small>{{ __('crm.camera_or_gallery') }}</small>
-        </label>
-        <input
-         id="collectionReceipt"
-         type="file"
-         name="donation_receipt"
-         accept="image/png,image/jpeg,image/webp,image/*"
-         capture="environment"
-         required
-         style="display:none;"
-        >
-        <div class="camera-preview-wrap" id="cameraPreviewWrap" style="display:none;">
-         <img id="cameraPreviewImg" src="" alt="{{ __('crm.donation_receipt') }}">
-         <button type="button" class="btn small soft" id="cameraRetakeBtn">
-          <i class="bi bi-arrow-repeat"></i> {{ __('crm.retake_photo') }}
-         </button>
-        </div>
+    @if($collectionCase->status === \App\Models\CollectionCase::STATUS_AWAITING_CALL_CENTER)
+     <section class="collection-card" style="border:2px solid var(--red, #dc2626); background:#fff5f6;">
+      <h3 style="color:var(--red, #dc2626);"><i class="bi bi-headset"></i> {{ __('crm.collection_status_awaiting_call_center') }}</h3>
+      <p style="font-size:13px; margin:0 0 12px; color:var(--cd-ink);">
+       {{ __('crm.donor_unreachable_desc') }}
+      </p>
+      @php
+       $latestEsc = $collectionCase->escalations->first();
+       $canResolve = auth()->user()->isSuperAdmin()
+           || (int)($latestEsc?->call_center_user_id ?? 0) === (int)auth()->id()
+           || (int)($collectionCase->lead?->assigned_user_id ?? 0) === (int)auth()->id()
+           || auth()->user()->hasPermission(\App\Security\CrmPermission::COLLECTIONS_MANAGE)
+           || auth()->user()->hasPermission(\App\Security\CrmPermission::COLLECTIONS_ESCALATIONS_RESPOND);
+      @endphp
+      @if($canResolve && $latestEsc)
+       <a class="btn primary" href="{{ route('v2.collections.escalations.show', $latestEsc) }}" style="display:flex; width:100%; text-decoration:none; margin-bottom:10px;">
+        <i class="bi bi-telephone-outbound"></i> {{ __('crm.call_center_response') }}
+       </a>
+      @else
+       <div style="font-size:12px; font-weight:700; color:var(--cd-muted); padding:10px; background:#fff; border-radius:8px; border:1px solid var(--cd-line);">
+        <i class="bi bi-clock"></i> {{ __('crm.waiting_for_call_center') }}
        </div>
-       <textarea name="notes" rows="2" placeholder="{{ __('crm.optional_notes') }}"></textarea>
-       <button class="btn primary" type="submit" style="min-height:48px;font-size:14px;">
-        <i class="bi bi-check2-circle"></i> {{ __('crm.confirm_collection_received') }}
-       </button>
-      </form>
+      @endif
      </section>
-    @endcan
+    @else
+     {{-- Collector Escalation Trigger Button --}}
+     @if(auth()->user()->isSuperAdmin() || (int)$collectionCase->assigned_collector_user_id === (int)auth()->id())
+      <section class="collection-card" style="border:1px dashed #dc2626; background:rgba(220,38,55,0.03);">
+       <h3><i class="bi bi-exclamation-triangle" style="color:#dc2626;"></i> {{ __('crm.donor_unreachable_title') }}</h3>
+       <p style="font-size:12px; color:var(--cd-muted); margin-top:0;">إذا كنت في الموقع ولم تتمكن من الوصول للمتبرع، قم بتصعيد الطلب لمسؤول الكول سنتر فوراً:</p>
+       <form class="collection-form" method="POST" action="{{ route('v2.collections.escalate', $collectionCase) }}" style="margin-top:0; padding-top:0; border-top:none;">
+        @csrf
+        <textarea name="collector_note" rows="2" placeholder="اكتب ملاحظة (مثال: الهاتف مغلق، جرس الباب لا يستجيب)..."></textarea>
+        <button class="btn danger" type="submit" style="background:#dc2626; color:#fff; border:none; min-height:44px;">
+         <i class="bi bi-headset"></i> {{ __('crm.donor_unreachable_escalate') }}
+        </button>
+       </form>
+      </section>
+     @endif
 
+     @canany(['manage', 'collect'], $collectionCase)
+      <section class="collection-card"><h3><i class="bi bi-calendar2-week"></i>{{ __('crm.reschedule_collection') }}</h3><form class="collection-form" method="POST" action="{{ route('v2.collections.reschedule', $collectionCase) }}">@csrf @method('PATCH')<input type="datetime-local" name="due_at" value="{{ $collectionCase->due_at->format('Y-m-d\TH:i') }}" required><textarea name="notes" rows="2" placeholder="{{ __('crm.optional_notes') }}"></textarea><button class="btn soft" type="submit">{{ __('crm.reschedule') }}</button></form></section>
+      <section class="collection-card"><h3><i class="bi bi-exclamation-circle"></i>{{ __('crm.report_failed_collection') }}</h3><form class="collection-form" method="POST" action="{{ route('v2.collections.fail', $collectionCase) }}">@csrf @method('PATCH')<textarea name="notes" rows="3" placeholder="{{ __('crm.failure_reason') }}" required></textarea><button class="btn soft" type="submit">{{ __('crm.mark_failed') }}</button></form></section>
+     @endcanany
+
+     @can('complete', $collectionCase)
+      <section class="collection-card" id="completeCollectionSection">
+       <h3><i class="bi bi-cash-coin"></i>{{ __('crm.complete_collection') }}</h3>
+       <form class="collection-form" method="POST" enctype="multipart/form-data" action="{{ route('v2.collections.complete', $collectionCase) }}">
+        @csrf
+        <label for="collectionReceipt">{{ __('crm.donation_receipt') }} <span class="required">*</span></label>
+        <div class="camera-upload-box" id="cameraUploadBox">
+         <label for="collectionReceipt" class="camera-trigger-label" id="cameraTriggerLabel">
+          <div class="camera-icon-wrap"><i class="bi bi-camera-fill"></i></div>
+          <strong>{{ __('crm.take_receipt_photo') }}</strong>
+          <small>{{ __('crm.camera_or_gallery') }}</small>
+         </label>
+         <input
+          id="collectionReceipt"
+          type="file"
+          name="donation_receipt"
+          accept="image/png,image/jpeg,image/webp,image/*"
+          capture="environment"
+          required
+          style="display:none;"
+         >
+         <div class="camera-preview-wrap" id="cameraPreviewWrap" style="display:none;">
+          <img id="cameraPreviewImg" src="" alt="{{ __('crm.donation_receipt') }}">
+          <button type="button" class="btn small soft" id="cameraRetakeBtn">
+           <i class="bi bi-arrow-repeat"></i> {{ __('crm.retake_photo') }}
+          </button>
+         </div>
+        </div>
+        <textarea name="notes" rows="2" placeholder="{{ __('crm.optional_notes') }}"></textarea>
+        <button class="btn primary" type="submit" style="min-height:48px;font-size:14px;">
+         <i class="bi bi-check2-circle"></i> {{ __('crm.confirm_collection_received') }}
+        </button>
+       </form>
+      </section>
+     @endcan
+    @endif
     @can('cancel', $collectionCase)
      <section class="collection-card"><h3><i class="bi bi-x-circle"></i>{{ __('crm.cancel_collection') }}</h3><form class="collection-form" method="POST" action="{{ route('v2.collections.cancel', $collectionCase) }}">@csrf @method('PATCH')<textarea name="notes" rows="3" placeholder="{{ __('crm.cancellation_reason') }}" required></textarea><button class="btn danger" type="submit">{{ __('crm.cancel_collection') }}</button></form></section>
     @endcan

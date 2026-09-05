@@ -8,7 +8,7 @@
     <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
+    <link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v5">
     <style>
         *{box-sizing:border-box}
         :root{--red:#dc2637;--dark:#182033;--muted:#7e899b;--line:#e4e8ef;--bg:#f4f6f9;--card:#fff;--blue:#3478f6}
@@ -258,7 +258,7 @@
                     <a href="{{ route('v2.leads.followups.index', $lead) }}" class="btn primary"
                        data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
                        data-lead-name="{{ $lead->name }}"
-                       @if ($callPhone) data-sip-href="sip:{{ $callPhone }}" @endif>
+                       @if ($callPhone) data-voice-dial="{{ $callPhone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" @endif>
                         <i class="bi bi-telephone-outbound"></i> {{ __('crm.log_new_followup') }}
                     </a>
                 @endcan
@@ -266,6 +266,22 @@
             </div>
         </header>
 
+        @if (!empty($isCrossBranch))
+            <div class="notice info" style="margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 14px; padding: 14px 18px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="bi bi-info-circle-fill" style="color: #2563eb; font-size: 22px;"></i>
+                    <div>
+                        <strong style="color: #1e40af; font-size: 14px; display: block;">{{ __('crm.cross_branch_lead_notice') ?? 'هذا العميل مسجل في فرع آخر' }}: {{ $lead->branch?->name_ar ?? $lead->branch?->name ?? 'فرع آخر' }}</strong>
+                        <p style="margin: 3px 0 0; font-size: 12px; color: #3b82f6;">
+                            {{ __('crm.cross_branch_lead_description') ?? 'يتم عرض البيانات الأساسية (الاسم، رقم الهاتف، والفرع) وسجل المتابعات الكامل في وضع القراءة فقط.' }}
+                        </p>
+                    </div>
+                </div>
+                <span class="badge-branch" style="font-weight: 800; font-size: 12px; padding: 6px 14px; border-radius: 8px;">
+                    <i class="bi bi-geo-alt-fill"></i> {{ $lead->branch?->name_ar ?? $lead->branch?->name ?? 'فرع آخر' }}
+                </span>
+            </div>
+        @endif
         <!-- PROFILE HEADER CARD -->
         <section class="lead-header-card">
             <div class="lead-header-top">
@@ -280,8 +296,11 @@
                                 <span><i class="bi bi-geo-alt"></i> {{ $lead->branch->name }}</span>
                                 <span>•</span>
                             @endif
-                            @if ($lead->governorate)
-                                <span>{{ $lead->governorate }}</span>
+                            @if ($lead->subregion)
+                                <span><i class="bi bi-geo-alt"></i> {{ $lead->subregion->full_name }}</span>
+                                <span>•</span>
+                            @elseif ($lead->governorate)
+                                <span><i class="bi bi-geo-alt"></i> {{ $lead->governorate }}</span>
                                 <span>•</span>
                             @endif
                             <span><i class="bi bi-person-badge"></i> {{ $lead->assignedUser?->name ?? $lead->assigned_employee ?? __('crm.unassigned') }}</span>
@@ -358,7 +377,17 @@
                         </div>
                         <div class="info-row">
                             <span class="info-label">{{ __('crm.address') }}</span>
-                            <span class="info-value">{{ $lead->address ?: ($lead->governorate ?: '—') }}</span>
+                            <span class="info-value">
+                                {{ $lead->address ?: '' }}
+                                @if($lead->subregion)
+                                    ({{ $lead->subregion->full_name }})
+                                @elseif($lead->governorate)
+                                    ({{ $lead->governorate }})
+                                @endif
+                                @if(!$lead->address && !$lead->subregion && !$lead->governorate)
+                                    —
+                                @endif
+                            </span>
                         </div>
                         <div class="info-row">
                             <span class="info-label">{{ __('crm.donation_value_with_currency') }}</span>
@@ -400,12 +429,12 @@
                         <div class="info-row is-primary-phone">
                             <div>
                                 <span class="badge active" style="margin-inline-end:6px">{{ __('crm.primary_badge') }}</span>
-                                <strong dir="ltr">{{ $lead->phone }}</strong>
+                                <strong dir="ltr">{{ $lead->display_phone }}</strong>
                             </div>
                             <div style="display:flex;gap:6px">
                                 @if ($callPhone)
-                                    <a href="sip:{{ $callPhone }}" class="btn small soft" title="{{ __('crm.call_via_microsip') }}">
-                                        <i class="bi bi-telephone"></i>
+                                    <a href="#" class="btn small soft" data-voice-dial="{{ $callPhone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
+                                        <i class="bi bi-telephone-fill" style="color:#dc2637"></i>
                                     </a>
                                     <a href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener" class="btn small success" title="{{ __('crm.whatsapp_chat') }}">
                                         <i class="bi bi-whatsapp"></i>
@@ -421,11 +450,11 @@
                             <div class="info-row">
                                 <div>
                                     <span class="badge" style="margin-inline-end:6px">{{ $addPhone->label ?: __('crm.phone_type_extra') }}</span>
-                                    <span dir="ltr" style="font-weight:700">{{ $addPhone->phone }}</span>
+                                    <span dir="ltr" style="font-weight:700">{{ $addPhone->display_phone }}</span>
                                 </div>
                                 <div style="display:flex;gap:6px">
-                                    <a href="sip:{{ $rawDigits }}" class="btn small soft" title="{{ __('crm.call_via_microsip') }}">
-                                        <i class="bi bi-telephone"></i>
+                                    <a href="#" class="btn small soft" data-voice-dial="{{ $rawDigits }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
+                                        <i class="bi bi-telephone-fill" style="color:#dc2637"></i>
                                     </a>
                                     <a href="https://wa.me/{{ $rawDigits }}" target="_blank" rel="noopener" class="btn small success" title="{{ __('crm.whatsapp_chat') }}">
                                         <i class="bi bi-whatsapp"></i>
@@ -1090,5 +1119,6 @@
 @endcan
 <script src="{{ asset('crm-sidebar.js') }}"></script>
 @include('partials.transition-popup')
+
 </body>
 </html>

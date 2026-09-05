@@ -94,8 +94,8 @@ class IdorAndTamperingAttackTest extends TestCase
 
     public function test_idor_leads_module_vectors(): void
     {
-        // 1. Show foreign lead -> 403
-        $this->actingAs($this->userA)->get(route('v2.leads.show', $this->leadB))->assertForbidden();
+        // 1. Show foreign lead -> 200 OK with cross-branch read-only view
+        $this->actingAs($this->userA)->get(route('v2.leads.show', $this->leadB))->assertOk()->assertSee($this->leadB->name);
 
         // 2. Edit foreign lead -> 403
         $this->actingAs($this->userA)->get(route('v2.leads.edit', $this->leadB))->assertForbidden();

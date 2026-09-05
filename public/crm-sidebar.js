@@ -530,11 +530,15 @@
 
         open() {
             document.querySelectorAll('.crm-select-wrap.is-open').forEach(el => {
-                if (el !== this.wrap) el.classList.remove('is-open');
+                if (el !== this.wrap) {
+                    el.classList.remove('is-open');
+                    el.closest('.field')?.classList.remove('is-dropdown-open');
+                }
             });
 
             this.isOpen = true;
             this.wrap.classList.add('is-open');
+            this.wrap.closest('.field')?.classList.add('is-dropdown-open');
             this.trigger.setAttribute('aria-expanded', 'true');
 
             if (this.searchInput) {
@@ -547,6 +551,7 @@
         close() {
             this.isOpen = false;
             this.wrap.classList.remove('is-open');
+            this.wrap.closest('.field')?.classList.remove('is-dropdown-open');
             this.trigger.setAttribute('aria-expanded', 'false');
         }
 
@@ -586,7 +591,10 @@
 
     document.addEventListener('click', (e) => {
         if (!e.target.closest('.crm-select-wrap')) {
-            document.querySelectorAll('.crm-select-wrap.is-open').forEach(el => el.classList.remove('is-open'));
+            document.querySelectorAll('.crm-select-wrap.is-open').forEach(el => {
+                el.classList.remove('is-open');
+                el.closest('.field')?.classList.remove('is-dropdown-open');
+            });
         }
     });
 
@@ -600,4 +608,115 @@
         window.CrmSelect.enhanceAll();
     });
     selectObserver.observe(document.documentElement, { childList: true, subtree: true });
+})();
+
+// --- AUTO-DISMISS FLASH SUCCESS MESSAGES (5 SECONDS) ---
+(() => {
+    const DISMISS_DELAY = 5000;
+    const ANIMATION_DURATION = 400;
+
+    const setupAutoDismiss = (alertEl) => {
+        if (!alertEl || alertEl.dataset.crmAutoDismissInit === '1') {
+            return;
+        }
+        alertEl.dataset.crmAutoDismissInit = '1';
+
+        // Prepare smooth transition styles
+        alertEl.style.transition = `opacity ${ANIMATION_DURATION}ms ease, transform ${ANIMATION_DURATION}ms ease, max-height ${ANIMATION_DURATION}ms ease, margin ${ANIMATION_DURATION}ms ease, padding ${ANIMATION_DURATION}ms ease`;
+        alertEl.style.maxHeight = `${alertEl.offsetHeight + 40}px`;
+        alertEl.style.boxSizing = 'border-box';
+
+        let timeoutId = null;
+        let isDismissed = false;
+
+        const dismiss = () => {
+            if (isDismissed) return;
+            isDismissed = true;
+            clearTimeout(timeoutId);
+
+            alertEl.style.opacity = '0';
+            alertEl.style.transform = 'translateY(-8px)';
+            alertEl.style.maxHeight = '0';
+            alertEl.style.marginTop = '0';
+            alertEl.style.marginBottom = '0';
+            alertEl.style.paddingTop = '0';
+            alertEl.style.paddingBottom = '0';
+            alertEl.style.overflow = 'hidden';
+            alertEl.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                alertEl.remove();
+            }, ANIMATION_DURATION);
+        };
+
+        const startTimer = () => {
+            if (isDismissed) return;
+            timeoutId = setTimeout(dismiss, DISMISS_DELAY);
+        };
+
+        const pauseTimer = () => {
+            if (timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+        };
+
+        // Pause countdown on mouse hover, resume on mouse leave
+        alertEl.addEventListener('mouseenter', pauseTimer);
+        alertEl.addEventListener('mouseleave', startTimer);
+
+        // Close button
+        if (!alertEl.querySelector('.crm-flash-close, .close')) {
+            const closeBtn = document.createElement('button');
+            closeBtn.type = 'button';
+            closeBtn.className = 'crm-flash-close';
+            closeBtn.innerHTML = '&times;';
+            closeBtn.setAttribute('aria-label', 'Close');
+            closeBtn.style.cssText = 'background:transparent;border:0;font-size:18px;font-weight:900;line-height:1;cursor:pointer;opacity:0.6;padding:0 6px;margin-inline-start:auto;color:inherit;vertical-align:middle;';
+            closeBtn.addEventListener('mouseenter', () => { closeBtn.style.opacity = '1'; });
+            closeBtn.addEventListener('mouseleave', () => { closeBtn.style.opacity = '0.6'; });
+            closeBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                dismiss();
+            });
+
+            const originalDisplay = window.getComputedStyle(alertEl).display;
+            if (originalDisplay === 'block' || originalDisplay === 'grid') {
+                alertEl.style.display = 'flex';
+                alertEl.style.alignItems = 'center';
+                alertEl.style.justifyContent = 'space-between';
+            }
+            alertEl.appendChild(closeBtn);
+        }
+
+        startTimer();
+    };
+
+    const initAllFlashes = (rootEl = document) => {
+        const flashes = rootEl.querySelectorAll('.flash.success, .alert.success, .flash:not(.error):not(.danger), .alert:not(.error):not(.danger):not(.warning)');
+        flashes.forEach(setupAutoDismiss);
+    };
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => initAllFlashes());
+    } else {
+        initAllFlashes();
+    }
+
+    const flashObserver = new MutationObserver((mutations) => {
+        mutations.forEach(mutation => {
+            mutation.addedNodes.forEach(node => {
+                if (node.nodeType === 1) {
+                    if (node.matches && node.matches('.flash.success, .alert.success, .flash:not(.error):not(.danger), .alert:not(.error):not(.danger):not(.warning)')) {
+                        setupAutoDismiss(node);
+                    } else if (node.querySelectorAll) {
+                        initAllFlashes(node);
+                    }
+                }
+            });
+        });
+    });
+
+    flashObserver.observe(document.documentElement, { childList: true, subtree: true });
 })();

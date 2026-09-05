@@ -27,4 +27,14 @@ class LeadPhone extends Model
     {
         return $this->belongsTo(Lead::class);
     }
+
+    public function getDisplayPhoneAttribute(): string
+    {
+        return Lead::formatDisplayPhone((string) ($this->phone ?? ''), auth()->user());
+    }
+
+    public function getMaskedPhoneAttribute(): string
+    {
+        return Lead::maskPhone((string) ($this->phone ?? ''));
+    }
 }

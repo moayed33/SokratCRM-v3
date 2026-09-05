@@ -104,11 +104,118 @@
       </a>
 
       <span class="help">
-       {{ __('استخدم النموذج للحفاظ على أسماء الأعمدة وصيغة رقم الهاتف كنص.') }}
+       {{ __('النموذج يحتوي على عمودي: اسم العميل، ورقم الهاتف فقط. يتم استكمال باقي البيانات عند تواصل الموظف مع العميل.') }}
       </span>
      </div>
     </div>
+    <div class="distribution-config-card" style="margin-top: 18px; padding: 18px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--line, #e2e8f0); border-radius: 14px;">
+     <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; flex-wrap: wrap; gap: 10px;">
+      <div>
+       <h4 style="margin: 0; font-size: 15px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+        <i class="bi bi-people-fill" style="color: var(--blue, #3478f6); font-size: 18px;"></i>
+        <span>{{ __('خطة توزيع العملاء على الموظفين') }}</span>
+       </h4>
+       <p style="margin: 4px 0 0; font-size: 12px; color: var(--muted, #64748b);">
+        {{ __('حدد كيفية تعيين الموظف المسؤول للعملاء المستوردين قبل رفع الملف') }}
+       </p>
+      </div>
+     </div>
 
+     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-bottom: 16px;">
+      <label class="distribution-mode-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--card, #fff); border: 2px solid var(--line, #e2e8f0); border-radius: 12px; cursor: pointer;">
+       <input type="radio" name="distribution_mode" value="round_robin" {{ (old('distribution_mode', $selectedDistributionMode ?? 'round_robin') === 'round_robin') ? 'checked' : '' }} style="margin-top: 3px;" onchange="toggleDistributionOptions()">
+       <div>
+        <strong style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dark, #182033);">
+         <i class="bi bi-arrow-repeat" style="color: var(--blue, #3478f6);"></i>
+         {{ __('توزيع بالتساوي (Round-Robin)') }}
+        </strong>
+        <small style="color: var(--muted, #64748b); font-size: 11px; line-height: 1.4; display: block; margin-top: 3px;">
+         {{ __('تقسيم العملاء بالتساوي على الموظفين المحددين دورياً.') }}
+        </small>
+       </div>
+      </label>
+
+      <label class="distribution-mode-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--card, #fff); border: 2px solid var(--line, #e2e8f0); border-radius: 12px; cursor: pointer;">
+       <input type="radio" name="distribution_mode" value="workload" {{ (old('distribution_mode', $selectedDistributionMode ?? '') === 'workload') ? 'checked' : '' }} style="margin-top: 3px;" onchange="toggleDistributionOptions()">
+       <div>
+        <strong style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dark, #182033);">
+         <i class="bi bi-bar-chart-steps" style="color: #16a34a;"></i>
+         {{ __('موازنة العبء (الأقل عملاء أولاً)') }}
+        </strong>
+        <small style="color: var(--muted, #64748b); font-size: 11px; line-height: 1.4; display: block; margin-top: 3px;">
+         {{ __('إسناد العملاء للموظفين الأقل عملاء نشطين حالياً لتحقيق التكافؤ.') }}
+        </small>
+       </div>
+      </label>
+
+      <label class="distribution-mode-option" style="display: flex; align-items: flex-start; gap: 10px; padding: 12px 14px; background: var(--card, #fff); border: 2px solid var(--line, #e2e8f0); border-radius: 12px; cursor: pointer;">
+       <input type="radio" name="distribution_mode" value="single" {{ (old('distribution_mode', $selectedDistributionMode ?? '') === 'single') ? 'checked' : '' }} style="margin-top: 3px;" onchange="toggleDistributionOptions()">
+       <div>
+        <strong style="display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--dark, #182033);">
+         <i class="bi bi-person-check-fill" style="color: #8b5cf6;"></i>
+         {{ __('إسناد لموظف واحد') }}
+        </strong>
+        <small style="color: var(--muted, #64748b); font-size: 11px; line-height: 1.4; display: block; margin-top: 3px;">
+         {{ __('إسناد 100% من عملاء الملف لموظف محدد بالكامل.') }}
+        </small>
+       </div>
+      </label>
+     </div>
+
+     <div id="singleAgentConfig" style="display: none; padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0); margin-bottom: 10px;">
+      <label style="display: block; font-size: 12px; font-weight: 700; color: var(--dark, #182033); margin-bottom: 6px;">
+       {{ __('اختر الموظف المسؤول عن جميع العملاء:') }}
+      </label>
+      <select name="single_user_id" class="control" style="max-width: 380px;">
+       @if(isset($assignableUsers))
+        @foreach($assignableUsers as $u)
+         <option value="{{ $u->id }}" {{ (old('single_user_id', $selectedSingleUserId ?? auth()->id()) == $u->id) ? 'selected' : '' }}>
+          {{ $u->name }} ({{ $activeLeadsCounts[$u->id] ?? 0 }} {{ __('عميل نشط') }})
+         </option>
+        @endforeach
+       @endif
+      </select>
+     </div>
+
+     <div id="multiAgentConfig" style="padding-top: 14px; border-top: 1px dashed var(--line, #e2e8f0);">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; flex-wrap: wrap; gap: 8px;">
+       <label style="font-size: 12px; font-weight: 700; color: var(--dark, #182033);">
+        {{ __('اختر الموظفين المشاركين في التوزيع:') }}
+       </label>
+       <div style="display: flex; gap: 6px; flex-wrap: wrap; align-items: center;">
+        <button type="button" class="btn soft" style="padding: 3px 8px; font-size: 11px; min-height: 26px;" onclick="selectAllEmployees(true)">{{ __('تحديد الكل') }}</button>
+        <button type="button" class="btn soft" style="padding: 3px 8px; font-size: 11px; min-height: 26px;" onclick="selectAllEmployees(false)">{{ __('إلغاء التحديد') }}</button>
+        @if(isset($groups) && $groups->isNotEmpty())
+         <span style="border-inline-start: 1px solid var(--line, #e2e8f0); height: 16px; margin: 0 4px;"></span>
+         @foreach($groups as $grp)
+          <button type="button" class="btn soft" style="padding: 3px 8px; font-size: 11px; min-height: 26px;" onclick="selectGroupEmployees({{ $grp->id }})" title="{{ $grp->name }}">
+           {{ $grp->name }}
+          </button>
+         @endforeach
+        @endif
+       </div>
+      </div>
+
+      <div id="employeeGrid" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 8px; max-height: 220px; overflow-y: auto; padding: 10px; background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 10px;">
+       @if(isset($assignableUsers))
+        @foreach($assignableUsers as $u)
+         <label class="emp-checkbox-label" data-group-ids="{{ $u->groups->pluck('id')->implode(',') }}" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 7px 10px; border-radius: 8px; background: var(--bg-hover, #f8fafc); border: 1px solid var(--line, #e2e8f0); cursor: pointer; font-size: 12px; transition: background 0.15s;">
+          <div style="display: flex; align-items: center; gap: 7px; overflow: hidden;">
+           <input type="checkbox" name="distribution_user_ids[]" value="{{ $u->id }}" class="emp-dist-checkbox" onchange="updateSelectedEmployeeCount()" {{ (is_array(old('distribution_user_ids', $selectedDistributionUserIds ?? [])) && in_array($u->id, old('distribution_user_ids', $selectedDistributionUserIds ?? []))) ? 'checked' : '' }}>
+           <span style="font-weight: 700; color: var(--dark, #182033); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+            {{ $u->name }}
+           </span>
+          </div>
+          <span class="active-leads-pill" style="font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 6px; background: rgba(52, 120, 246, 0.08); color: var(--blue, #3478f6); white-space: nowrap;">
+           {{ $activeLeadsCounts[$u->id] ?? 0 }} {{ __('عميل') }}
+          </span>
+         </label>
+        @endforeach
+       @endif
+      </div>
+      <div id="selectedCountMsg" style="margin-top: 8px; font-size: 12px; color: var(--blue, #3478f6); font-weight: 700;"></div>
+     </div>
+    </div>
     <div class="actions">
      <button
       class="btn primary"
@@ -227,6 +334,44 @@
      </div>
     @endif
 
+    @if (!empty($preview['employee_distribution']))
+     <div class="distribution-section" style="margin-bottom: 20px;">
+      <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; flex-wrap: wrap; gap: 8px;">
+       <h4 style="margin: 0; font-size: 14px; font-weight: 800; display: flex; align-items: center; gap: 8px;">
+        <i class="bi bi-pie-chart-fill" style="color: var(--blue, #3478f6);"></i>
+        <span>{{ __('توزيع العملاء على الموظفين') }}</span>
+       </h4>
+       <span style="font-size: 12px; color: var(--muted, #64748b);">
+        {{ __('عدد الموظفين المسؤولين:') }} <strong>{{ count($preview['employee_distribution']) }}</strong>
+       </span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px;">
+       @foreach ($preview['employee_distribution'] as $dist)
+        <div style="background: var(--card, #fff); border: 1px solid var(--line, #e2e8f0); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.03);">
+         <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+          <strong style="font-size: 13px; color: var(--dark, #182033); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: flex; align-items: center; gap: 6px;">
+           <i class="bi bi-person-circle" style="color: var(--blue, #3478f6); font-size: 15px;"></i>
+           {{ $dist['name'] }}
+          </strong>
+          <span style="font-size: 14px; font-weight: 900; color: var(--blue, #3478f6); white-space: nowrap;">
+           {{ $dist['count'] }} <small style="font-weight: 600; font-size: 11px; color: var(--muted, #64748b);">{{ __('عميل') }}</small>
+          </span>
+         </div>
+         <div style="display: flex; align-items: center; gap: 8px;">
+          <div style="flex: 1; height: 7px; background: rgba(52, 120, 246, 0.1); border-radius: 999px; overflow: hidden;">
+           <div style="width: {{ $dist['percentage'] }}%; height: 100%; background: var(--blue, #3478f6); border-radius: 999px;"></div>
+          </div>
+          <span style="font-size: 11px; font-weight: 800; color: var(--muted, #64748b); min-width: 38px; text-align: end;">
+           {{ $dist['percentage'] }}%
+          </span>
+         </div>
+        </div>
+       @endforeach
+      </div>
+     </div>
+    @endif
+
     <div class="table-wrap">
      <table>
       <thead>
@@ -234,6 +379,7 @@
         <th>{{ __('crm.row') }}</th>
         <th>{{ __('crm.client') }}</th>
         <th>{{ __('crm.phone') }}</th>
+        <th>{{ __('الموظف المسؤول') }}</th>
         <th>{{ __('crm.status') }}</th>
         <th>{{ __('المرحلة') }}</th>
         <th>{{ __('crm.result') }}</th>
@@ -257,6 +403,13 @@
 
          <td dir="ltr">
           {{ $row['phone'] }}
+         </td>
+
+         <td>
+          <span style="display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: 12px; color: var(--dark, #182033);">
+           <i class="bi bi-person-badge" style="color: var(--blue, #3478f6);"></i>
+           {{ $row['assigned_employee'] ?? '----' }}
+          </span>
          </td>
 
          <td>
@@ -397,5 +550,58 @@
    }
   );
  })();
+
+  window.toggleDistributionOptions = function() {
+    const mode = document.querySelector('input[name="distribution_mode"]:checked')?.value || 'round_robin';
+    const singleDiv = document.getElementById('singleAgentConfig');
+    const multiDiv = document.getElementById('multiAgentConfig');
+
+    if (mode === 'single') {
+      if (singleDiv) singleDiv.style.display = 'block';
+      if (multiDiv) multiDiv.style.display = 'none';
+    } else {
+      if (singleDiv) singleDiv.style.display = 'none';
+      if (multiDiv) multiDiv.style.display = 'block';
+    }
+    updateSelectedEmployeeCount();
+  };
+
+  window.selectAllEmployees = function(select) {
+    document.querySelectorAll('.emp-dist-checkbox').forEach(cb => {
+      cb.checked = select;
+    });
+    updateSelectedEmployeeCount();
+  };
+
+  window.selectGroupEmployees = function(groupId) {
+    document.querySelectorAll('.emp-checkbox-label').forEach(lbl => {
+      const groupIds = (lbl.dataset.groupIds || '').split(',').map(id => id.trim());
+      const cb = lbl.querySelector('.emp-dist-checkbox');
+      if (cb) {
+        cb.checked = groupIds.includes(String(groupId));
+      }
+    });
+    updateSelectedEmployeeCount();
+  };
+
+  window.updateSelectedEmployeeCount = function() {
+    const checked = document.querySelectorAll('.emp-dist-checkbox:checked').length;
+    const msg = document.getElementById('selectedCountMsg');
+    const mode = document.querySelector('input[name="distribution_mode"]:checked')?.value || 'round_robin';
+    if (msg) {
+      if (mode === 'single') {
+        msg.textContent = '';
+      } else {
+        msg.textContent = checked > 0 
+          ? `تم اختيار ${checked} موظفاً للتوزيع.`
+          : 'تنبيه: يجب اختيار موظف واحد على الأقل.';
+        msg.style.color = checked > 0 ? 'var(--blue, #3478f6)' : 'var(--red, #dc2637)';
+      }
+    }
+  };
+  document.addEventListener('DOMContentLoaded', window.toggleDistributionOptions);
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    window.toggleDistributionOptions();
+  }
 </script>
 @endpush

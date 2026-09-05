@@ -260,4 +260,110 @@ class MultiBranchArchitectureTest extends TestCase
             'branch_id' => $this->cairoBranch->id,
         ]);
     }
+
+    public function test_agent_searching_for_lead_in_another_branch_can_view_details_and_followup_history(): void
+    {
+        $agentGroup = Group::query()->firstOrCreate(
+            ['code' => 'agent_group_cross'],
+            ['name' => 'موظف مبيعات تجريبي'],
+        );
+        $agentGroup->permissions()->sync(
+            \App\Models\Permission::whereIn('code', [
+                CrmPermission::LEADS_VIEW->value,
+                CrmPermission::LEADS_SCOPE_ALL->value,
+                CrmPermission::LEADS_FOLLOWUPS_VIEW->value,
+            ])->pluck('id')
+        );
+
+        // Agent belongs to Cairo branch
+        $agentCairo = User::factory()->create([
+            'username' => 'agent_cairo_search',
+            'is_active' => true,
+            'branch_id' => $this->cairoBranch->id,
+        ]);
+        $agentCairo->groups()->sync([$agentGroup->id]);
+
+        // Lead belongs to Main branch
+        $leadMain = Lead::query()->create([
+            'branch_id' => $this->mainBranch->id,
+            'lead_status_id' => $this->leadStatus->id,
+            'name' => 'عميل فرع الإسكندرية الخارجي',
+            'phone' => '01098765432',
+            'created_by_user_id' => $this->superAdmin->id,
+        ]);
+
+        // Add a follow-up record to the main branch lead
+        \App\Models\LeadFollowup::query()->create([
+            'branch_id' => $this->mainBranch->id,
+            'lead_id' => $leadMain->id,
+            'from_status_id' => null,
+            'to_status_id' => $this->leadStatus->id,
+            'employee_name' => 'موظف الفرع الرئيسي',
+            'user_id' => $this->superAdmin->id,
+            'communication_type' => 'call',
+            'outcome' => 'تم التواصل الأولي مع العميل بالفرع الرئيسي',
+            'followed_up_at' => now()->subDays(2),
+        ]);
+
+        // 1. Unsearched listing shows 0 leads from other branch
+        $unsearchedResponse = $this->actingAs($agentCairo)->get(route('v2.leads'));
+        $unsearchedResponse->assertOk();
+        $unsearchedResponse->assertDontSee('عميل فرع الإسكندرية الخارجي');
+
+        // 2. Active search by phone matches the lead across branches
+        $searchResponse = $this->actingAs($agentCairo)->get(route('v2.leads', ['q' => '01098765432']));
+        $searchResponse->assertOk();
+        $searchResponse->assertSee('عميل فرع الإسكندرية الخارجي');
+        $searchResponse->assertSee($this->mainBranch->name_ar);
+
+        // 3. Agent can view lead profile and see name, phone, branch, and follow-up history
+        $showResponse = $this->actingAs($agentCairo)->get(route('v2.leads.show', $leadMain));
+        $showResponse->assertOk();
+        $showResponse->assertSee('عميل فرع الإسكندرية الخارجي');
+        $showResponse->assertSee('01098765432');
+        $showResponse->assertSee($this->mainBranch->name_ar);
+        $showResponse->assertSee('تم التواصل الأولي مع العميل بالفرع الرئيسي');
+
+        // 4. Mutating actions are prohibited for out-of-branch agent
+        $this->assertFalse($agentCairo->can('update', $leadMain));
+        $this->assertFalse($agentCairo->can('delete', $leadMain));
+        $this->assertFalse($agentCairo->can('createFollowup', $leadMain));
+    }
+
+    public function test_find_by_phone_detects_lead_in_another_branch(): void
+    {
+        $agentGroup = Group::query()->firstOrCreate(
+            ['code' => 'agent_group_phone_lookup'],
+            ['name' => 'موظف اتصالات'],
+        );
+        $agentGroup->permissions()->sync(
+            \App\Models\Permission::whereIn('code', [
+                CrmPermission::LEADS_VIEW->value,
+            ])->pluck('id')
+        );
+
+        $agentCairo = User::factory()->create([
+            'username' => 'agent_phone_lookup',
+            'is_active' => true,
+            'branch_id' => $this->cairoBranch->id,
+        ]);
+        $agentCairo->groups()->sync([$agentGroup->id]);
+
+        $leadMain = Lead::query()->create([
+            'branch_id' => $this->mainBranch->id,
+            'lead_status_id' => $this->leadStatus->id,
+            'name' => 'عميل متصل من فرع آخر',
+            'phone' => '01234567890',
+            'created_by_user_id' => $this->superAdmin->id,
+        ]);
+
+        $response = $this->actingAs($agentCairo)->get(route('v2.leads.by-phone', ['phone' => '01234567890']));
+        $response->assertOk();
+        $data = $response->json();
+
+        $this->assertNotEmpty($data['leads']);
+        $this->assertSame('عميل متصل من فرع آخر', $data['leads'][0]['name']);
+        $this->assertSame($this->mainBranch->name_ar, $data['leads'][0]['branch_name']);
+        $this->assertTrue($data['leads'][0]['is_other_branch']);
+    }
 }

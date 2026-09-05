@@ -131,8 +131,8 @@ class VoipService
     public function createEmbedTicket(
         int|string $crmUserId,
         string $crmUserName,
-        ?string $supervisorExtension = null,
-        array $requestedScopes = ['live:read']
+        ?string $extension = null,
+        array $requestedScopes = ['softphone:use']
     ): array {
         $payload = [
             'crm_user_id' => (string) $crmUserId,
@@ -140,8 +140,9 @@ class VoipService
             'requested_scopes' => $requestedScopes,
         ];
 
-        if (! empty($supervisorExtension)) {
-            $payload['supervisor_extension'] = (string) $supervisorExtension;
+        if (! empty($extension)) {
+            $payload['extension'] = (string) $extension;
+            $payload['supervisor_extension'] = (string) $extension;
         }
 
         return $this->request('post', '/embed-tickets', $payload);

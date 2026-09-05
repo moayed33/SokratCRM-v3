@@ -169,7 +169,6 @@ class LeadController extends Controller
         }
 
         $query = Lead::query()
-            ->accessibleTo($user)
             ->select([
                 'leads.id',
                 'leads.branch_id',
@@ -206,6 +205,24 @@ class LeadController extends Controller
                 'donationTypeRel:id,name_ar',
                 'donationPurposeRel:id,name_ar',
             ]);
+
+        $userBranchId = $user->branch_id;
+        if ($filters['q'] === '') {
+            $query->accessibleTo($user);
+        } else {
+            $query->where(function ($q) use ($user, $userBranchId): void {
+                $q->where(function ($inner) use ($user): void {
+                    $inner->accessibleTo($user);
+                });
+
+                if ($userBranchId !== null) {
+                    $q->orWhere(function ($inner) use ($userBranchId): void {
+                        $inner->whereNotNull('leads.branch_id')
+                              ->where('leads.branch_id', '!=', (int) $userBranchId);
+                    });
+                }
+            });
+        }
         if ($filters['q'] !== '') {
             $search = '%'.$filters['q'].'%';
             $searchableCustomFields = LeadFieldSchema::customFields()
@@ -441,6 +458,7 @@ class LeadController extends Controller
             'campaign' => $campaign,
             'campaigns' => $campaigns,
             'customFields' => LeadFieldSchema::customFields(),
+            'governorates' => \App\Models\Governorate::query()->where('is_active', true)->with('activeSubregions')->orderBy('name_ar')->get(),
         ]);
     }
 
@@ -603,10 +621,11 @@ class LeadController extends Controller
             'company_name' => $validated['company_name'] ?? null,
             'activity' => $validated['activity'] ?? null,
             'governorate' => $validated['governorate'] ?? null,
+            'governorate_id' => ! empty($validated['governorate_id']) ? (int) $validated['governorate_id'] : null,
+            'subregion_id' => ! empty($validated['subregion_id']) ? (int) $validated['subregion_id'] : null,
             'address' => $validated['address'] ?? null,
             'custom_fields' => LeadFieldSchema::extractForStore((array) $request->input('custom_fields', [])),
         ];
-
         $createdLead = DB::transaction(function () use ($leadData, $validated, $campaign, $actor, $status, $assignee, $assignedEmployee): Lead {
             $lead = Lead::query()->create($leadData);
 
@@ -843,6 +862,9 @@ class LeadController extends Controller
             }
         }
 
+        $user = $request->user();
+        $isCrossBranch = $user && ! $user->isSuperAdmin() && $user->branch_id !== null && (int) $leadRecord->branch_id !== (int) $user->branch_id;
+
         return view('leads.show', [
             'lead' => $leadRecord,
             'timelineEvents' => $timelineEvents,
@@ -852,6 +874,7 @@ class LeadController extends Controller
             'whatsappPhone' => $whatsappPhone,
             'donationCycles' => self::DONATION_CYCLES,
             'backQuery' => $backQuery,
+            'isCrossBranch' => $isCrossBranch,
         ]);
     }
 
@@ -937,6 +960,7 @@ class LeadController extends Controller
             'customFields' => LeadFieldSchema::customFields(),
             'stageFieldsMap' => $stageFieldsMap,
             'currentStageValues' => $currentStageValues,
+            'governorates' => \App\Models\Governorate::query()->where('is_active', true)->with('activeSubregions')->orderBy('name_ar')->get(),
         ]);
     }
 
@@ -1053,10 +1077,11 @@ class LeadController extends Controller
             'contact_date' => $contactDate,
             'next_follow_up_at' => $nextFollowUpAt,
             'governorate' => $validated['governorate'] ?? $leadRecord->governorate,
+            'governorate_id' => array_key_exists('governorate_id', $validated) ? (! empty($validated['governorate_id']) ? (int) $validated['governorate_id'] : null) : $leadRecord->governorate_id,
+            'subregion_id' => array_key_exists('subregion_id', $validated) ? (! empty($validated['subregion_id']) ? (int) $validated['subregion_id'] : null) : $leadRecord->subregion_id,
             'address' => $validated['address'] ?? $leadRecord->address,
             'custom_fields' => LeadFieldSchema::mergeForUpdate($leadRecord->custom_fields, (array) $request->input('custom_fields', [])),
         ];
-
         if ($actor->isSuperAdmin() && array_key_exists('branch_id', $validated)) {
             $leadData['branch_id'] = ! empty($validated['branch_id']) ? (int) $validated['branch_id'] : null;
         }
@@ -1406,5 +1431,89 @@ class LeadController extends Controller
     private function assertCrmV2Database(): void
     {
         CrmDatabaseGuard::ensureConnected();
+    }
+
+    public function findByPhone(Request $request): \Illuminate\Http\JsonResponse
+    {
+        $this->assertCrmV2Database();
+
+        $rawPhone = (string) $request->input('phone', '');
+        $digits = preg_replace('/\D+/', '', $rawPhone);
+        if (strlen($digits) < 7) {
+            return response()->json(['leads' => []]);
+        }
+
+        // Egyptian phone normalization
+        if (str_starts_with($digits, '0020')) {
+            $digits = substr($digits, 4);
+        } elseif (str_starts_with($digits, '20') && strlen($digits) === 12) {
+            $digits = substr($digits, 2);
+        }
+
+        $normalized = str_starts_with($digits, '0') ? $digits : ('0' . $digits);
+        $withCountry = '20' . ltrim($normalized, '0');
+        $suffix9 = substr($normalized, -9);
+        $user = $request->user();
+        $userBranchId = $user?->branch_id;
+        $leadQuery = Lead::query()->with(['status', 'assignedUser', 'branch']);
+
+        if ($user) {
+            $leadQuery->where(function ($q) use ($user, $userBranchId): void {
+                $q->where(function ($inner) use ($user): void {
+                    $inner->accessibleTo($user);
+                });
+
+                if ($userBranchId !== null) {
+                    $q->orWhere(function ($inner) use ($userBranchId): void {
+                        $inner->whereNotNull('leads.branch_id')
+                              ->where('leads.branch_id', '!=', (int) $userBranchId);
+                    });
+                }
+            });
+        }
+        $leads = $leadQuery
+            ->where(function ($q) use ($normalized, $withCountry, $suffix9, $digits) {
+                // Tier 1: Exact match on normalized variants
+                $q->where('phone', $normalized)
+                  ->orWhere('phone', $withCountry)
+                  ->orWhere('phone', $digits)
+                  // Tier 2: Prefix variants & phones relation
+                  ->orWhereHas('phones', function ($q2) use ($normalized, $withCountry, $suffix9) {
+                      $q2->where('phone', $normalized)
+                         ->orWhere('phone', $withCountry)
+                         ->orWhereRaw("phone LIKE ?", ["%{$suffix9}"]);
+                  });
+                // Tier 3: Suffix match
+                if (strlen($suffix9) >= 8) {
+                    $q->orWhere('phone', 'LIKE', "%{$suffix9}");
+                }
+            })
+            ->limit(10)
+            ->get();
+
+        // Rank exact matches first
+        $leads = $leads->sortBy(function (Lead $lead) use ($normalized, $withCountry, $digits) {
+            $p = preg_replace('/\D+/', '', (string) $lead->phone);
+            if ($p === $normalized || $p === $withCountry || $p === $digits) {
+                return 0; // Exact match top priority
+            }
+            return 1;
+        })->take(5);
+
+        return response()->json([
+            'leads' => $leads->map(static fn (Lead $lead): array => [
+                'id' => $lead->id,
+                'name' => $lead->name,
+                'phone' => $lead->phone,
+                'display_phone' => $lead->display_phone,
+                'company' => $lead->company_name ?? '',
+                'stage_name' => $lead->status?->name_ar ?? '',
+                'assigned_employee' => $lead->assignedUser?->name ?? ($lead->assigned_employee ?? ''),
+                'branch_id' => $lead->branch_id,
+                'branch_name' => $lead->branch?->name_ar ?? '',
+                'is_other_branch' => $user && $user->branch_id !== null && (int) $lead->branch_id !== (int) $user->branch_id,
+                'url' => route('v2.leads.show', $lead->id),
+            ])->values(),
+        ]);
     }
 }

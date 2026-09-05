@@ -52,6 +52,18 @@ class OptionSetsTest extends TestCase
         $this->assertSame(['عمل', 'منزل', 'واتساب', 'إضافي', 'أخرى'], CrmOptions::values('phone_label'));
         $this->assertContains('عائلة / قريب', CrmOptions::values('relation_type'));
     }
+    public function test_admin_can_view_edit_option_set_page(): void
+    {
+        $response = $this->actingAs($this->admin)->get(route('v2.settings.option-sets.edit', ['set' => 'relation_type']));
+        $response->assertOk();
+        $response->assertSee('relation_type');
+        $response->assertSee('عائلة / قريب');
+
+        $phoneResponse = $this->actingAs($this->admin)->get(route('v2.settings.option-sets.edit', ['set' => 'phone_label']));
+        $phoneResponse->assertOk();
+        $phoneResponse->assertSee('phone_label');
+        $phoneResponse->assertSee('عمل');
+    }
 
     public function test_admin_can_edit_picklist_and_forms_reflect_it(): void
     {

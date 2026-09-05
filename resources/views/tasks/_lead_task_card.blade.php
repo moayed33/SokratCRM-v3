@@ -136,11 +136,11 @@
   @if ($lead->phone)
    <a
     class="task-btn-main"
-    href="sip:{{ $rawPhone }}"
+    href="#"
     data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
     data-lead-name="{{ $lead->name }}"
-    data-sip-href="sip:{{ $rawPhone }}"
-    title="{{ __('crm.call_via_microsip') }}"
+    data-voice-dial="{{ $rawPhone }}"
+    title="{{ __('crm.call_and_log') }}"
    >
     <i class="bi bi-telephone-fill"></i>
     <span>{{ __('crm.call_and_log') }}</span>

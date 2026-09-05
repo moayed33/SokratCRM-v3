@@ -44,9 +44,14 @@ class CollectionController extends Controller
 
         $collectionCases = $baseQuery
             ->with([
-                'lead:id,name,phone,address,governorate,branch_id',
+                'lead:id,name,phone,address,governorate,governorate_id,subregion_id,branch_id',
+                'lead.governorate',
+                'lead.subregion.governorate',
+                'governorate',
+                'subregion.governorate',
                 'branch:id,name_ar,name_en',
-                'assignedCollector:id,name,collection_zone,mobile_phone',
+                'assignedCollector:id,name,collection_zone,collection_subregion_id,mobile_phone',
+                'assignedCollector.collectionSubregion.governorate',
             ])
             ->when(
                 isset($allowedStatuses[$status]),
@@ -78,15 +83,25 @@ class CollectionController extends Controller
     {
         Gate::authorize('view', $collectionCase);
         $collectionCase->load([
-            'lead:id,name,phone,email,address,governorate,branch_id',
+            'lead:id,name,phone,email,address,governorate,governorate_id,subregion_id,branch_id,assigned_user_id,assigned_employee',
+            'lead.governorate',
+            'lead.subregion.governorate',
+            'lead.assignedUser:id,name,username,mobile_phone,voip_extension',
+            'governorate',
+            'subregion.governorate',
             'branch:id,name_ar,name_en',
             'donationType:id,name_ar,name_en',
-            'assignedCollector:id,name,collection_zone,mobile_phone',
+            'assignedCollector:id,name,collection_zone,collection_subregion_id,mobile_phone,manager_id',
+            'assignedCollector.collectionSubregion.governorate',
+            'assignedCollector.manager:id,name,username,mobile_phone',
             'createdBy:id,name',
             'completedBy:id,name',
             'activities.actor:id,name',
             'activities.oldCollector:id,name',
             'activities.newCollector:id,name',
+            'escalations.collector:id,name',
+            'escalations.callCenterUser:id,name,username,mobile_phone',
+            'escalations.collectionManager:id,name',
             'donation',
         ]);
 
@@ -99,8 +114,9 @@ class CollectionController extends Controller
                     'permissions.code',
                     CrmPermission::COLLECTIONS_COLLECT->value,
                 ))
+                ->with(['collectionSubregion.governorate'])
                 ->orderBy('name')
-                ->get(['id', 'name', 'collection_zone', 'mobile_phone']);
+                ->get(['id', 'name', 'collection_zone', 'collection_subregion_id', 'mobile_phone']);
         }
 
         return view('collections.show', [
@@ -375,6 +391,7 @@ class CollectionController extends Controller
             CollectionCase::STATUS_PENDING => __('crm.collection_status_pending'),
             CollectionCase::STATUS_ASSIGNED => __('crm.collection_status_assigned'),
             CollectionCase::STATUS_SCHEDULED => __('crm.collection_status_scheduled'),
+            CollectionCase::STATUS_AWAITING_CALL_CENTER => __('crm.collection_status_awaiting_call_center'),
             CollectionCase::STATUS_FAILED => __('crm.collection_status_failed'),
             CollectionCase::STATUS_COLLECTED => __('crm.collection_status_collected'),
             CollectionCase::STATUS_CANCELLED => __('crm.collection_status_cancelled'),

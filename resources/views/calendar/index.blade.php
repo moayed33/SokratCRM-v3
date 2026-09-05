@@ -8,7 +8,7 @@
 <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 <link rel="stylesheet" href="{{ asset('css/tajawal.css') }}?v=1.0.0">
-<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v4">
+<link rel="stylesheet" href="{{ asset('crm-sidebar-shared.css') }}?v=crm-theme-matrix-v5">
 <style>
 :root {
   --red: #dc2637;
@@ -359,14 +359,28 @@ html.dark-mode .calendar-loading-badge {
 html.dark-mode .fc .fc-toolbar-title {
   color: #f4f4f5 !important;
 }
+.fc .fc-toolbar {
+  gap: 12px !important;
+  flex-wrap: wrap !important;
+}
+.fc .fc-button-group {
+  display: inline-flex !important;
+  gap: 6px !important;
+}
+.fc-direction-ltr .fc-button-group > .fc-button,
+.fc-direction-rtl .fc-button-group > .fc-button,
+.fc .fc-button-group > .fc-button {
+  margin: 0 !important;
+  border-radius: 10px !important;
+}
 .fc .fc-button-primary,
 .fc .fc-button {
   background: #f8fafc;
   border: 1px solid var(--line);
   color: #1e293b;
   font-weight: 700;
-  border-radius: 10px;
-  padding: 8px 14px;
+  border-radius: 10px !important;
+  padding: 9px 16px !important;
   box-shadow: none;
   text-shadow: none;
   transition: all .2s ease;
@@ -910,8 +924,8 @@ html.dark-mode .cal-tooltip {
         <span style="font-size:12px;font-weight:800;color:var(--muted);display:flex;align-items:center;gap:5px;">
           <i class="bi bi-broadcast"></i> {{ __('crm.quick_contact') ?? 'تواصل مباشر:' }}
         </span>
-        <a href="#" id="modalSipDialBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="{{ __('crm.call_via_microsip') }}">
-          <i class="bi bi-telephone-outbound-fill"></i> MicroSIP
+        <a href="#" id="modalSipDialBtn" class="btn-primary" style="padding:6px 12px;font-size:12px;border-radius:8px;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="{{ __('crm.call') ?? 'اتصال' }}">
+          <i class="bi bi-telephone-outbound-fill"></i> {{ __('crm.call') ?? 'اتصال WebRTC' }}
         </a>
         <a href="#" id="modalWhatsappBtn" target="_blank" rel="noopener" class="btn-secondary" style="padding:6px 12px;font-size:12px;border-radius:8px;background:#16a34a;border-color:#16a34a;color:#fff;text-decoration:none;display:inline-flex;align-items:center;gap:6px;" title="{{ __('crm.whatsapp_chat') }}">
           <i class="bi bi-whatsapp"></i> WhatsApp
@@ -1317,8 +1331,15 @@ document.addEventListener('DOMContentLoaded', function() {
     const modalWaBtn = document.getElementById('modalWhatsappBtn');
     if (modalSipBtn) {
       if (phoneDigits) {
-        modalSipBtn.href = 'sip:' + phoneDigits;
+        modalSipBtn.setAttribute('data-voice-dial', phoneDigits);
+        modalSipBtn.setAttribute('data-lead-name', event.title || '');
         modalSipBtn.style.display = 'inline-flex';
+        modalSipBtn.onclick = (e) => {
+          e.preventDefault();
+          if (typeof window.sokratVoiceDial === 'function') {
+            window.sokratVoiceDial(phoneDigits, event.title || '');
+          }
+        };
       } else {
         modalSipBtn.style.display = 'none';
       }

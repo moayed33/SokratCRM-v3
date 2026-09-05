@@ -146,13 +146,13 @@ class FiveRoleGroupModelTest extends TestCase
         $this->userEmployeeB->groups()->sync([$this->groupEmployee->id]);
     }
 
-    public function test_exactly_five_active_system_groups_exist(): void
+    public function test_active_system_groups_exist_including_collection_manager(): void
     {
         $activeGroups = Group::query()->where('is_active', true)->where('is_system', true)->get();
-        $this->assertCount(5, $activeGroups);
+        $this->assertCount(6, $activeGroups);
 
         $codes = $activeGroups->pluck('code')->all();
-        $expectedCodes = ['super-admin', 'branch-admin', 'manager', 'collector', 'employee'];
+        $expectedCodes = ['super-admin', 'branch-admin', 'manager', 'collection-manager', 'collector', 'employee'];
         sort($codes);
         sort($expectedCodes);
 
@@ -170,7 +170,6 @@ class FiveRoleGroupModelTest extends TestCase
             'sales-manager',
             'sales-agent',
             'read-only',
-            'collection-manager',
             'team-leader',
             'field-collector',
             'sales-supervisor',
@@ -201,6 +200,9 @@ class FiveRoleGroupModelTest extends TestCase
         $this->assertTrue($employee->hasPermission(CrmPermission::VOIP_VIEW));
 
         // Forbidden
+        $this->assertFalse($employee->hasPermission(CrmPermission::CAMPAIGNS_VIEW));
+        $this->assertFalse($employee->hasPermission(CrmPermission::CAMPAIGNS_CREATE));
+        $this->assertFalse($employee->hasPermission(CrmPermission::CAMPAIGNS_REPORTS));
         $this->assertFalse($employee->hasPermission(CrmPermission::SETTINGS_ACCESS));
         $this->assertFalse($employee->hasPermission(CrmPermission::USERS_VIEW));
         $this->assertFalse($employee->hasPermission(CrmPermission::GROUPS_VIEW));
@@ -211,6 +213,7 @@ class FiveRoleGroupModelTest extends TestCase
         $this->assertFalse($employee->hasPermission(CrmPermission::LEADS_SCOPE_GROUP));
         $this->assertFalse($employee->hasPermission(CrmPermission::REPORTS_EMPLOYEES_VIEW));
     }
+
     public function test_collector_permission_profile(): void
     {
         $collector = $this->userCollectorA;

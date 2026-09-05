@@ -135,7 +135,7 @@ class VoipController extends Controller
     public function leadCalls(Lead $lead, Request $request, VoipCallAnalytics $analytics): JsonResponse
     {
         $this->assertCrmDatabase();
-        Gate::authorize('view', $lead);
+        abort_unless($lead->isAccessibleTo($request->user()), 403, 'غير مصرح بالاطلاع على اتصالات هذا العميل.');
 
         if (empty($lead->phone) && $lead->additionalPhones()->doesntExist()) {
             return response()->json([
@@ -379,6 +379,60 @@ class VoipController extends Controller
                 'success' => false,
                 'error' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    
+    public function softphone(Request $request, VoipService $voip): RedirectResponse|View|JsonResponse
+    {
+        $this->assertCrmDatabase();
+
+        $user = Auth::user();
+        if (empty($user->voip_extension)) {
+            return response()->json([
+                'success' => false,
+                'error' => 'No VoIP extension assigned to your account.',
+            ], 422);
+        }
+
+        try {
+            $ticketData = null;
+            if ($voip->isConfigured()) {
+                try {
+                    $ticketData = $voip->createEmbedTicket(
+                        $user->id,
+                        $user->name,
+                        (string) $user->voip_extension,
+                        ['softphone:use']
+                    );
+                } catch (Throwable $e) {
+                    Log::warning('VoIP ticket via VoipService failed: ' . $e->getMessage());
+                }
+
+            }
+
+            if (empty($ticketData['ticket'])) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'Could not acquire softphone ticket.',
+                ], 502);
+            }
+
+            $maskParam = ! $user->can(\App\Security\CrmPermission::LEADS_VIEW_FULL_PHONE->value) ? '&mask_phone=1' : '';
+            $embedUrl = '/phone/embed?ticket=' . urlencode((string) $ticketData['ticket']) . $maskParam;
+
+            return redirect()->to($embedUrl);
+        } catch (Throwable $e) {
+            Log::error('Softphone embed ticket failed', [
+                'user_id' => $user->id,
+                'extension' => $user->voip_extension,
+                'error' => $e->getMessage(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'error' => 'Could not initialize softphone session: ' . $e->getMessage(),
+            ], 502);
         }
     }
 

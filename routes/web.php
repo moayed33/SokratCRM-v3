@@ -41,6 +41,15 @@ Route::get('/', static function () {
     );
 });
 
+Route::get('/api/voip/public-endpoints', static function () {
+    $telephonyUrl = (string) env('VOIP_SOFTPHONE_URL', 'https://192.168.100.128:8443/phone');
+    return response()->json([
+        'success' => true,
+        'crmUrl' => url('/'),
+        'telephonyUrl' => $telephonyUrl,
+        'apiUrl' => (string) config('voip.api_url', ''),
+    ]);
+});
 Route::get('/login', [AuthController::class, 'showLogin'])
     ->name('login');
 Route::post('/login', [AuthController::class, 'login'])
@@ -65,6 +74,9 @@ Route::get('/calendar/feed/{user}.ics', [CalendarController::class, 'feed'])
 Route::middleware(['auth', 'active'])->group(function (): void {
     Route::post('/logout', [AuthController::class, 'logout'])
         ->name('logout');
+
+    Route::patch('/my/password', [AuthController::class, 'updatePassword'])
+        ->name('v2.my.password');
 
     Route::match(['get', 'post'], '/switch-branch', [BranchController::class, 'switchBranch'])
         ->name('v2.branch.switch');

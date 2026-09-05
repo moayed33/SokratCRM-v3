@@ -170,8 +170,9 @@ class LeadFollowupController extends Controller
                     'permissions.code',
                     CrmPermission::COLLECTIONS_COLLECT->value,
                 ))
+                ->with(['collectionSubregion.governorate'])
                 ->orderBy('name')
-                ->get(['id', 'name'])
+                ->get(['id', 'name', 'collection_subregion_id', 'collection_zone'])
             : collect();
         $manageableCampaigns = Campaign::query()
             ->with([
@@ -244,6 +245,7 @@ class LeadFollowupController extends Controller
                 'currentCampaign' => $currentCampaign,
                 'stageFieldsMap' => $stageFieldsMap,
                 'currentStageValues' => $currentStageValues,
+                'governorates' => \App\Models\Governorate::query()->where('is_active', true)->with('activeSubregions')->orderBy('name_ar')->get(),
             ]
         );
     }
@@ -540,6 +542,17 @@ class LeadFollowupController extends Controller
                     'max:100',
                 ],
 
+                'governorate_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:governorates,id',
+                ],
+
+                'subregion_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:governorate_subregions,id',
+                ],
                 'address' => [
                     'nullable',
                     'string',
@@ -618,7 +631,9 @@ class LeadFollowupController extends Controller
                 'instant_donation_method_id.exists' => 'وسيلة التبرع الفوري غير متاحة.',
                 'collection_due_at.required' => 'حدد موعد التحصيل.',
                 'collection_due_at.date' => 'موعد التحصيل غير صحيح.',
-                'collection_address.required' => 'أدخل عنوان التحصيل.',
+                'governorate_id.required' => __('crm.collection_governorate_required'),
+                'subregion_id.required' => __('crm.collection_subregion_required'),
+                'collection_address.required' => __('crm.collection_address_required'),
                 'donation_receipt.mimes' => 'إيصال التبرع يجب أن يكون صورة PNG أو JPG أو WEBP.',
                 'donation_receipt.max' => 'الحد الأقصى لصورة إيصال التبرع هو 5MB.',
 
@@ -791,13 +806,16 @@ class LeadFollowupController extends Controller
                     )
                     : null,
 
-            'address' => $hasBusinessDetails
-                    ? $nullableText(
-                        $validated[
-                            'address'
-                        ] ?? null
-                    )
-                    : null,
+            'governorate_id' => ! empty($validated['governorate_id'])
+                    ? (int) $validated['governorate_id']
+                    : ($hasBusinessDetails && ! empty($validated['lead_business_governorate_id']) ? (int) $validated['lead_business_governorate_id'] : $leadRecord->governorate_id),
+
+            'subregion_id' => ! empty($validated['subregion_id'])
+                    ? (int) $validated['subregion_id']
+                    : ($hasBusinessDetails && ! empty($validated['lead_business_subregion_id']) ? (int) $validated['lead_business_subregion_id'] : $leadRecord->subregion_id),
+            'address' => ! empty($validated['collection_address'])
+                    ? trim((string) $validated['collection_address'])
+                    : ($hasBusinessDetails ? $nullableText($validated['address'] ?? null) : $leadRecord->address),
 
             'users_count' => $hasBusinessDetails
                     ? $integerOrNull(
@@ -977,6 +995,8 @@ class LeadFollowupController extends Controller
                     'cycle' => (string) $validated['donation_cycle'],
                     'due_at' => (string) $validated['collection_due_at'],
                     'collection_address' => trim((string) $validated['collection_address']),
+                    'governorate_id' => ! empty($validated['governorate_id']) ? (int) $validated['governorate_id'] : $leadRecord->governorate_id,
+                    'subregion_id' => ! empty($validated['subregion_id']) ? (int) $validated['subregion_id'] : $leadRecord->subregion_id,
                     'notes' => isset($validated['collection_notes'])
                         ? trim((string) $validated['collection_notes']) ?: null
                         : null,

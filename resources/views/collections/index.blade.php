@@ -96,19 +96,23 @@
     <div>
      <h3>{{ $case->lead?->name ?: __('crm.unnamed_lead') }}</h3>
      <p>
+      @php
+       $geoText = $case->subregion?->full_name ?? ($case->lead?->subregion?->full_name ?? ($case->governorate?->name ?? ($case->lead?->governorate ?? '')));
+      @endphp
       @if($case->collection_address)
-       <i class="bi bi-geo-alt"></i> {{ $case->collection_address }} @if($case->lead?->governorate) ({{ $case->lead->governorate }}) @endif ·
+       <i class="bi bi-geo-alt"></i> {{ $case->collection_address }} @if($geoText) ({{ $geoText }}) @endif ·
       @endif
       <i class="bi bi-telephone"></i> {{ $case->lead?->phone ?: '—' }}
       @if($case->branch) · {{ $case->branch->name }} @endif
-     </p>
     </div>
     <div class="collection-cell"><span>{{ __('crm.donation_value') }}</span><strong>{{ number_format((float) $case->expected_amount, 2) }}</strong></div>
     <div class="collection-cell"><span>{{ __('crm.collection_due_at') }}</span><strong class="{{ $isOverdue ? 'collection-overdue' : '' }}">{{ $case->due_at->translatedFormat('d M Y, H:i') }}</strong></div>
     <div class="collection-cell">
      <span>{{ __('crm.assigned_collector') }}</span>
      <strong>{{ $case->assignedCollector?->name ?: __('crm.unassigned') }}</strong>
-     @if($case->assignedCollector?->collection_zone)
+     @if($case->assignedCollector?->collectionSubregion)
+      <small style="display:block;color:var(--collect-muted);font-size:11px"><i class="bi bi-geo-fill"></i> {{ $case->assignedCollector->collectionSubregion->full_name }}</small>
+     @elseif($case->assignedCollector?->collection_zone)
       <small style="display:block;color:var(--collect-muted);font-size:11px"><i class="bi bi-geo-fill"></i> {{ $case->assignedCollector->collection_zone }}</small>
      @endif
     </div>
@@ -118,7 +122,7 @@
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
      <div class="collection-quick-icons">
       @if($phoneClean)
-       <a href="sip:{{ $phoneClean }}" class="collection-icon-btn call" title="{{ __('crm.call_via_microsip') }}"><i class="bi bi-telephone-fill"></i></a>
+       <a href="#" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $case->lead?->name }}" class="collection-icon-btn call" title="{{ __('crm.call') }}"><i class="bi bi-telephone-fill"></i></a>
        <a href="https://wa.me/{{ $phoneClean }}" target="_blank" rel="noopener" class="collection-icon-btn whatsapp" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
       @endif
       @if($case->collection_address)

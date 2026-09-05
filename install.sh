@@ -2,14 +2,14 @@
 set -Eeuo pipefail
 umask 027
 
-APP_NAME="SOKRAT CRM V2"
-REPO_URL="https://github.com/ahmdosamasokrat-svg/sokrat-crm-v2.git"
-APP_DIR="/var/www/html/crm-v2"
-DB_NAME="sokrat_crm_v2"
-DB_USER="sokrat_crm_v2_app"
-SITE_NAME="sokrat-crm-v2"
+APP_NAME="SOKRAT CRM V3"
+REPO_URL="https://github.com/moayed33/SokratCRM-v3.git"
+APP_DIR="/var/www/html/crm-v3"
+DB_NAME="sokrat_crm_v3"
+DB_USER="sokrat_crm_v3_app"
+SITE_NAME="sokrat-crm-v3"
 SITE_CONF="/etc/apache2/sites-available/${SITE_NAME}.conf"
-CREDENTIALS_FILE="/root/sokrat-crm-v2-credentials.txt"
+CREDENTIALS_FILE="/root/sokrat-crm-v3-credentials.txt"
 
 APP_CREATED=0
 DB_CREATED=0
@@ -108,7 +108,8 @@ apt-get install -y \
     php8.3-bcmath \
     php8.3-intl \
     php8.3-gd \
-    php8.3-sqlite3
+    php8.3-sqlite3 \
+    php8.3-gmp
 
 log "Ensuring Node.js 20.x LTS is installed (required for Vite 8 / Rolldown)"
 NODE_MAJOR="$(node -v 2>/dev/null | cut -d'.' -f1 | tr -d 'v' || echo "0")"
@@ -194,7 +195,7 @@ set_env() {
     fi
 }
 
-set_env APP_NAME "SOKRAT CRM V2"
+set_env APP_NAME "$APP_NAME"
 set_env APP_ENV production
 set_env APP_DEBUG false
 set_env APP_URL "http://localhost"
@@ -247,8 +248,8 @@ cat > "$SITE_CONF" <<APACHE
         Require all granted
     </Directory>
 
-    ErrorLog \${APACHE_LOG_DIR}/sokrat-crm-v2-error.log
-    CustomLog \${APACHE_LOG_DIR}/sokrat-crm-v2-access.log combined
+    ErrorLog \${APACHE_LOG_DIR}/${SITE_NAME}-error.log
+    CustomLog \${APACHE_LOG_DIR}/${SITE_NAME}-access.log combined
 </VirtualHost>
 APACHE
 SITE_CREATED=1
@@ -267,7 +268,7 @@ php artisan migrate:status --no-ansi >/dev/null
 curl -fsS --max-time 15 "http://localhost/login" >/dev/null || curl -fsS --max-time 15 "http://127.0.0.1/login" >/dev/null
 
 cat > "$CREDENTIALS_FILE" <<CREDS
-SOKRAT CRM V2 INSTALLATION CREDENTIALS
+${APP_NAME} INSTALLATION CREDENTIALS
 ======================================
 URL=http://localhost/
 Admin user=${CRM_ADMIN_USER}
@@ -283,7 +284,7 @@ chmod 600 "$CREDENTIALS_FILE"
 trap - ERR
 
 printf '\n==================================================\n'
-printf 'SOKRAT CRM V2 INSTALLATION COMPLETE\n'
+printf '%s INSTALLATION COMPLETE\n' "$APP_NAME"
 printf '==================================================\n'
 printf 'URL: http://localhost/\n'
 printf 'Admin user: %s\n' "$CRM_ADMIN_USER"

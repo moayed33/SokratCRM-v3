@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Branch;
 use App\Models\Campaign;
+use App\Models\Group;
 use App\Models\DonationPurpose;
 use App\Models\DonationType;
 use App\Models\Lead;
@@ -47,6 +48,19 @@ class LeadTransferController extends Controller
             $request,
             $request->query('campaign')
         );
+        $assignableUsers = LeadAssignment::assignableUsers($request->user())
+            ->loadMissing('groups:id,name');
+
+        $groups = Group::query()
+            ->whereHas('users', static fn ($q) => $q->where('is_active', true))
+            ->get(['id', 'name']);
+
+        $activeLeadsCounts = Lead::query()
+            ->whereIn('assigned_user_id', $assignableUsers->pluck('id'))
+            ->selectRaw('assigned_user_id, count(*) as count')
+            ->groupBy('assigned_user_id')
+            ->pluck('count', 'assigned_user_id')
+            ->toArray();
 
         return view(
             'leads.import',
@@ -54,6 +68,12 @@ class LeadTransferController extends Controller
                 'statuses' => $this->statuses(),
                 'preview' => null,
                 'campaign' => $campaign,
+                'assignableUsers' => $assignableUsers,
+                'groups' => $groups,
+                'activeLeadsCounts' => $activeLeadsCounts,
+                'selectedDistributionMode' => 'round_robin',
+                'selectedDistributionUserIds' => [],
+                'selectedSingleUserId' => $request->user()->id,
             ]
         );
     }
@@ -66,11 +86,21 @@ class LeadTransferController extends Controller
 
         return $this->downloadWorkbook(
             array_values(
-                $this->importColumns()
+                $this->importTemplateColumns()
             ),
-            [],
+            [
+                ['أحمد محمد علي', '01012345678'],
+            ],
             'crm-v2-leads-import-template.xlsx'
         );
+    }
+
+    private function importTemplateColumns(): array
+    {
+        return [
+            'name' => 'اسم العميل / المتبرع',
+            'phone' => 'رقم الهاتف الأساسي',
+        ];
     }
 
     public function importPreview(
@@ -92,11 +122,32 @@ class LeadTransferController extends Controller
                     'integer',
                     'exists:campaigns,id',
                 ],
+                'distribution_mode' => [
+                    'nullable',
+                    'string',
+                    'in:round_robin,workload,single,file',
+                ],
+                'single_user_id' => [
+                    'nullable',
+                    'integer',
+                    'exists:users,id',
+                ],
+                'distribution_user_ids' => [
+                    'nullable',
+                    'array',
+                ],
+                'distribution_user_ids.*' => [
+                    'integer',
+                    'exists:users,id',
+                ],
             ],
             [
                 'import_file.required' => 'اختر ملف العملاء أولًا.',
                 'import_file.file' => 'ملف الاستيراد غير صحيح.',
                 'import_file.max' => 'الحد الأقصى لملف الاستيراد 5MB.',
+                'distribution_mode.in' => 'طريقة التوزيع غير صحيحة.',
+                'single_user_id.exists' => 'الموظف المحدد غير موجود.',
+                'distribution_user_ids.*.exists' => 'أحد الموظفين المحددين غير موجود.',
             ]
         );
 
@@ -150,6 +201,64 @@ class LeadTransferController extends Controller
             );
         }
 
+        $distMode = (string) ($validated['distribution_mode'] ?? 'single');
+        $actor = $request->user();
+        $distUsers = [];
+        $hasSingleUserId = $request->has('single_user_id');
+        $singleUserId = filter_var($request->input('single_user_id'), FILTER_VALIDATE_INT) ?: null;
+        $distUserIds = array_map('intval', (array) ($validated['distribution_user_ids'] ?? []));
+
+        if ($distMode === 'single') {
+            if ($hasSingleUserId && ! $singleUserId) {
+                return $this->importPageRedirect($request)
+                    ->withErrors(['single_user_id' => 'يجب اختيار موظف مسؤول لإسناد العملاء إليه.'])
+                    ->withInput();
+            }
+            $targetUserId = $singleUserId ?: (int) $actor->id;
+            $targetUser = User::query()->where('id', $targetUserId)->where('is_active', true)->first() ?? $actor;
+            if (! LeadAssignment::canAssignTo($actor, $targetUser)) {
+                return $this->importPageRedirect($request)
+                    ->withErrors(['single_user_id' => 'لا تملك صلاحية إسناد العملاء إلى الموظف المحدد.'])
+                    ->withInput();
+            }
+            $distUsers = [$targetUser];
+        } elseif (in_array($distMode, ['round_robin', 'workload'], true)) {
+            if ($distUserIds === []) {
+                return $this->importPageRedirect($request)
+                    ->withErrors(['distribution_user_ids' => 'يجب اختيار موظف واحد على الأقل للتوزيع عليه.'])
+                    ->withInput();
+            }
+
+            $distUsers = User::query()
+                ->whereIn('id', $distUserIds)
+                ->where('is_active', true)
+                ->get();
+
+            foreach ($distUsers as $u) {
+                if (! LeadAssignment::canAssignTo($actor, $u)) {
+                    return $this->importPageRedirect($request)
+                        ->withErrors(['distribution_user_ids' => 'لا تملك صلاحية إسناد العملاء إلى: '.$u->name])
+                        ->withInput();
+                }
+            }
+        }
+
+        $assignableUsers = LeadAssignment::assignableUsers($request->user())
+            ->loadMissing('groups:id,name');
+
+        $activeLeadsCounts = Lead::query()
+            ->whereIn('assigned_user_id', $assignableUsers->pluck('id'))
+            ->selectRaw('assigned_user_id, count(*) as count')
+            ->groupBy('assigned_user_id')
+            ->pluck('count', 'assigned_user_id')
+            ->toArray();
+
+        $distributionConfig = [
+            'mode' => $distMode,
+            'users' => $distUsers,
+            'active_counts' => $activeLeadsCounts,
+        ];
+
         try {
             $rows = $this->parseImportFile(
                 $file->getPathname(),
@@ -159,7 +268,8 @@ class LeadTransferController extends Controller
             $preview =
                 $this->buildImportPreview(
                     $rows,
-                    $campaign?->id
+                    $campaign?->id,
+                    $distributionConfig
                 );
         } catch (\Throwable $exception) {
             return $this->importPageRedirect($request)
@@ -170,12 +280,22 @@ class LeadTransferController extends Controller
                 );
         }
 
+        $groups = Group::query()
+            ->whereHas('users', static fn ($q) => $q->where('is_active', true))
+            ->get(['id', 'name']);
+
         return view(
             'leads.import',
             [
                 'statuses' => $this->statuses(),
                 'preview' => $preview,
                 'campaign' => $campaign,
+                'assignableUsers' => $assignableUsers,
+                'groups' => $groups,
+                'activeLeadsCounts' => $activeLeadsCounts,
+                'selectedDistributionMode' => $distMode,
+                'selectedDistributionUserIds' => $distUserIds,
+                'selectedSingleUserId' => $singleUserId ?? (int) $actor->id,
             ]
         );
     }
@@ -1169,7 +1289,8 @@ class LeadTransferController extends Controller
 
     private function buildImportPreview(
         array $rows,
-        ?int $campaignId = null
+        ?int $campaignId = null,
+        array $distributionConfig = []
     ): array {
         if ($rows === []) {
             throw new \RuntimeException(
@@ -1449,7 +1570,23 @@ class LeadTransferController extends Controller
 
         $previewRows = [];
         $validPayloadRows = [];
+        $employeeDistribution = [];
 
+        $distMode = $distributionConfig['mode'] ?? 'round_robin';
+        $distUsers = isset($distributionConfig['users'])
+            ? (is_array($distributionConfig['users']) ? array_values($distributionConfig['users']) : $distributionConfig['users']->values()->all())
+            : [];
+        $distUserCount = count($distUsers);
+        $distUsersById = [];
+        $virtualWorkloads = [];
+        $activeCounts = $distributionConfig['active_counts'] ?? [];
+
+        foreach ($distUsers as $u) {
+            $distUsersById[$u->id] = $u;
+            $virtualWorkloads[$u->id] = (int) ($activeCounts[$u->id] ?? 0);
+        }
+
+        $roundRobinIndex = 0;
         $validCount = 0;
         $errorCount = 0;
         $duplicateCount = 0;
@@ -1695,11 +1832,32 @@ class LeadTransferController extends Controller
             $responseDetails = $this->nullableText($value('response_details')) ?? $this->nullableText($value('notes'));
             $notes = $this->nullableText($value('notes')) ?? $responseDetails;
 
-            $assignedEmployee = $this->nullableText($value('assigned_employee')) ?? $this->currentEmployeeName();
-            $assignedUserId = $userIdMap[$this->normalizeToken($assignedEmployee)] ?? null;
+            if ($distMode === 'single' && $distUserCount > 0) {
+                $assignedUser = $distUsers[0];
+                $assignedEmployee = (string) $assignedUser->name;
+                $assignedUserId = (int) $assignedUser->id;
+            } elseif ($distMode === 'workload' && $distUserCount > 0) {
+                $minVal = min($virtualWorkloads);
+                $minUids = array_keys($virtualWorkloads, $minVal);
+                $minUid = $minUids[0];
+                $virtualWorkloads[$minUid]++;
+                $assignedUser = $distUsersById[$minUid];
+                $assignedEmployee = (string) $assignedUser->name;
+                $assignedUserId = (int) $assignedUser->id;
+            } elseif ($distMode === 'round_robin' && $distUserCount > 0) {
+                $assignedUser = $distUsers[$roundRobinIndex % $distUserCount];
+                $roundRobinIndex++;
+                $assignedEmployee = (string) $assignedUser->name;
+                $assignedUserId = (int) $assignedUser->id;
+            } else {
+                // Fallback: file employee if provided, otherwise default to current user
+                $fileEmployeeInput = $this->nullableText($value('assigned_employee'));
+                $assignedEmployee = $fileEmployeeInput ?? $this->currentEmployeeName();
+                $assignedUserId = $userIdMap[$this->normalizeToken($assignedEmployee)] ?? (int) $actor->id;
 
-            if ($assignedUserId === null) {
-                $errors[] = 'لا تملك صلاحية الإسناد إلى الموظف المسؤول المحدد: '.$assignedEmployee;
+                if ($assignedUserId === null) {
+                    $errors[] = 'لا تملك صلاحية الإسناد إلى الموظف المسؤول المحدد: '.$assignedEmployee;
+                }
             }
 
             $customFieldsPayload = [];
@@ -1867,6 +2025,17 @@ class LeadTransferController extends Controller
                     'row_number' => $excelRowNumber,
                     'data' => $leadData,
                 ];
+
+                $distKey = $assignedEmployee;
+                if (! isset($employeeDistribution[$distKey])) {
+                    $employeeDistribution[$distKey] = [
+                        'name' => $distKey,
+                        'user_id' => $assignedUserId,
+                        'count' => 0,
+                        'percentage' => 0.0,
+                    ];
+                }
+                $employeeDistribution[$distKey]['count']++;
             }
 
             $previewRows[] = [
@@ -1875,11 +2044,11 @@ class LeadTransferController extends Controller
                 'name' => $fullName !== ''
                         ? $fullName
                         : '----',
-
                 'phone' => $phone !== ''
                         ? $phone
                         : '----',
 
+                'assigned_employee' => $assignedEmployee,
                 'status' => $status?->name_ar
                     ?? $statusInput,
 
@@ -1913,6 +2082,13 @@ class LeadTransferController extends Controller
                     $campaignId
                 );
         }
+        if ($validCount > 0 && $employeeDistribution !== []) {
+            foreach ($employeeDistribution as &$distItem) {
+                $distItem['percentage'] = round(($distItem['count'] / $validCount) * 100, 1);
+            }
+            unset($distItem);
+            uasort($employeeDistribution, static fn ($a, $b) => $b['count'] <=> $a['count']);
+        }
 
         return [
             'token' => $token,
@@ -1921,6 +2097,7 @@ class LeadTransferController extends Controller
             'valid_count' => $validCount,
             'error_count' => $errorCount,
             'duplicate_count' => $duplicateCount,
+            'employee_distribution' => array_values($employeeDistribution),
             'ignored_headers' => array_values(
                 array_unique(
                     $ignoredHeaders

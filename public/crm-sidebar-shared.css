@@ -28,6 +28,48 @@
  --muted:var(--text-muted);
  --line:var(--border-color);
  --shadow:var(--shadow-card);
+ --scrollbar-track:transparent;
+ --scrollbar-thumb:#cbd5e1;
+ --scrollbar-thumb-hover:#94a3b8;
+ --scrollbar-thumb-active:#dc2637;
+}
+
+/*
+ * GLOBAL THEME-ADAPTIVE SCROLLBARS
+ */
+html,
+body,
+* {
+  scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  scrollbar-width: thin;
+}
+
+*::-webkit-scrollbar {
+  width: 7px;
+  height: 7px;
+}
+
+*::-webkit-scrollbar-track {
+  background: var(--scrollbar-track);
+}
+
+*::-webkit-scrollbar-thumb {
+  background-color: var(--scrollbar-thumb);
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background-clip: padding-box;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background-color: var(--scrollbar-thumb-hover);
+}
+
+*::-webkit-scrollbar-thumb:active {
+  background-color: var(--scrollbar-thumb-active);
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /*
@@ -62,6 +104,10 @@ html.crm-monochrome {
  --shadow-card:none;
  --shadow-dropdown:none;
  --backdrop-blur:none;
+ --scrollbar-track:transparent;
+ --scrollbar-thumb:#d4d4d4;
+ --scrollbar-thumb-hover:#a3a3a3;
+ --scrollbar-thumb-active:#171717;
 }
 
 html.crm-monochrome.dark-mode {
@@ -86,8 +132,11 @@ html.crm-monochrome.dark-mode {
  --glass-highlight:transparent;
  --shadow-card:none;
  --shadow-dropdown:none;
+ --scrollbar-track:transparent;
+ --scrollbar-thumb:#2a2a2a;
+ --scrollbar-thumb-hover:#3f3f46;
+ --scrollbar-thumb-active:#525252;
 }
-
 #crmSidebar{
   --red:#dc2637;
   --red-dark:#b81829;
@@ -462,11 +511,11 @@ font-size:11px
 
  html.crm-sidebar-collapsed .crm-side,
  html.crm-sidebar-collapsed .side{
-  flex:0 0 88px!important;
-  width:88px!important;
-  min-width:88px!important;
-  max-width:88px!important;
-  padding:18px 12px!important;
+  flex:0 0 70px!important;
+  width:70px!important;
+  min-width:70px!important;
+  max-width:70px!important;
+  padding:16px 8px!important;
   overflow-x:hidden!important
  }
 
@@ -475,7 +524,7 @@ font-size:11px
  html.crm-sidebar-collapsed .settings-main,
  html.crm-sidebar-collapsed .crm-quote-main,
  html.crm-sidebar-collapsed .main-content{
-  width:calc(100% - 88px)!important;
+  width:calc(100% - 70px)!important;
   flex:1 1 auto!important
  }
 
@@ -495,9 +544,9 @@ font-size:11px
  }
 
  html.crm-sidebar-collapsed .crm-side-brand .logo{
-  width:44px;
-  height:44px;
-  flex:0 0 44px;
+  width:38px;
+  height:38px;
+  flex:0 0 38px;
   object-fit:contain
  }
 
@@ -517,10 +566,10 @@ font-size:11px
 
  html.crm-sidebar-collapsed .crm-link,
  html.crm-sidebar-collapsed .crm-toggle{
-  min-height:48px;
+  min-height:44px;
   justify-content:center;
   gap:0;
-  padding:8px;
+  padding:6px;
   text-align:center
  }
 
@@ -538,8 +587,8 @@ font-size:11px
  }
 
  html.crm-sidebar-collapsed .crm-sidebar-collapse-btn{
-  min-height:42px;
-  padding:8px;
+  min-height:38px;
+  padding:6px;
   margin-bottom:12px
  }
 
@@ -650,6 +699,10 @@ font-size:11px
  --line:var(--border-color);
  --shadow:var(--shadow-card);
  color-scheme:dark;
+ --scrollbar-track:transparent;
+ --scrollbar-thumb:#334155;
+ --scrollbar-thumb-hover:#475569;
+ --scrollbar-thumb-active:#ef4444;
 }
 
 html.dark-mode,
@@ -3133,10 +3186,10 @@ html.crm-monochrome.dark-mode .crm-profile-avatar{background:#333!important;colo
 /* Monotone Sidebar Collapsed State */
 html.crm-monochrome.crm-sidebar-collapsed .crm-side,
 html.crm-monochrome.crm-sidebar-collapsed .side{
- flex:0 0 88px!important;
- width:88px!important;
- min-width:88px!important;
- max-width:88px!important;
+ flex:0 0 70px!important;
+ width:70px!important;
+ min-width:70px!important;
+ max-width:70px!important;
 }
 
 html.crm-monochrome.crm-sidebar-collapsed .main,
@@ -3144,7 +3197,7 @@ html.crm-monochrome.crm-sidebar-collapsed .crm-main,
 html.crm-monochrome.crm-sidebar-collapsed .settings-main,
 html.crm-monochrome.crm-sidebar-collapsed .crm-quote-main,
 html.crm-monochrome.crm-sidebar-collapsed .main-content{
- width:calc(100% - 88px)!important;
+ width:calc(100% - 70px)!important;
 }
 
 html.crm-monochrome.crm-sidebar-collapsed .crm-side-brand strong,
@@ -3466,6 +3519,16 @@ html.crm-monochrome.crm-sidebar-collapsed .crm-sub{
   color: var(--muted, #94a3b8);
   flex-shrink: 0;
   transition: transform .2s ease;
+}
+
+.crm-select-wrap.is-open {
+  z-index: 10005 !important;
+}
+
+.field:has(.crm-select-wrap.is-open),
+.field.is-dropdown-open {
+  z-index: 10005 !important;
+  position: relative !important;
 }
 
 .crm-select-wrap.is-open .crm-select-chevron {

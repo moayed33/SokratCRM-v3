@@ -1438,7 +1438,7 @@
            href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
            data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
            data-lead-name="{{ $lead->name }}"
-           data-sip-href="tel:{{ $taskPhone }}"
+           data-voice-dial="{{ $taskPhone }}"
            title="{{ __('crm.call_and_followup') }}"
            aria-label="{{ __('اتصال بالعميل') }} {{ $lead->name }} {{ __('وفتح تسجيل المتابعة') }}"
           >

@@ -461,8 +461,8 @@
             href="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
             data-transition-popup="{{ route('v2.leads.followups.index', ['lead' => $lead, 'channel' => 'call']) }}"
             data-lead-name="{{ $lead->name }}"
-            data-sip-href="callto:{{ $callPhone }}"
-            title="{{ __('crm.open_microsip_and_followup') }}"
+            data-voice-dial="{{ $callPhone }}"
+            title="{{ __('crm.call_and_followup') }}"
            ><i class="bi bi-telephone-outbound"></i> {{ __('crm.call') }}</a>
           @else
            <span class="lead-action call-action is-disabled" aria-disabled="true" title="{{ __('crm.phone_invalid_for_call') }}"><i class="bi bi-telephone-x"></i> {{ __('crm.call') }}</span>

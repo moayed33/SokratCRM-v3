@@ -21,6 +21,8 @@ class Lead extends Model
         'company_name',
         'activity',
         'governorate',
+        'governorate_id',
+        'subregion_id',
         'address',
         'users_count',
         'branches_count',
@@ -96,50 +98,57 @@ class Lead extends Model
 
     public function scopeAccessibleTo(Builder $query, User $user): Builder
     {
-        if (! $user->isSuperAdmin()) {
-            if ($user->branch_id !== null) {
-                $query->where('leads.branch_id', (int) $user->branch_id);
-            }
-        } else {
+        if ($user->isSuperAdmin()) {
             $selectedBranch = session(\App\Support\BranchContext::SESSION_KEY);
             if ($selectedBranch !== null && $selectedBranch !== '' && $selectedBranch !== 'all') {
                 $query->where('leads.branch_id', (int) $selectedBranch);
             }
-        }
 
-        if ($user->hasPermission(CrmPermission::LEADS_SCOPE_ALL)) {
             return $query;
         }
 
-        $groupIds = [];
+        return $query->where(function (Builder $accessQuery) use ($user): void {
+            // 1. Direct ownership (assigned or created) is always accessible to the user
+            $accessQuery->where(function (Builder $personalQuery) use ($user): void {
+                $personalQuery->where('leads.assigned_user_id', $user->getKey())
+                    ->orWhere('leads.created_by_user_id', $user->getKey());
+            });
 
-        if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
-            $user->loadMissing('groups');
-            $groupIds = $user->groups->modelKeys();
-        }
+            // 2. Branch-scoped visibility for broader team/branch access
+            if ($user->branch_id !== null) {
+                $accessQuery->orWhere(function (Builder $branchQuery) use ($user): void {
+                    $branchQuery->where('leads.branch_id', (int) $user->branch_id);
 
-        return $query->where(
-            static function (Builder $accessQuery) use ($user, $groupIds): void {
-                $accessQuery
-                    ->where('assigned_user_id', $user->getKey())
-                    ->orWhere('created_by_user_id', $user->getKey());
+                    if (! $user->hasPermission(CrmPermission::LEADS_SCOPE_ALL)) {
+                        $groupIds = [];
 
-                if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
-                    $accessQuery->orWhereHas(
-                        'assignedUser',
-                        static fn (Builder $uq): Builder => $uq->where('users.manager_id', $user->getKey()),
-                    );
-                }
+                        if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
+                            $user->loadMissing('groups');
+                            $groupIds = $user->groups->modelKeys();
+                        }
 
-                if ($groupIds !== []) {
-                    $accessQuery->orWhereHas(
-                        'assignedUser.groups',
-                        static fn (Builder $groupQuery): Builder => $groupQuery
-                            ->whereKey($groupIds),
-                    );
-                }
-            },
-        );
+                        $branchQuery->where(function (Builder $scopeQuery) use ($user, $groupIds): void {
+                            $scopeQuery->where('leads.assigned_user_id', $user->getKey())
+                                ->orWhere('leads.created_by_user_id', $user->getKey());
+
+                            if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
+                                $scopeQuery->orWhereHas(
+                                    'assignedUser',
+                                     static fn (Builder $uq): Builder => $uq->where('users.manager_id', $user->getKey()),
+                                );
+                            }
+
+                            if ($groupIds !== []) {
+                                $scopeQuery->orWhereHas(
+                                    'assignedUser.groups',
+                                    static fn (Builder $groupQuery): Builder => $groupQuery->whereKey($groupIds),
+                                );
+                            }
+                        });
+                    }
+                });
+            }
+        });
     }
 
     public function isAccessibleTo(User $user): bool
@@ -172,6 +181,16 @@ class Lead extends Model
             User::class,
             'created_by_user_id'
         );
+    }
+
+    public function governorate(): BelongsTo
+    {
+        return $this->belongsTo(Governorate::class);
+    }
+
+    public function subregion(): BelongsTo
+    {
+        return $this->belongsTo(GovernorateSubregion::class);
     }
 
     public function campaigns(): BelongsToMany
@@ -241,5 +260,47 @@ class Lead extends Model
     {
         return $this->hasMany(LeadStageFieldValue::class, 'lead_id')
             ->orderByDesc('id');
+    }
+
+    public function getDisplayPhoneAttribute(): string
+    {
+        return self::formatDisplayPhone((string) ($this->phone ?? ''), auth()->user());
+    }
+
+    public function getMaskedPhoneAttribute(): string
+    {
+        return self::maskPhone((string) ($this->phone ?? ''));
+    }
+
+    public static function formatDisplayPhone(string $phone, ?User $user = null): string
+    {
+        $clean = trim($phone);
+        if (strlen($clean) < 7) {
+            return $clean;
+        }
+
+        if ($user !== null && $user->can(CrmPermission::LEADS_VIEW_FULL_PHONE->value)) {
+            return $clean;
+        }
+
+        return self::maskPhone($clean);
+    }
+
+    public static function maskPhone(string $phone): string
+    {
+        $clean = trim($phone);
+        if (strlen($clean) < 7) {
+            return $clean;
+        }
+
+        $isPlus = str_starts_with($clean, '+');
+        $prefixLen = $isPlus ? 5 : 4;
+        $suffixLen = 3;
+
+        if (strlen($clean) <= ($prefixLen + $suffixLen)) {
+            return substr($clean, 0, 3) . '****' . substr($clean, -2);
+        }
+
+        return substr($clean, 0, $prefixLen) . '****' . substr($clean, -$suffixLen);
     }
 }

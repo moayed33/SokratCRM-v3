@@ -21,6 +21,24 @@ class NotificationRecipientResolver
         $rule->loadMissing('recipients');
         $users = collect();
 
+        if ($source instanceof CollectionCase) {
+            if ($rule->event_key === NotificationRule::EVENT_COLLECTION_CALL_CENTER_ESCALATED) {
+                if ($source->lead?->assignedUser) {
+                    $users->push($source->lead->assignedUser);
+                }
+                if ($source->assignedCollector?->manager) {
+                    $users->push($source->assignedCollector->manager);
+                }
+            } elseif ($rule->event_key === NotificationRule::EVENT_COLLECTION_CALL_CENTER_RESOLVED) {
+                if ($source->assignedCollector) {
+                    $users->push($source->assignedCollector);
+                }
+                if ($source->assignedCollector?->manager) {
+                    $users->push($source->assignedCollector->manager);
+                }
+            }
+        }
+
         foreach ($rule->recipients as $recipient) {
             $resolved = match ($recipient->recipient_type) {
                 'assigned_user' => $this->assignedUser($source),
@@ -37,7 +55,6 @@ class NotificationRecipientResolver
                 $users = $users->merge($resolved);
             }
         }
-
         return $users
             ->filter(fn (mixed $user): bool => $user instanceof User
                 && $user->is_active
@@ -82,10 +99,20 @@ class NotificationRecipientResolver
         }
 
         if ($source instanceof CollectionCase) {
+            // Allow call center agent, assigned collector, and direct manager to receive escalation alerts
+            if (
+                (int) $user->id === (int) ($source->lead?->assigned_user_id ?? 0)
+                || (int) $user->id === (int) ($source->assigned_collector_user_id ?? 0)
+                || (int) $user->id === (int) ($source->assignedCollector?->manager_id ?? 0)
+            ) {
+                return true;
+            }
+
             return ($user->hasPermission(CrmPermission::COLLECTIONS_VIEW)
                 || $user->hasPermission(CrmPermission::COLLECTIONS_COLLECT)
                 || $user->hasPermission(CrmPermission::COLLECTIONS_MANAGE)
-                || $user->hasPermission(CrmPermission::COLLECTIONS_ASSIGN))
+                || $user->hasPermission(CrmPermission::COLLECTIONS_ASSIGN)
+                || $user->hasPermission(CrmPermission::COLLECTIONS_ESCALATIONS_RESPOND))
                 && CollectionCase::query()->whereKey($source->getKey())->accessibleTo($user)->exists();
         }
 

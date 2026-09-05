@@ -23,16 +23,17 @@ class CollectionCase extends Model
     public const STATUS_COLLECTED = 'collected';
 
     public const STATUS_FAILED = 'failed';
-
     public const STATUS_CANCELLED = 'cancelled';
+
+    public const STATUS_AWAITING_CALL_CENTER = 'awaiting_call_center';
 
     public const OPEN_STATUSES = [
         self::STATUS_PENDING,
         self::STATUS_ASSIGNED,
         self::STATUS_SCHEDULED,
         self::STATUS_FAILED,
+        self::STATUS_AWAITING_CALL_CENTER,
     ];
-
     protected $attributes = [
         'cycle' => 'one_time',
         'status' => self::STATUS_PENDING,
@@ -49,6 +50,8 @@ class CollectionCase extends Model
         'status',
         'due_at',
         'collection_address',
+        'governorate_id',
+        'subregion_id',
         'notes',
         'assigned_collector_user_id',
         'created_by_user_id',
@@ -145,9 +148,33 @@ class CollectionCase extends Model
     {
         return $this->hasMany(CollectionActivity::class)->orderByDesc('created_at');
     }
-
     public function donation(): HasOne
     {
         return $this->hasOne(Donation::class);
+    }
+
+    public function governorate(): BelongsTo
+    {
+        return $this->belongsTo(Governorate::class);
+    }
+
+    public function subregion(): BelongsTo
+    {
+        return $this->belongsTo(GovernorateSubregion::class);
+    }
+
+    public function escalations(): HasMany
+    {
+        return $this->hasMany(CollectionEscalation::class)->orderByDesc('requested_at');
+    }
+
+    public function latestEscalation(): HasOne
+    {
+        return $this->hasOne(CollectionEscalation::class)->latestOfMany('requested_at');
+    }
+
+    public function activeEscalation(): HasOne
+    {
+        return $this->hasOne(CollectionEscalation::class)->where('status', CollectionEscalation::STATUS_PENDING);
     }
 }

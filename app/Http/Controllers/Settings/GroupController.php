@@ -30,15 +30,17 @@ class GroupController extends Controller
 
     public function store(StoreGroupRequest $request): RedirectResponse
     {
+        $validated = $request->validated();
+        $code = ! empty($validated['code'])
+            ? trim((string) $validated['code'])
+            : Group::generateUniqueCode($validated['name']);
+
         $group = Group::query()->create([
-            ...$request->safe()->only([
-                'name',
-                'code',
-                'description',
-            ]),
+            'name' => trim($validated['name']),
+            'code' => $code,
+            'description' => ! empty($validated['description']) ? trim((string) $validated['description']) : null,
             'is_system' => false,
         ]);
-
         return redirect()
             ->route('v2.settings.groups.edit', $group)
             ->with('success', 'تم إنشاء المجموعة بنجاح.');

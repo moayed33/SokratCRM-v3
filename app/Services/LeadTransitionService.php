@@ -222,6 +222,15 @@ class LeadTransitionService
                 $leadUpdateData['donation_type_id'] = $collectionData['donation_type_id'];
                 $leadUpdateData['donation_cycle'] = $collectionData['cycle'];
                 $leadUpdateData['donation_value'] = $collectionData['expected_amount'];
+                if (! empty($collectionData['governorate_id'])) {
+                    $leadUpdateData['governorate_id'] = (int) $collectionData['governorate_id'];
+                }
+                if (! empty($collectionData['subregion_id'])) {
+                    $leadUpdateData['subregion_id'] = (int) $collectionData['subregion_id'];
+                }
+                if (! empty($collectionData['collection_address'])) {
+                    $leadUpdateData['address'] = trim((string) $collectionData['collection_address']);
+                }
             }
 
             // Additional lead attributes if passed in context (e.g. direct lead edit)
@@ -316,8 +325,9 @@ class LeadTransitionService
                         : CollectionCase::STATUS_PENDING,
                     'due_at' => Carbon::parse($collectionData['due_at']),
                     'collection_address' => $collectionData['collection_address'],
+                    'governorate_id' => $collectionData['governorate_id'] ?? $lockedLead->governorate_id,
+                    'subregion_id' => $collectionData['subregion_id'] ?? $lockedLead->subregion_id,
                     'notes' => $collectionData['notes'] ?? null,
-                    'assigned_collector_user_id' => $assignedCollectorId,
                     'created_by_user_id' => $actor->id,
                     'assigned_by_user_id' => $assignedCollectorId !== null ? $actor->id : null,
                 ]);

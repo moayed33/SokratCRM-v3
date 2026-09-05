@@ -17,8 +17,20 @@ class LeadPolicy
 
     public function view(User $user, Lead $lead): bool
     {
-        return $user->hasPermission(CrmPermission::LEADS_VIEW)
-            && $lead->isAccessibleTo($user);
+        if (! $user->hasPermission(CrmPermission::LEADS_VIEW)) {
+            return false;
+        }
+
+        if ($lead->isAccessibleTo($user)) {
+            return true;
+        }
+
+        // Cross-branch read-only viewing: if lead belongs to a different branch
+        if ($user->branch_id !== null && $lead->branch_id !== null && (int) $lead->branch_id !== (int) $user->branch_id) {
+            return true;
+        }
+
+        return false;
     }
 
     public function create(User $user): bool

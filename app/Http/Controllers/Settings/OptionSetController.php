@@ -38,6 +38,19 @@ class OptionSetController extends Controller
         ]);
     }
 
+    /**
+     * Renders stored options for an option set back into textarea format (value | label_ar | label_en).
+     */
+    public function optionsToText(string $setKey): string
+    {
+        return collect(CrmOptions::get($setKey))
+            ->map(static fn (array $option): string => implode(' | ', array_filter([
+                (string) ($option['value'] ?? ''),
+                (string) ($option['label_ar'] ?? ''),
+                (string) ($option['label_en'] ?? ''),
+            ], static fn (string $part) => $part !== '')))
+            ->implode("\n");
+    }
     public function store(Request $request): RedirectResponse
     {
         CrmDatabaseGuard::ensureConnected();

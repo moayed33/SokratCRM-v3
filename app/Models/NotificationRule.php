@@ -36,6 +36,9 @@ class NotificationRule extends Model
 
     public const EVENT_COLLECTION_COMPLETED = 'collection.completed';
 
+    public const EVENT_COLLECTION_CALL_CENTER_ESCALATED = 'collection.call_center_escalated';
+
+    public const EVENT_COLLECTION_CALL_CENTER_RESOLVED = 'collection.call_center_resolved';
     public const EVENT_SYSTEM_TEST = 'system.test';
 
     public const EVENTS = [
@@ -50,6 +53,8 @@ class NotificationRule extends Model
         self::EVENT_COLLECTION_ASSIGNED,
         self::EVENT_COLLECTION_RESCHEDULED,
         self::EVENT_COLLECTION_COMPLETED,
+        self::EVENT_COLLECTION_CALL_CENTER_ESCALATED,
+        self::EVENT_COLLECTION_CALL_CENTER_RESOLVED,
         self::EVENT_SYSTEM_TEST,
     ];
 

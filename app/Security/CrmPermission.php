@@ -11,6 +11,7 @@ enum CrmPermission: string
     case NOTIFICATIONS_MANAGE = 'notifications.manage';
 
     case LEADS_VIEW = 'leads.view';
+    case LEADS_VIEW_FULL_PHONE = 'leads.view_full_phone';
     case LEADS_SCOPE_ALL = 'leads.scope.all';
     case LEADS_SCOPE_GROUP = 'leads.scope.group';
     case LEADS_ASSIGN = 'leads.assign';
@@ -58,6 +59,8 @@ enum CrmPermission: string
     case COLLECTIONS_CANCEL = 'collections.cancel';
     case COLLECTIONS_REPORTS = 'collections.reports';
     case COLLECTIONS_METHODS_MANAGE = 'collections.methods.manage';
+    case COLLECTIONS_GEOGRAPHY_MANAGE = 'collections.geography.manage';
+    case COLLECTIONS_ESCALATIONS_RESPOND = 'collections.escalations.respond';
 
     case BRANCHES_VIEW = 'branches.view';
     case BRANCHES_CREATE = 'branches.create';
@@ -76,6 +79,7 @@ enum CrmPermission: string
             self::SETTINGS_ACCESS => 'الدخول إلى الإعدادات',
             self::NOTIFICATIONS_MANAGE => 'إدارة قواعد الإشعارات',
             self::LEADS_VIEW => 'عرض العملاء المحتملين',
+            self::LEADS_VIEW_FULL_PHONE => 'عرض أرقام الهواتف كاملة (غير مشفرة)',
             self::LEADS_SCOPE_ALL => 'نطاق العملاء: جميع العملاء',
             self::LEADS_SCOPE_GROUP => 'نطاق العملاء: مجموعات المستخدم',
             self::LEADS_ASSIGN => 'إسناد العملاء لمستخدم آخر',
@@ -116,6 +120,8 @@ enum CrmPermission: string
             self::COLLECTIONS_CANCEL => 'إلغاء طلبات التحصيل',
             self::COLLECTIONS_REPORTS => 'عرض تقارير التحصيل',
             self::COLLECTIONS_METHODS_MANAGE => 'إدارة وسائل التبرع الفوري',
+            self::COLLECTIONS_GEOGRAPHY_MANAGE => 'إدارة المحافظات والمناطق الجغرافية',
+            self::COLLECTIONS_ESCALATIONS_RESPOND => 'الاستجابة لنداءات التحصيل العاجلة',
             self::BRANCHES_VIEW => 'عرض الفروع',
             self::BRANCHES_CREATE => 'إضافة الفروع',
             self::BRANCHES_UPDATE => 'تعديل الفروع',

@@ -26,7 +26,7 @@ class UpdateGroupRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:100'],
             'code' => [
-                'required',
+                'nullable',
                 'string',
                 'max:100',
                 'regex:/\A[a-z0-9]+(?:-[a-z0-9]+)*\z/',
