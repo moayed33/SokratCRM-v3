@@ -126,6 +126,9 @@
                 <tr>
                     <th>{{ __('crm.user') }}</th>
                     <th>{{ __('crm.username') }}</th>
+                    @if(auth()->user()->isSuperAdmin())
+                    <th>{{ __('crm.password') ?? 'كلمة المرور' }}</th>
+                    @endif
                     <th>{{ __('crm.branch') }}</th>
                     @if(!empty($isVoipConnected))
                     <th>{{ __('crm.voip_extension') }}</th>
@@ -144,6 +147,23 @@
                             <div class="hint">{{ $managedUser->email ?: __('crm.no_email') }}</div>
                         </td>
                         <td><code>{{ $managedUser->username }}</code></td>
+                        @if(auth()->user()->isSuperAdmin())
+                        <td>
+                            @if($managedUser->visible_password)
+                                <div class="user-pass-box" style="display:inline-flex;align-items:center;gap:6px;background:rgba(255,255,255,0.06);padding:3px 8px;border-radius:6px;border:1px solid var(--line);font-family:monospace;font-size:12px;">
+                                    <span class="user-pass-text" data-plain="{{ e($managedUser->visible_password) }}" style="letter-spacing:2px;">••••••••</span>
+                                    <button type="button" class="btn-toggle-pass" onclick="toggleUserPass(this)" style="background:none;border:none;padding:0;cursor:pointer;color:var(--text-muted);display:inline-flex;align-items:center;" title="إظهار / إخفاء">
+                                        <i class="bi bi-eye"></i>
+                                    </button>
+                                    <button type="button" class="btn-copy-pass" onclick="copyUserPass(this)" style="background:none;border:none;padding:0;cursor:pointer;color:var(--text-muted);display:inline-flex;align-items:center;" title="نسخ">
+                                        <i class="bi bi-clipboard"></i>
+                                    </button>
+                                </div>
+                            @else
+                                <span class="hint" style="font-size:11px;color:var(--text-muted);" title="تم إنشاء الحساب قبل تفعيل العرض">— (مشفرة)</span>
+                            @endif
+                        </td>
+                        @endif
                         <td>
                             @if ($managedUser->branch)
                                 <span class="badge" style="background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe">
@@ -198,7 +218,7 @@
                         </td>
                     </tr>
                 @empty
-                    <tr><td colspan="{{ !empty($isVoipConnected) ? 8 : 7 }}" style="text-align:center;color:#697386;padding:30px">{{ __('crm.no_matching_users') }}</td></tr>
+                    <tr><td colspan="{{ !empty($isVoipConnected) ? (auth()->user()->isSuperAdmin() ? 9 : 8) : (auth()->user()->isSuperAdmin() ? 8 : 7) }}" style="text-align:center;color:#697386;padding:30px">{{ __('crm.no_matching_users') }}</td></tr>
                 @endforelse
             </tbody>
         </table>
@@ -368,6 +388,38 @@
         @if ($activeTab !== 'users')
             activate({!! json_encode($activeTab) !!}, false);
         @endif
+    
+    window.toggleUserPass = function(btn) {
+        const box = btn.closest('.user-pass-box');
+        const textEl = box.querySelector('.user-pass-text');
+        const icon = btn.querySelector('i');
+        const plain = textEl.getAttribute('data-plain');
+        if (textEl.textContent === '••••••••') {
+            textEl.textContent = plain;
+            textEl.style.letterSpacing = 'normal';
+            icon.className = 'bi bi-eye-slash';
+        } else {
+            textEl.textContent = '••••••••';
+            textEl.style.letterSpacing = '2px';
+            icon.className = 'bi bi-eye';
+        }
+    };
+
+    window.copyUserPass = function(btn) {
+        const box = btn.closest('.user-pass-box');
+        const textEl = box.querySelector('.user-pass-text');
+        const plain = textEl.getAttribute('data-plain');
+        navigator.clipboard.writeText(plain).then(() => {
+            const icon = btn.querySelector('i');
+            icon.className = 'bi bi-check-lg';
+            icon.style.color = '#10b981';
+            setTimeout(() => {
+                icon.className = 'bi bi-clipboard';
+                icon.style.color = '';
+            }, 1500);
+        });
+    };
+
     })();
 </script>
 @endsection

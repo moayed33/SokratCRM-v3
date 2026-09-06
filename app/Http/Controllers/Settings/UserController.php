@@ -122,6 +122,7 @@ class UserController extends Controller
                 'collection_zone' => $collectionZone,
                 'collection_subregion_id' => $collectionSubregionId,
                 'password' => $validated['password'],
+                'encrypted_password' => \Illuminate\Support\Facades\Crypt::encryptString($validated['password']),
                 'is_active' => true,
             ]);
 
@@ -303,7 +304,10 @@ class UserController extends Controller
             ],
         ]);
 
-        $user->update(['password' => $validated['password']]);
+        $user->update([
+            'password' => $validated['password'],
+            'encrypted_password' => \Illuminate\Support\Facades\Crypt::encryptString($validated['password']),
+        ]);
 
         return back()->with('success', 'تم تحديث كلمة المرور.');
     }

@@ -29,9 +29,10 @@ use Illuminate\Notifications\Notifiable;
     'collection_subregion_id',
     'whatsapp_opt_in_at',
     'password',
+    'encrypted_password',
     'is_active',
 ])]
-#[Hidden(['password', 'remember_token'])]
+#[Hidden(['password', 'encrypted_password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
@@ -66,6 +67,20 @@ class User extends Authenticatable
         }
 
         return $candidate;
+    }
+
+
+    public function getVisiblePasswordAttribute(): ?string
+    {
+        if (empty($this->encrypted_password)) {
+            return null;
+        }
+
+        try {
+            return \Illuminate\Support\Facades\Crypt::decryptString($this->encrypted_password);
+        } catch (\Throwable $e) {
+            return null;
+        }
     }
 
     public function branch(): BelongsTo

@@ -5,13 +5,19 @@
         var clean = String(phone).replace(/[^0-9+]/g, '');
         if (!clean) return;
 
-        // Mode B: WebRTC Softphone (User has VoIP extension assigned)
-        if (window.__crmTelephonyMode === 'webrtc' && typeof window.__sokratVoiceTriggerDial === 'function') {
-            window.__sokratVoiceTriggerDial(clean, leadName || '');
+        // Strict Mode Branching: Never fall through between modes
+        if (window.__crmTelephonyMode === 'webrtc') {
+            if (typeof window.__sokratVoiceTriggerDial === 'function') {
+                window.__sokratVoiceTriggerDial(clean, leadName || '');
+            } else {
+                window.__sokratPendingDial = clean;
+                window.__sokratPendingLeadName = leadName || '';
+                window.dispatchEvent(new CustomEvent('sokrat:voice-dial', { detail: { phone: clean, leadName: leadName || '' } }));
+            }
             return;
         }
 
-        // Mode A: MicroSIP via OS tel: protocol (User has no extension assigned)
+        // Mode A: MicroSIP strictly for microsip mode
         window.location.href = 'tel:' + clean;
     }
 
@@ -25,7 +31,7 @@
         var phone = btn.getAttribute('data-voice-dial');
         if (!phone) return;
         e.preventDefault();
-        dialPhone(phone, btn.getAttribute('data-lead-name') || '');
+        (window.sokratVoiceDial || dialPhone)(phone, btn.getAttribute('data-lead-name') || '');
     }, true);
 })();
 

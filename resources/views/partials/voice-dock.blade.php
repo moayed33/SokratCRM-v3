@@ -359,13 +359,14 @@ body.in-iframe .sokrat-voice-dock {
     width: 100% !important;
     height: 100% !important;
     position: relative !important;
-    background: #050507 !important;
+    background: #09090d !important;
 }
 #sokratVoiceFrame {
     width: 100% !important;
     height: 100% !important;
     border: none !important;
     display: block !important;
+    background: #09090d !important;
 }
 
 /* --- REFINED INCOMING CALL TOAST --- */
@@ -876,10 +877,6 @@ body.in-iframe .sokrat-voice-dock {
             statusDots.forEach(dot => dot.dataset.voiceStatus = status);
         }
         function loadFreshSession() {
-            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
-                frameLoaded = true;
-                return;
-            }
             const themeParam = isDarkMode() ? 'dark' : 'light';
             frameLoaded = false;
             frame.addEventListener('load', () => {
@@ -890,12 +887,6 @@ body.in-iframe .sokrat-voice-dock {
         }
 
         function expandPanel() {
-            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
-                panelOpen = true;
-                window.sokratDesktop.showSoftphone();
-                try { sessionStorage.setItem('sokrat_voice_panel_open', '1'); } catch (_) {}
-                return;
-            }
             if (!frameLoaded || !frame.src || frame.src === 'about:blank') {
                 loadFreshSession();
             }
@@ -906,12 +897,6 @@ body.in-iframe .sokrat-voice-dock {
         }
 
         function collapsePanel() {
-            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
-                panelOpen = false;
-                window.sokratDesktop.hideSoftphone();
-                try { sessionStorage.setItem('sokrat_voice_panel_open', '0'); } catch (_) {}
-                return;
-            }
             panel.setAttribute('hidden', 'hidden');
             panelOpen = false;
             try { sessionStorage.setItem('sokrat_voice_panel_open', '0'); } catch (_) {}
@@ -1260,9 +1245,16 @@ body.in-iframe .sokrat-voice-dock {
             expandPanel();
             if (leadName && remoteEl) remoteEl.textContent = leadName;
 
+            if (frame && frame.contentWindow) {
+                frame.contentWindow.postMessage({
+                    version: 1,
+                    type: 'sokrat.voice.dial',
+                    payload: { phone: cleanPhone, autoCall: true }
+                }, VOICE_ORIGIN);
+            }
+
             if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
                 window.sokratDesktop.dial(cleanPhone, leadName);
-                return;
             }
 
             if (voiceState.registered && frame && frame.contentWindow) {
