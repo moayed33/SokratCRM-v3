@@ -1692,9 +1692,11 @@ class LeadTransferController extends Controller
             $additionalPhonesList = [];
             if ($additionalPhonesRaw !== null) {
                 $splitPhones = preg_split('/[,;\/\n]+/u', $additionalPhonesRaw);
+                $seenExtras = [];
                 foreach ($splitPhones as $rawExtra) {
                     $cleanedExtra = $this->normalizePhone($rawExtra);
-                    if ($cleanedExtra !== '' && $cleanedExtra !== $this->normalizePhone($phone)) {
+                    if ($cleanedExtra !== '' && $cleanedExtra !== $this->normalizePhone($phone) && ! in_array($cleanedExtra, $seenExtras, true)) {
+                        $seenExtras[] = $cleanedExtra;
                         $additionalPhonesList[] = trim($rawExtra);
                     }
                 }
@@ -2059,6 +2061,8 @@ class LeadTransferController extends Controller
                 'state' => $state,
 
                 'duplicate_reason' => $duplicateReason,
+
+                'additional_phones' => $additionalPhonesList,
 
                 'errors' => $errors,
 

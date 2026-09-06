@@ -431,7 +431,16 @@
          </td>
 
          <td dir="ltr">
-          {{ $row['phone'] }}
+          <strong style="color: var(--dark, #182033);">{{ $row['phone'] }}</strong>
+          @if (!empty($row['additional_phones']))
+           <div style="margin-top: 4px; display: flex; flex-wrap: wrap; gap: 4px;">
+            @foreach ($row['additional_phones'] as $extraNum)
+             <span class="badge soft" style="font-size: 10px; padding: 1px 6px; background: rgba(52, 120, 246, 0.1); color: var(--blue, #3478f6); border: 1px solid rgba(52, 120, 246, 0.2); border-radius: 6px;" title="{{ __('crm.phone_type_extra') ?? 'رقم إضافي' }}">
+              <i class="bi bi-telephone-plus" style="font-size: 8.5px;"></i> {{ $extraNum }}
+             </span>
+            @endforeach
+           </div>
+          @endif
          </td>
 
          <td>

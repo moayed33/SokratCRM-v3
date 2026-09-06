@@ -992,15 +992,45 @@ body,
 
                                 <!-- 2. Primary Phone & Extra count -->
                                 <td>
-                                    <div style="display:flex;align-items:center;gap:6px">
+                                    <div style="display:flex;align-items:center;gap:6px;position:relative;" class="lead-phone-cell">
                                         <span dir="ltr" style="font-weight:700">{{ $lead->display_phone }}</span>
                                         @if (!empty($lead->phone))
                                             <button type="button" class="btn-dial-inline" data-voice-dial="{{ $lead->phone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}"><i class="bi bi-telephone-outbound-fill"></i></button>
                                         @endif
-                                        @if ($lead->phones->count() > 1)
-                                            <span class="badge" title="{{ __('crm.additional_phone_count', ['count' => $lead->phones->count() - 1]) }}">
-                                                +{{ $lead->phones->count() - 1 }}
-                                            </span>
+                                        @php
+                                            $extraPhones = $lead->phones->where('is_primary', false);
+                                        @endphp
+                                        @if ($extraPhones->isNotEmpty())
+                                            <div class="extra-phones-dropdown-wrap" style="position:relative;display:inline-block;">
+                                                <button type="button" 
+                                                        class="badge extra-phones-toggle-btn" 
+                                                        onclick="toggleLeadPhones(event, this)"
+                                                        style="cursor:pointer;border:none;background:rgba(52,120,246,0.12);color:var(--blue,#3478f6);font-weight:800;padding:2px 7px;border-radius:999px;font-size:11px;"
+                                                        title="{{ __('crm.additional_phone_count', ['count' => $extraPhones->count()]) }}">
+                                                    +{{ $extraPhones->count() }} <i class="bi bi-chevron-down" style="font-size:8px;"></i>
+                                                </button>
+                                                <div class="extra-phones-popover" style="display:none;position:absolute;top:calc(100% + 4px);inset-inline-start:0;min-width:190px;background:var(--card,#ffffff);border:1px solid var(--line,#e2e8f0);border-radius:10px;box-shadow:0 10px 25px rgba(0,0,0,0.18);padding:6px;z-index:1050;">
+                                                    <div style="font-size:10px;font-weight:800;color:var(--muted);padding:2px 6px 4px;border-bottom:1px solid var(--line,#e2e8f0);margin-bottom:4px;text-transform:uppercase;">
+                                                        {{ __('crm.additional_phones') ?? 'أرقام هواتف إضافية' }}
+                                                    </div>
+                                                    @foreach ($extraPhones as $extraPhone)
+                                                        @php
+                                                            $extraRaw = preg_replace('/\D+/', '', $extraPhone->phone);
+                                                        @endphp
+                                                        <div style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:4px 6px;border-radius:6px;transition:background 0.12s;">
+                                                            <span dir="ltr" style="font-size:11.5px;font-weight:700;font-family:monospace;color:var(--dark);">{{ $extraPhone->display_phone }}</span>
+                                                            <div style="display:flex;align-items:center;gap:3px;">
+                                                                <button type="button" class="btn-dial-inline" data-voice-dial="{{ $extraRaw }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}" style="width:24px;height:24px;font-size:10px;">
+                                                                    <i class="bi bi-telephone-outbound-fill"></i>
+                                                                </button>
+                                                                <a href="https://wa.me/{{ $extraRaw }}" target="_blank" rel="noopener" class="btn-dial-inline" title="WhatsApp" style="width:24px;height:24px;font-size:10px;background:rgba(22,163,74,0.1);color:#16a34a;">
+                                                                    <i class="bi bi-whatsapp"></i>
+                                                                </a>
+                                                            </div>
+                                                        </div>
+                                                    @endforeach
+                                                </div>
+                                            </div>
                                         @endif
                                     </div>
                                 </td>
@@ -1126,5 +1156,20 @@ body,
 </div>
 <script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 @include('partials.transition-popup')
+<script>
+window.toggleLeadPhones = function(e, btn) {
+    e.stopPropagation();
+    const popover = btn.nextElementSibling;
+    if (!popover) return;
+    const isOpen = popover.style.display !== 'none';
+    document.querySelectorAll('.extra-phones-popover').forEach(p => p.style.display = 'none');
+    if (!isOpen) popover.style.display = 'block';
+};
+document.addEventListener('click', (e) => {
+    if (!e.target.closest('.extra-phones-dropdown-wrap')) {
+        document.querySelectorAll('.extra-phones-popover').forEach(p => p.style.display = 'none');
+    }
+});
+</script>
 </body>
 </html>
