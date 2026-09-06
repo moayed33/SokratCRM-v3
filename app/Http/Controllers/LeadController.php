@@ -368,10 +368,12 @@ class LeadController extends Controller
         }
 
         $perPage = filter_var($request->query('per_page', 20), FILTER_VALIDATE_INT, [
-            'options' => ['default' => 20, 'min_range' => 5, 'max_range' => 500],
+            'options' => ['default' => 20, 'min_range' => 10, 'max_range' => 200],
         ]);
-        if ($perPage === false || $perPage <= 0) {
+        if ($perPage === false || $perPage < 10) {
             $perPage = 20;
+        } elseif ($perPage > 200) {
+            $perPage = 200;
         }
 
         $leads = $query->paginate($perPage)->withQueryString();

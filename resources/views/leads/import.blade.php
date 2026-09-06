@@ -326,9 +326,7 @@
         <strong style="display: block; font-size: 14px; color: var(--dark, #182033);">
          {{ __('جاهز للاستيراد الآن:') }} {{ $preview['valid_count'] }} {{ __('عميل صالح') }}
         </strong>
-        <small style="color: var(--muted, #64748b); font-size: 11px;">
-         {{ __('يمكنك تأكيد الاستيراد مباشرة من هنا دون الحاجة للنزول لأسفل الصفحة.') }}
-        </small>
+
        </div>
       </div>
       <form
