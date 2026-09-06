@@ -98,7 +98,7 @@
        class="btn soft"
        href="{{ route(
         'v2.leads.import.template'
-       ) }}"
+       ) }}?v={{ time() }}"
       >
        {{ __('crm.download_template') }}
       </a>

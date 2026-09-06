@@ -92,7 +92,7 @@ class LeadTransferController extends Controller
                 ['أحمد محمد علي', '01012345678', '01123456789, 01234567890'],
                 ['سارة إبراهيم خليل', '01098765432', '01511223344'],
             ],
-            'crm-v3-leads-import-template.xlsx'
+            'sokrat-crm-leads-template.xlsx'
         );
     }
 
@@ -3291,6 +3291,20 @@ XML
             );
 
             $writer->endElement();
+            $writer->endElement();
+
+            $writer->startElement('cols');
+            $colWidths = [1 => 30, 2 => 25, 3 => 45];
+            foreach ($headers as $colIdx => $hdr) {
+                $cNum = $colIdx + 1;
+                $w = $colWidths[$cNum] ?? 25;
+                $writer->startElement('col');
+                $writer->writeAttribute('min', (string) $cNum);
+                $writer->writeAttribute('max', (string) $cNum);
+                $writer->writeAttribute('width', (string) $w);
+                $writer->writeAttribute('customWidth', '1');
+                $writer->endElement();
+            }
             $writer->endElement();
 
             $writer->startElement(
