@@ -781,7 +781,8 @@ class LeadController extends Controller
                 if ($item['type'] === 'followup' && abs(($item['timestamp']?->timestamp ?? 0) - ($history->changed_at?->timestamp ?? 0)) < 60) {
                     $alreadyIncluded = true;
                     if (! empty($stageValuesForHistory)) {
-                        $timelineEvents[$key]['stage_values'] = $stageValuesForHistory;
+                        $item['stage_values'] = $stageValuesForHistory;
+                        $timelineEvents->put($key, $item);
                     }
                     break;
                 }
