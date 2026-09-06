@@ -1,16 +1,14 @@
-@if(Auth::check() && !request()->boolean('kanban_popup') && !request()->has('kanban_popup') && !request()->boolean('popup') && !request()->has('popup'))
-{{-- SOKRAT VOICE / MICROSIP FLOATING DOCK CONTROLLER --}}
-<aside id="sokratVoiceDock" class="sokrat-voice-dock" aria-label="MicroSIP / Sokrat Voice">
-    <button id="voiceDockToggle" type="button" class="sokrat-voice-pill" title="MicroSIP{{ Auth::user()->voip_extension ? ' (Ext ' . Auth::user()->voip_extension . ')' : '' }}">
+@if(Auth::check() && !empty(Auth::user()->voip_extension) && !request()->boolean('kanban_popup') && !request()->has('kanban_popup') && !request()->boolean('popup') && !request()->has('popup'))
+{{-- SOKRAT VOICE FLOATING DOCK & EMBED CONTROLLER --}}
+<aside id="sokratVoiceDock" class="sokrat-voice-dock" aria-label="Sokrat Voice">
+    <button id="voiceDockToggle" type="button" class="sokrat-voice-pill" title="Sokrat Voice (Ext {{ Auth::user()->voip_extension }})">
         <span class="sokrat-voice-dot" data-voice-status="offline"></span>
-        @if(Auth::user()->voip_extension)
-            <span class="sokrat-voice-ext">{{ Auth::user()->voip_extension }}</span>
-        @endif
+        <span class="sokrat-voice-ext">{{ Auth::user()->voip_extension }}</span>
         <span class="sokrat-voice-call-info" hidden>
             <span data-voice-remote class="sokrat-voice-remote"></span>
             <span data-voice-timer class="sokrat-voice-timer">00:00</span>
         </span>
-        <span class="sokrat-voice-label"><i class="bi bi-telephone-fill"></i> MicroSIP</span>
+        <span class="sokrat-voice-label"><i class="bi bi-telephone-fill"></i> Voice</span>
     </button>
     <div class="sokrat-voice-quick-actions" hidden>
         <button data-voice-mute type="button" class="sokrat-voice-action-btn" title="{{ __('crm.mute') ?? 'Mute' }}"><i class="bi bi-mic-mute"></i></button>
