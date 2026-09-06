@@ -1027,6 +1027,34 @@ body,
   background-color: #7f1d1d !important;
   background-clip: padding-box !important;
 }
+
+.crm-select-options-list {
+  max-height: 240px;
+  overflow-y: auto;
+  scrollbar-width: thin !important;
+  scrollbar-color: rgba(148, 163, 184, 0.4) transparent !important;
+  padding-inline-start: 4px !important;
+}
+
+.crm-select-options-list::-webkit-scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+}
+
+.crm-select-options-list::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+.crm-select-options-list::-webkit-scrollbar-thumb {
+  background-color: rgba(148, 163, 184, 0.4) !important;
+  border-radius: 9999px !important;
+  border: none !important;
+}
+
+.crm-select-options-list::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(148, 163, 184, 0.7) !important;
+}
+
 </style>
 
  @stack('styles')
