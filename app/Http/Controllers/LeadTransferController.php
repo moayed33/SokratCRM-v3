@@ -32,7 +32,7 @@ use ZipArchive;
 
 class LeadTransferController extends Controller
 {
-    private const MAX_IMPORT_ROWS = 1000;
+    private const MAX_IMPORT_ROWS = 10000;
 
     private const MAX_EXPORT_ROWS = 5000;
 
@@ -109,6 +109,9 @@ class LeadTransferController extends Controller
         Request $request
     ): View|RedirectResponse {
 
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
+
         $this->assertCrmV2Database();
 
         $validator = Validator::make(
@@ -117,7 +120,7 @@ class LeadTransferController extends Controller
                 'import_file' => [
                     'required',
                     'file',
-                    'max:5120',
+                    'max:30720',
                 ],
                 'campaign_id' => [
                     'nullable',
@@ -146,7 +149,7 @@ class LeadTransferController extends Controller
             [
                 'import_file.required' => 'اختر ملف العملاء أولًا.',
                 'import_file.file' => 'ملف الاستيراد غير صحيح.',
-                'import_file.max' => 'الحد الأقصى لملف الاستيراد 5MB.',
+                'import_file.max' => 'الحد الأقصى لملف الاستيراد 30MB.',
                 'distribution_mode.in' => 'طريقة التوزيع غير صحيحة.',
                 'single_user_id.exists' => 'الموظف المحدد غير موجود.',
                 'distribution_user_ids.*.exists' => 'أحد الموظفين المحددين غير موجود.',
@@ -322,6 +325,9 @@ class LeadTransferController extends Controller
     public function importConfirm(
         Request $request
     ): RedirectResponse {
+
+        @ini_set('max_execution_time', '300');
+        @ini_set('memory_limit', '512M');
 
         $this->assertCrmV2Database();
 
