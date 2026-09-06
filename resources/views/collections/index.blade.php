@@ -122,7 +122,7 @@
     <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
      <div class="collection-quick-icons">
       @if($phoneClean)
-       <a href="#" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $case->lead?->name }}" class="collection-icon-btn call" title="{{ __('crm.call') }}"><i class="bi bi-telephone-fill"></i></a>
+       <a href="tel:{{ $phoneClean }}" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $case->lead?->name }}" class="collection-icon-btn call" title="{{ __('crm.call') }}"><i class="bi bi-telephone-fill"></i></a>
        <a href="https://wa.me/{{ $phoneClean }}" target="_blank" rel="noopener" class="collection-icon-btn whatsapp" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>
       @endif
       @if($case->collection_address)

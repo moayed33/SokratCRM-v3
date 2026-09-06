@@ -258,7 +258,7 @@ html.crm-monochrome:not(.dark-mode) .crm-transition-frame{
   const context = trigger.getAttribute('data-transition-context')
    || (trigger.closest('.board-shell, [data-kanban-column]') ? 'kanban' : '');
 
-  // Trigger WebRTC softphone dial if phone number is present
+  // MicroSIP Integration via tel: protocol
   const rawPhone = trigger.getAttribute('data-voice-dial')
    || (trigger.getAttribute('data-sip-href') ? trigger.getAttribute('data-sip-href').replace(/^sip:|^callto:|^tel:/, '') : '')
    || trigger.getAttribute('data-phone')
@@ -267,11 +267,17 @@ html.crm-monochrome:not(.dark-mode) .crm-transition-frame{
   if (rawPhone) {
    const cleanPhone = String(rawPhone).replace(/[^0-9+]/g, '');
    if (cleanPhone) {
+    // Open MicroSIP via OS tel: protocol
+    window.location.href = 'tel:' + cleanPhone;
+
+    /*
+    // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
     if (typeof window.sokratVoiceDial === 'function') {
      window.sokratVoiceDial(cleanPhone, heading);
     } else if (typeof window.parent?.sokratVoiceDial === 'function') {
      window.parent.sokratVoiceDial(cleanPhone, heading);
     }
+    */
    }
   }
 

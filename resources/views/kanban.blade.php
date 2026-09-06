@@ -2111,7 +2111,7 @@ body.kanban-modal-open{
              data-lead-name="{{ $lead->name }}"
              @endcan
              data-voice-dial="{{ $phoneClean }}"
-             href="#"
+             href="tel:{{ $phoneClean }}"
              draggable="false"
              title="{{ __('crm.call_and_followup') }}"
             >
@@ -3280,6 +3280,6 @@ document.addEventListener(
 <!-- CRM KANBAN FILTER & PAGINATION JS END -->
     </main>
 </div>
-<script src="{{ asset('crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 </body>
 </html>

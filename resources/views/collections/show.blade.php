@@ -56,7 +56,7 @@
    <section class="collection-card">
     <h3><i class="bi bi-person-vcard"></i>{{ __('crm.collection_contact_details') }}</h3>
     <div class="collection-data">
-     <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="#" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-lead-name="{{ $collectionCase->lead?->name }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
+     <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="tel:{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-lead-name="{{ $collectionCase->lead?->name }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
      <div><span>{{ __('crm.email') }}</span><strong>{{ $collectionCase->lead?->email ?: '—' }}</strong></div>
      <div><span>{{ __('crm.donor_address') }}</span><strong>{{ $collectionCase->collection_address }}</strong></div>
      <div><span>{{ __('crm.geography_and_zones') }}</span><strong>{{ $collectionCase->subregion?->full_name ?? ($collectionCase->lead?->subregion?->full_name ?? ($collectionCase->governorate?->name ?? ($collectionCase->lead?->governorate ?? '—'))) }}</strong></div>
@@ -64,7 +64,7 @@
       <span>{{ __('crm.call_center_agent') }}</span>
       <strong>{{ $collectionCase->lead?->assignedUser?->name ?? $collectionCase->lead?->assigned_employee ?? '—' }}</strong>
       @if($collectionCase->lead?->assignedUser?->mobile_phone)
-       <small style="display:block;color:var(--cd-muted);font-size:11px"><a href="#" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', $collectionCase->lead->assignedUser->mobile_phone) }}"><i class="bi bi-telephone"></i> {{ $collectionCase->lead->assignedUser->mobile_phone }}</a></small>
+       <small style="display:block;color:var(--cd-muted);font-size:11px"><a href="tel:{{ preg_replace('/[^0-9+]/', '', $collectionCase->lead->assignedUser->mobile_phone) }}" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', $collectionCase->lead->assignedUser->mobile_phone) }}"><i class="bi bi-telephone"></i> {{ $collectionCase->lead->assignedUser->mobile_phone }}</a></small>
       @endif
      </div>
      <div>
@@ -82,7 +82,7 @@
      @endphp
      <div class="collector-mobile-actions-bar">
       @if ($phoneClean)
-       <a href="#" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $collectionCase->lead?->name }}" class="collector-touch-btn call" title="{{ __('crm.call') }}">
+       <a href="tel:{{ $phoneClean }}" data-voice-dial="{{ $phoneClean }}" data-lead-name="{{ $collectionCase->lead?->name }}" class="collector-touch-btn call" title="{{ __('crm.call') }}">
         <i class="bi bi-telephone-fill"></i>
         <span>{{ __('crm.call') }}</span>
        </a>

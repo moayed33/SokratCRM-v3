@@ -1,14 +1,16 @@
-@if(Auth::check() && !empty(Auth::user()->voip_extension) && !request()->boolean('kanban_popup') && !request()->has('kanban_popup') && !request()->boolean('popup') && !request()->has('popup'))
-{{-- SOKRAT VOICE FLOATING DOCK & EMBED CONTROLLER --}}
-<aside id="sokratVoiceDock" class="sokrat-voice-dock" aria-label="Sokrat Voice">
-    <button id="voiceDockToggle" type="button" class="sokrat-voice-pill" title="Sokrat Voice (Ext {{ Auth::user()->voip_extension }})">
+@if(Auth::check() && !request()->boolean('kanban_popup') && !request()->has('kanban_popup') && !request()->boolean('popup') && !request()->has('popup'))
+{{-- SOKRAT VOICE / MICROSIP FLOATING DOCK CONTROLLER --}}
+<aside id="sokratVoiceDock" class="sokrat-voice-dock" aria-label="MicroSIP / Sokrat Voice">
+    <button id="voiceDockToggle" type="button" class="sokrat-voice-pill" title="MicroSIP{{ Auth::user()->voip_extension ? ' (Ext ' . Auth::user()->voip_extension . ')' : '' }}">
         <span class="sokrat-voice-dot" data-voice-status="offline"></span>
-        <span class="sokrat-voice-ext">{{ Auth::user()->voip_extension }}</span>
+        @if(Auth::user()->voip_extension)
+            <span class="sokrat-voice-ext">{{ Auth::user()->voip_extension }}</span>
+        @endif
         <span class="sokrat-voice-call-info" hidden>
             <span data-voice-remote class="sokrat-voice-remote"></span>
             <span data-voice-timer class="sokrat-voice-timer">00:00</span>
         </span>
-        <span class="sokrat-voice-label"><i class="bi bi-telephone-fill"></i> Voice</span>
+        <span class="sokrat-voice-label"><i class="bi bi-telephone-fill"></i> MicroSIP</span>
     </button>
     <div class="sokrat-voice-quick-actions" hidden>
         <button data-voice-mute type="button" class="sokrat-voice-action-btn" title="{{ __('crm.mute') ?? 'Mute' }}"><i class="bi bi-mic-mute"></i></button>
@@ -95,7 +97,7 @@
     visibility: hidden !important;
     opacity: 0 !important;
     pointer-events: none !important;
-    transform: translateY(24px) scale(0.96) !important;
+    transform: translateY(20px) scale(0.97) !important;
     display: flex !important;
 }
 
@@ -111,7 +113,7 @@ body.in-iframe .sokrat-voice-dock {
     display: none !important;
 }
 
-/* Floating Dock Pill — ALWAYS Bottom-Right */
+/* --- MODERN GLASSMORPHIC FLOATING DOCK PILL --- */
 .sokrat-voice-dock {
     position: fixed !important;
     bottom: 20px !important;
@@ -122,7 +124,7 @@ body.in-iframe .sokrat-voice-dock {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    font-family: inherit !important;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Cairo", sans-serif !important;
     margin: 0 !important;
     padding: 0 !important;
     direction: ltr !important;
@@ -132,61 +134,84 @@ body.in-iframe .sokrat-voice-dock {
 .sokrat-voice-pill {
     display: inline-flex !important;
     align-items: center !important;
-    gap: 8px !important;
-    padding: 8px 16px !important;
+    gap: 9px !important;
+    padding: 7px 16px !important;
     border-radius: 999px !important;
-    border: 1px solid #e2e8f0 !important;
-    background: #ffffff !important;
-    color: #0f172a !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(18, 18, 23, 0.88) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    color: #f4f4f5 !important;
     font-weight: 800 !important;
-    font-size: 13px !important;
+    font-size: 12.5px !important;
     font-family: inherit !important;
     cursor: pointer !important;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.16) !important;
-    transition: all 0.2s ease !important;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.32), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
     line-height: 1.4 !important;
     outline: none !important;
 }
 .sokrat-voice-pill:hover {
-    box-shadow: 0 6px 28px rgba(220, 38, 55, 0.25) !important;
-    border-color: #dc2637 !important;
+    box-shadow: 0 12px 36px rgba(239, 68, 68, 0.28), 0 0 0 1px rgba(239, 68, 68, 0.4) !important;
+    border-color: rgba(239, 68, 68, 0.5) !important;
     transform: translateY(-2px) !important;
 }
 .sokrat-voice-dot {
-    width: 10px !important;
-    height: 10px !important;
+    width: 9px !important;
+    height: 9px !important;
     border-radius: 50% !important;
-    background: #94a3b8 !important;
+    background: #71717a !important;
     flex-shrink: 0 !important;
     display: inline-block !important;
+    transition: all 0.2s ease !important;
 }
-.sokrat-voice-dot[data-voice-status="online"] { background: #16a34a !important; box-shadow: 0 0 0 2px rgba(22,163,74,0.25) !important; }
-.sokrat-voice-dot[data-voice-status="ringing"] { background: #f59e0b !important; animation: sokrat-voice-pulse 0.5s ease-in-out infinite alternate !important; }
-.sokrat-voice-dot[data-voice-status="incall"] { background: #dc2637 !important; animation: sokrat-voice-pulse 1s ease-in-out infinite alternate !important; }
+.sokrat-voice-dot[data-voice-status="online"] {
+    background: #10b981 !important;
+    box-shadow: 0 0 10px rgba(16, 185, 129, 0.6) !important;
+}
+.sokrat-voice-dot[data-voice-status="ringing"] {
+    background: #f59e0b !important;
+    box-shadow: 0 0 12px rgba(245, 158, 11, 0.8) !important;
+    animation: sokrat-voice-pulse 0.6s ease-in-out infinite alternate !important;
+}
+.sokrat-voice-dot[data-voice-status="incall"] {
+    background: #ef4444 !important;
+    box-shadow: 0 0 14px rgba(239, 68, 68, 0.9) !important;
+    animation: sokrat-voice-pulse 0.8s ease-in-out infinite alternate !important;
+}
 .sokrat-voice-dot-sm {
     width: 8px !important;
     height: 8px !important;
     border-radius: 50% !important;
-    background: #94a3b8 !important;
+    background: #71717a !important;
     flex-shrink: 0 !important;
     display: inline-block !important;
 }
-.sokrat-voice-dot-sm[data-voice-status="online"] { background: #4ade80 !important; }
-.sokrat-voice-dot-sm[data-voice-status="incall"] { background: #f87171 !important; }
+.sokrat-voice-dot-sm[data-voice-status="online"] {
+    background: #10b981 !important;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.5) !important;
+}
+.sokrat-voice-dot-sm[data-voice-status="incall"] {
+    background: #ef4444 !important;
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6) !important;
+}
 .sokrat-voice-ext {
     font-family: monospace !important;
-    font-weight: 900 !important;
-    background: #f1f5f9 !important;
-    color: #475569 !important;
+    font-weight: 800 !important;
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: #e4e4e7 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     padding: 2px 7px !important;
     border-radius: 6px !important;
     font-size: 11px !important;
+    letter-spacing: 0.02em !important;
 }
 .sokrat-voice-label {
     display: inline-flex !important;
     align-items: center !important;
     gap: 5px !important;
-    color: #dc2637 !important;
+    color: #ef4444 !important;
+    font-weight: 800 !important;
 }
 .sokrat-voice-call-info {
     display: inline-flex !important;
@@ -195,7 +220,7 @@ body.in-iframe .sokrat-voice-dock {
 }
 .sokrat-voice-remote {
     font-weight: 700 !important;
-    max-width: 110px !important;
+    max-width: 120px !important;
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     white-space: nowrap !important;
@@ -203,10 +228,12 @@ body.in-iframe .sokrat-voice-dock {
 .sokrat-voice-timer {
     font-family: monospace !important;
     font-weight: 900 !important;
-    color: #dc2637 !important;
-    background: #fff0f2 !important;
+    color: #f87171 !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
     padding: 2px 6px !important;
     border-radius: 6px !important;
+    font-size: 11px !important;
 }
 .sokrat-voice-quick-actions {
     display: flex !important;
@@ -214,37 +241,38 @@ body.in-iframe .sokrat-voice-dock {
     gap: 5px !important;
 }
 .sokrat-voice-action-btn {
-    width: 36px !important;
-    height: 36px !important;
+    width: 34px !important;
+    height: 34px !important;
     border-radius: 50% !important;
-    border: 1px solid #e2e8f0 !important;
-    background: #ffffff !important;
-    color: #475569 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
+    background: rgba(18, 18, 23, 0.88) !important;
+    backdrop-filter: blur(12px) !important;
+    color: #e4e4e7 !important;
     cursor: pointer !important;
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    font-size: 15px !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
-    transition: all 0.15s ease !important;
+    font-size: 13.5px !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25) !important;
+    transition: all 0.18s ease !important;
     outline: none !important;
 }
 .sokrat-voice-action-btn:hover {
-    border-color: #dc2637 !important;
-    color: #dc2637 !important;
-    transform: scale(1.05) !important;
+    border-color: #ef4444 !important;
+    color: #ef4444 !important;
+    transform: scale(1.06) !important;
 }
 .sokrat-voice-action-btn.hangup {
-    color: #dc2637 !important;
-    background: #fff0f2 !important;
-    border-color: #fecdd3 !important;
+    color: #f87171 !important;
+    background: rgba(239, 68, 68, 0.18) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
 }
 .sokrat-voice-action-btn.hangup:hover {
-    background: #dc2637 !important;
+    background: #ef4444 !important;
     color: #ffffff !important;
 }
 
-/* Expanded Softphone Panel — ZERO SCROLL, ALWAYS Bottom-Right */
+/* --- EXPANDED SOFTPHONE PANEL (PREMIUM OLED TECH DESIGN) --- */
 .sokrat-voice-panel {
     position: fixed !important;
     bottom: 74px !important;
@@ -252,17 +280,18 @@ body.in-iframe .sokrat-voice-dock {
     left: auto !important;
     top: auto !important;
     width: 420px !important;
-    height: 680px !important;
+    height: 660px !important;
     max-width: calc(100vw - 40px) !important;
     max-height: calc(100vh - 90px) !important;
-    background: #ffffff !important;
+    background: #09090d !important;
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
     border-radius: 16px !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.28), 0 0 0 1px rgba(0,0,0,0.08) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
     z-index: 2147483646 !important;
     overflow: hidden !important;
     display: flex !important;
     flex-direction: column !important;
-    animation: sokrat-voice-slide-up 0.2s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    animation: sokrat-voice-slide-up 0.22s cubic-bezier(0.16, 1, 0.3, 1) !important;
     margin: 0 !important;
     padding: 0 !important;
     direction: ltr !important;
@@ -272,10 +301,11 @@ body.in-iframe .sokrat-voice-dock {
     display: flex !important;
     align-items: center !important;
     justify-content: space-between !important;
-    padding: 11px 16px !important;
-    background: #dc2637 !important;
-    color: #ffffff !important;
-    font-size: 13px !important;
+    padding: 9px 14px !important;
+    background: #111116 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #f4f4f5 !important;
+    font-size: 12.5px !important;
     user-select: none !important;
     flex-shrink: 0 !important;
 }
@@ -283,43 +313,49 @@ body.in-iframe .sokrat-voice-dock {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
+    font-weight: 800 !important;
+    letter-spacing: 0.02em !important;
 }
 .sokrat-voice-badge-ext {
     font-family: monospace !important;
     font-size: 11px !important;
-    background: rgba(255,255,255,0.22) !important;
-    padding: 2px 6px !important;
-    border-radius: 5px !important;
-    font-weight: 900 !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
+    padding: 2px 7px !important;
+    border-radius: 6px !important;
+    font-weight: 800 !important;
 }
 .sokrat-voice-head-actions {
     display: flex !important;
     align-items: center !important;
-    gap: 6px !important;
+    gap: 5px !important;
 }
 .sokrat-voice-head-btn {
-    background: rgba(255,255,255,0.18) !important;
-    border: none !important;
-    color: #ffffff !important;
-    width: 36px !important;
-    height: 36px !important;
-    min-height: 36px !important;
-    border-radius: 8px !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #a1a1aa !important;
+    width: 30px !important;
+    height: 30px !important;
+    min-height: 30px !important;
+    border-radius: 7px !important;
     cursor: pointer !important;
     display: inline-grid !important;
     place-items: center !important;
-    font-size: 15px !important;
-    transition: background-color 0.15s ease !important;
+    font-size: 13px !important;
+    transition: all 0.15s ease !important;
 }
 .sokrat-voice-head-btn:hover {
-    background: rgba(255,255,255,0.35) !important;
+    background: rgba(255, 255, 255, 0.14) !important;
+    color: #ffffff !important;
+    border-color: rgba(255, 255, 255, 0.2) !important;
 }
 .sokrat-voice-frame-wrap {
     flex: 1 !important;
     width: 100% !important;
     height: 100% !important;
     position: relative !important;
-    background: #0f172a !important;
+    background: #050507 !important;
 }
 #sokratVoiceFrame {
     width: 100% !important;
@@ -328,7 +364,7 @@ body.in-iframe .sokrat-voice-dock {
     display: block !important;
 }
 
-/* Incoming Call Toast */
+/* --- REFINED INCOMING CALL TOAST --- */
 .sokrat-voice-toast {
     position: fixed !important;
     top: 24px !important;
@@ -339,14 +375,17 @@ body.in-iframe .sokrat-voice-dock {
     align-items: center !important;
     gap: 14px !important;
     padding: 12px 18px !important;
-    background: #ffffff !important;
-    border: 2px solid #16a34a !important;
+    background: rgba(18, 18, 23, 0.95) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px) !important;
+    border: 1px solid rgba(16, 185, 129, 0.4) !important;
     border-radius: 14px !important;
-    box-shadow: 0 12px 40px rgba(0,0,0,0.18) !important;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(16, 185, 129, 0.15) !important;
     min-width: 320px !important;
     max-width: 460px !important;
     width: auto !important;
     height: auto !important;
+    color: #f4f4f5 !important;
     animation: sokrat-voice-toast-in 0.25s cubic-bezier(0.16, 1, 0.3, 1) !important;
     margin: 0 !important;
 }
@@ -354,11 +393,12 @@ body.in-iframe .sokrat-voice-dock {
     width: 38px !important;
     height: 38px !important;
     border-radius: 10px !important;
-    background: #dcfce7 !important;
-    color: #16a34a !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #10b981 !important;
     display: inline-grid !important;
     place-items: center !important;
-    font-size: 18px !important;
+    font-size: 17px !important;
     flex-shrink: 0 !important;
     animation: sokrat-voice-ring 0.8s ease-in-out infinite alternate !important;
 }
@@ -370,18 +410,20 @@ body.in-iframe .sokrat-voice-dock {
     display: flex !important;
     align-items: center !important;
     gap: 8px !important;
-    margin-bottom: 3px !important;
+    margin-bottom: 4px !important;
 }
 .sokrat-voice-toast-num {
     font-size: 15px !important;
-    color: #0f172a !important;
+    color: #f4f4f5 !important;
     font-family: monospace !important;
+    font-weight: 800 !important;
 }
 .sokrat-voice-toast-badge {
     font-size: 10px !important;
     font-weight: 800 !important;
-    background: #dcfce7 !important;
-    color: #15803d !important;
+    background: rgba(16, 185, 129, 0.15) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important;
     padding: 2px 7px !important;
     border-radius: 999px !important;
 }
@@ -396,53 +438,39 @@ body.in-iframe .sokrat-voice-dock {
     gap: 6px !important;
     padding: 4px 10px !important;
     border-radius: 7px !important;
-    background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
-    color: #0f172a !important;
+    background: rgba(255, 255, 255, 0.06) !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    color: #e4e4e7 !important;
     font-weight: 700 !important;
     font-size: 12px !important;
     text-decoration: none !important;
     transition: all 0.15s ease !important;
 }
 .sokrat-voice-lead-link:hover {
-    background: #f1f5f9 !important;
-    border-color: #cbd5e1 !important;
-    color: #dc2637 !important;
+    background: rgba(255, 255, 255, 0.12) !important;
+    border-color: rgba(239, 68, 68, 0.4) !important;
+    color: #f87171 !important;
 }
 .sokrat-voice-lead-link.create {
-    color: #16a34a !important;
-    background: #f0fdf4 !important;
-    border-color: #bbf7d0 !important;
+    color: #34d399 !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    border-color: rgba(16, 185, 129, 0.25) !important;
 }
 .sokrat-voice-toast-dismiss {
     background: none !important;
     border: none !important;
-    color: #94a3b8 !important;
+    color: #71717a !important;
     cursor: pointer !important;
     font-size: 16px !important;
-    padding: 2px !important;
+    padding: 3px !important;
     display: inline-grid !important;
     place-items: center !important;
+    border-radius: 6px !important;
+    transition: color 0.15s ease !important;
 }
-.sokrat-voice-toast-dismiss:hover { color: #0f172a !important; }
+.sokrat-voice-toast-dismiss:hover { color: #f4f4f5 !important; }
 
-/* Dark mode overrides (Matching SokratCRM Theme) */
-html.dark-mode .sokrat-voice-pill { background: #18181b !important; color: #f4f4f5 !important; border-color: rgba(255,255,255,0.12) !important; }
-html.dark-mode .sokrat-voice-ext { background: #27272a !important; color: #a1a1aa !important; }
-html.dark-mode .sokrat-voice-action-btn { background: #18181b !important; border-color: rgba(255,255,255,0.12) !important; color: #f4f4f5 !important; }
-html.dark-mode .sokrat-voice-action-btn.hangup { background: rgba(220,38,55,0.15) !important; color: #f87171 !important; border-color: rgba(220,38,55,0.3) !important; }
-html.dark-mode .sokrat-voice-panel { background: #18181b !important; border-color: rgba(255,255,255,0.1) !important; }
-html.dark-mode .sokrat-voice-frame-wrap { background: #09090b !important; }
-html.dark-mode .sokrat-voice-toast { background: #18181b !important; color: #f4f4f5 !important; border-color: #16a34a !important; }
-html.dark-mode .sokrat-voice-toast-num { color: #f4f4f5 !important; }
-html.dark-mode .sokrat-voice-lead-link { background: #27272a !important; border-color: rgba(255,255,255,0.08) !important; color: #f4f4f5 !important; }
-
-@keyframes sokrat-voice-pulse { to { opacity: 0.35; transform: scale(0.9); } }
-@keyframes sokrat-voice-ring { 0% { transform: rotate(-6deg); } 100% { transform: rotate(6deg); } }
-@keyframes sokrat-voice-slide-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes sokrat-voice-toast-in { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
-
-/* --- SOKRAT LEAD PROFILE SCREEN-POP MODAL --- */
+/* --- REFINED SOKRAT LEAD PROFILE SCREEN-POP MODAL --- */
 .sokrat-lead-screen-pop {
     position: fixed !important;
     top: 24px !important;
@@ -451,21 +479,15 @@ html.dark-mode .sokrat-voice-lead-link { background: #27272a !important; border-
     z-index: 2147483647 !important;
     width: 90% !important;
     max-width: 480px !important;
-    background: #ffffff !important;
-    border: 2px solid #3b82f6 !important;
+    background: #111116 !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
     border-radius: 16px !important;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.25), 0 0 0 1px rgba(59, 130, 246, 0.15) !important;
-    animation: sokrat-screen-pop-slide 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    animation: sokrat-screen-pop-slide 0.28s cubic-bezier(0.16, 1, 0.3, 1) !important;
     overflow: hidden !important;
     font-family: inherit !important;
     direction: rtl !important;
-}
-
-html.dark-mode .sokrat-lead-screen-pop {
-    background: #18181b !important;
-    border-color: #3b82f6 !important;
     color: #f4f4f5 !important;
-    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6) !important;
 }
 
 .sokrat-screen-pop-head {
@@ -473,13 +495,8 @@ html.dark-mode .sokrat-lead-screen-pop {
     align-items: center !important;
     justify-content: space-between !important;
     padding: 12px 18px !important;
-    background: #eff6ff !important;
-    border-bottom: 1px solid #dbeafe !important;
-}
-
-html.dark-mode .sokrat-screen-pop-head {
-    background: #1e293b !important;
-    border-bottom-color: #334155 !important;
+    background: #181820 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
 }
 
 .sokrat-screen-pop-title {
@@ -488,62 +505,57 @@ html.dark-mode .sokrat-screen-pop-head {
     gap: 8px !important;
     font-size: 14px !important;
     font-weight: 800 !important;
-    color: #1e40af !important;
-}
-
-html.dark-mode .sokrat-screen-pop-title {
-    color: #93c5fd !important;
+    color: #f4f4f5 !important;
 }
 
 .sokrat-screen-pop-badge-ext {
     font-size: 11px !important;
     font-weight: 800 !important;
-    background: #dbeafe !important;
-    color: #1e40af !important;
+    background: rgba(239, 68, 68, 0.15) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+    color: #f87171 !important;
     padding: 2px 7px !important;
     border-radius: 999px !important;
     margin-inline-start: 6px !important;
 }
 
-html.dark-mode .sokrat-screen-pop-badge-ext {
-    background: rgba(59, 130, 246, 0.2) !important;
-    color: #93c5fd !important;
-}
-
 .sokrat-screen-pop-pulse {
-    width: 10px !important;
-    height: 10px !important;
+    width: 9px !important;
+    height: 9px !important;
     border-radius: 50% !important;
     background: #10b981 !important;
     box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7) !important;
     animation: sokrat-pop-pulse 1.2s infinite !important;
 }
 
+@keyframes sokrat-voice-pulse { to { opacity: 0.35; transform: scale(0.9); } }
+@keyframes sokrat-voice-ring { 0% { transform: rotate(-6deg); } 100% { transform: rotate(6deg); } }
+@keyframes sokrat-voice-slide-up { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes sokrat-voice-toast-in { from { opacity: 0; transform: translate(-50%, -16px); } to { opacity: 1; transform: translate(-50%, 0); } }
 @keyframes sokrat-pop-pulse {
     0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
     70% { transform: scale(1); box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
     100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
 }
-
 @keyframes sokrat-screen-pop-slide {
-    from { opacity: 0; transform: translate(-50%, -24px); }
+    from { opacity: 0; transform: translate(-50%, -20px); }
     to { opacity: 1; transform: translate(-50%, 0); }
 }
 
 .sokrat-screen-pop-close {
     background: none !important;
     border: none !important;
-    color: #64748b !important;
-    font-size: 16px !important;
+    color: #a1a1aa !important;
+    font-size: 15px !important;
     cursor: pointer !important;
     padding: 4px !important;
     display: grid !important;
     place-items: center !important;
     border-radius: 6px !important;
+    transition: all 0.15s ease !important;
 }
-
 .sokrat-screen-pop-close:hover {
-    background: rgba(0,0,0,0.06) !important;
+    background: rgba(239, 68, 68, 0.15) !important;
     color: #ef4444 !important;
 }
 
@@ -562,11 +574,7 @@ html.dark-mode .sokrat-screen-pop-badge-ext {
     font-size: 18px !important;
     font-weight: 800 !important;
     font-family: monospace !important;
-    color: #0f172a !important;
-}
-
-html.dark-mode .sokrat-screen-pop-caller .phone-num {
-    color: #f8fafc !important;
+    color: #f4f4f5 !important;
 }
 
 .sokrat-screen-pop-caller .badge-status {
@@ -574,50 +582,39 @@ html.dark-mode .sokrat-screen-pop-caller .phone-num {
     font-weight: 700 !important;
     padding: 2px 8px !important;
     border-radius: 999px !important;
-    background: #fef3c7 !important;
-    color: #92400e !important;
+    background: rgba(245, 158, 11, 0.15) !important;
+    border: 1px solid rgba(245, 158, 11, 0.3) !important;
+    color: #fbbf24 !important;
 }
 
 .sokrat-pop-lead-card {
-    background: #f8fafc !important;
-    border: 1px solid #e2e8f0 !important;
+    background: #181820 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     border-radius: 12px !important;
     padding: 12px 14px !important;
     margin-bottom: 12px !important;
 }
 
-html.dark-mode .sokrat-pop-lead-card {
-    background: #27272a !important;
-    border-color: #3f3f46 !important;
-}
-
 .sokrat-pop-lead-name {
     font-size: 16px !important;
     font-weight: 800 !important;
-    color: #0f172a !important;
+    color: #f4f4f5 !important;
     margin-bottom: 4px !important;
-}
-
-html.dark-mode .sokrat-pop-lead-name {
-    color: #f8fafc !important;
 }
 
 .sokrat-pop-lead-meta {
     font-size: 12px !important;
-    color: #64748b !important;
+    color: #a1a1aa !important;
     display: flex !important;
     flex-wrap: wrap !important;
     gap: 8px !important;
     align-items: center !important;
 }
 
-html.dark-mode .sokrat-pop-lead-meta {
-    color: #a1a1aa !important;
-}
-
 .sokrat-pop-stage-badge {
-    background: #dbeafe !important;
-    color: #1e40af !important;
+    background: rgba(59, 130, 246, 0.15) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+    color: #93c5fd !important;
     padding: 2px 8px !important;
     border-radius: 6px !important;
     font-weight: 700 !important;
@@ -650,33 +647,24 @@ html.dark-mode .sokrat-pop-lead-meta {
     background: #2563eb !important;
     color: #ffffff !important;
 }
-
 .sokrat-pop-btn-primary:hover {
     background: #1d4ed8 !important;
     color: #ffffff !important;
 }
 
 .sokrat-pop-btn-secondary {
-    background: #f1f5f9 !important;
-    color: #334155 !important;
-    border: 1px solid #cbd5e1 !important;
-}
-
-html.dark-mode .sokrat-pop-btn-secondary {
-    background: #3f3f46 !important;
+    background: rgba(255, 255, 255, 0.08) !important;
     color: #e4e4e7 !important;
-    border-color: #52525b !important;
+    border: 1px solid rgba(255, 255, 255, 0.12) !important;
 }
-
 .sokrat-pop-btn-secondary:hover {
-    background: #e2e8f0 !important;
+    background: rgba(255, 255, 255, 0.15) !important;
 }
 
 .sokrat-pop-btn-create {
     background: #10b981 !important;
     color: #ffffff !important;
 }
-
 .sokrat-pop-btn-create:hover {
     background: #059669 !important;
     color: #ffffff !important;
@@ -690,9 +678,9 @@ html.dark-mode .sokrat-pop-btn-secondary {
     width: 26px !important;
     height: 26px !important;
     border-radius: 6px !important;
-    background: #ecfdf5 !important;
-    border: 1px solid #a7f3d0 !important;
-    color: #059669 !important;
+    background: rgba(16, 185, 129, 0.12) !important;
+    border: 1px solid rgba(16, 185, 129, 0.3) !important;
+    color: #34d399 !important;
     font-size: 12px !important;
     cursor: pointer !important;
     transition: all 0.15s ease !important;
@@ -700,23 +688,11 @@ html.dark-mode .sokrat-pop-btn-secondary {
     vertical-align: middle !important;
     padding: 0 !important;
 }
-
 .btn-dial-inline:hover {
     background: #10b981 !important;
     border-color: #059669 !important;
     color: #ffffff !important;
     transform: scale(1.08) !important;
-}
-
-html.dark-mode .btn-dial-inline {
-    background: rgba(16, 185, 129, 0.15) !important;
-    border-color: rgba(16, 185, 129, 0.3) !important;
-    color: #34d399 !important;
-}
-
-html.dark-mode .btn-dial-inline:hover {
-    background: #10b981 !important;
-    color: #ffffff !important;
 }
 </style>
 
@@ -728,6 +704,11 @@ html.dark-mode .btn-dial-inline:hover {
         const cleanPhone = String(phone).replace(/[^0-9+]/g, '');
         if (!cleanPhone) return;
 
+        // MicroSIP launcher via OS tel: protocol
+        window.location.href = 'tel:' + cleanPhone;
+
+        /*
+        // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
         if (typeof window.__sokratVoiceTriggerDial === 'function') {
             window.__sokratVoiceTriggerDial(cleanPhone, leadName);
         } else {
@@ -735,6 +716,7 @@ html.dark-mode .btn-dial-inline:hover {
             window.__sokratPendingLeadName = leadName;
             window.dispatchEvent(new CustomEvent('sokrat:voice-dial', { detail: { phone: cleanPhone, leadName } }));
         }
+        */
     };
 
     // Defense-in-depth: Never initialize or display CRM voice dock when page is embedded inside an iframe or popup
@@ -1277,6 +1259,16 @@ html.dark-mode .btn-dial-inline:hover {
         });
 
         window.__sokratVoiceTriggerDial = function(cleanPhone, leadName) {
+            // MicroSIP launcher via OS tel: protocol
+            if (cleanPhone) {
+                window.location.href = 'tel:' + cleanPhone;
+                if (typeof showToast === 'function') {
+                    showToast('جاري الاتصال عبر MicroSIP (' + cleanPhone + ')...', 3000);
+                }
+            }
+
+            /*
+            // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
             expandPanel();
             if (leadName && remoteEl) remoteEl.textContent = leadName;
 
@@ -1296,6 +1288,7 @@ html.dark-mode .btn-dial-inline:hover {
                 pendingDial = cleanPhone;
                 showToast('جاري تجهيز الهاتف والاتصال...', 3500);
             }
+            */
         };
 
         if (window.__sokratPendingDial) {
@@ -1379,7 +1372,8 @@ html.dark-mode .btn-dial-inline:hover {
         document.addEventListener('visibilitychange', handleTabSwitch);
         window.addEventListener('focus', handleTabSwitch);
 
-        // Auto-boot softphone session in background so the pill connects automatically on page load
+        // Auto-boot softphone session in background: commented out in favor of MicroSIP
+        /*
         try {
             if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
                 const savedPanelOpen = sessionStorage.getItem('sokrat_voice_panel_open') === '1';
@@ -1399,6 +1393,7 @@ html.dark-mode .btn-dial-inline:hover {
                 loadFreshSession();
             }
         }
+        */
     }
 
     if (document.readyState === 'loading') {

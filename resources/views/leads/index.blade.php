@@ -1000,7 +1000,7 @@ html.dark-mode .flash.success {
         </section>
     </main>
 </div>
-<script src="{{ asset('crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 @include('partials.transition-popup')
 </body>
 </html>

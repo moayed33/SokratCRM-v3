@@ -1332,13 +1332,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (modalSipBtn) {
       if (phoneDigits) {
         modalSipBtn.setAttribute('data-voice-dial', phoneDigits);
+        modalSipBtn.setAttribute('href', 'tel:' + phoneDigits);
         modalSipBtn.setAttribute('data-lead-name', event.title || '');
         modalSipBtn.style.display = 'inline-flex';
         modalSipBtn.onclick = (e) => {
           e.preventDefault();
+          // MicroSIP Integration via tel: protocol
+          window.location.href = 'tel:' + phoneDigits;
+          /*
+          // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
           if (typeof window.sokratVoiceDial === 'function') {
             window.sokratVoiceDial(phoneDigits, event.title || '');
           }
+          */
         };
       } else {
         modalSipBtn.style.display = 'none';

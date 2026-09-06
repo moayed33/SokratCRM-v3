@@ -42,7 +42,7 @@
         <div class="esc-data">
             <div><span>{{ __('crm.donor') }}</span><strong>{{ $collectionCase->lead?->name ?: __('crm.unnamed_lead') }}</strong></div>
             <div><span>{{ __('crm.expected_collection_amount') }}</span><strong style="color:#16a34a; font-size:18px;">{{ number_format((float) $collectionCase->expected_amount, 2) }} {{ __('crm.currency_egp') }}</strong></div>
-            <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="#" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-lead-name="{{ $collectionCase->lead?->name }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
+            <div><span>{{ __('crm.donor_phone') }}</span><strong><a href="tel:{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-voice-dial="{{ preg_replace('/[^0-9+]/', '', (string)$collectionCase->lead?->phone) }}" data-lead-name="{{ $collectionCase->lead?->name }}">{{ $collectionCase->lead?->phone ?: '—' }}</a></strong></div>
             <div><span>{{ __('crm.geography_and_zones') }}</span><strong>{{ $collectionCase->subregion?->full_name ?? ($collectionCase->lead?->subregion?->full_name ?? ($collectionCase->governorate?->name ?? '—')) }}</strong></div>
             <div style="grid-column:1/-1;"><span>{{ __('crm.donor_address') }}</span><strong>{{ $collectionCase->collection_address }}</strong></div>
             <div><span>{{ __('crm.collector_on_site') }}</span><strong>{{ $escalation->collector?->name ?: '—' }} ({{ $escalation->collector?->mobile_phone ?: '—' }})</strong></div>
@@ -58,11 +58,11 @@
         @php $cleanPhone = preg_replace('/[^0-9+]/', '', (string)($collectionCase->lead?->phone ?? '')); @endphp
         @if($cleanPhone)
             <div class="esc-actions-bar">
-                <a href="#" data-voice-dial="{{ $cleanPhone }}" data-lead-name="{{ $collectionCase->lead?->name }}" class="esc-btn call"><i class="bi bi-telephone-fill"></i> {{ __('crm.call') }} {{ __('crm.donor') }}</a>
+                <a href="tel:{{ $cleanPhone }}" data-voice-dial="{{ $cleanPhone }}" data-lead-name="{{ $collectionCase->lead?->name }}" class="esc-btn call"><i class="bi bi-telephone-fill"></i> {{ __('crm.call') }} {{ __('crm.donor') }}</a>
                 <a href="https://wa.me/{{ $cleanPhone }}" target="_blank" rel="noopener" class="esc-btn whatsapp"><i class="bi bi-whatsapp"></i> WhatsApp {{ __('crm.donor') }}</a>
                 @if($escalation->collector?->mobile_phone)
                     @php $collectorPhone = preg_replace('/[^0-9+]/', '', (string)$escalation->collector->mobile_phone); @endphp
-                    <a href="#" data-voice-dial="{{ $collectorPhone }}" data-lead-name="{{ $escalation->collector?->name }}" class="esc-btn" style="background:#475569; color:#fff;"><i class="bi bi-telephone-outbound"></i> {{ __('crm.call') }} {{ __('crm.collector') }}</a>
+                    <a href="tel:{{ $collectorPhone }}" data-voice-dial="{{ $collectorPhone }}" data-lead-name="{{ $escalation->collector?->name }}" class="esc-btn" style="background:#475569; color:#fff;"><i class="bi bi-telephone-outbound"></i> {{ __('crm.call') }} {{ __('crm.collector') }}</a>
                 @endif
             </div>
         @endif

@@ -1815,7 +1815,8 @@ html.dark-mode .chip-group-label {
        @if ($callPhone)
         <a
          class="header-action"
-         href="callto:{{ $callPhone }}"
+         href="tel:{{ $callPhone }}"
+         data-voice-dial="{{ $callPhone }}"
         >
          {{ __('crm.call_action') }}
         </a>

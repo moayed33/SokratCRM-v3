@@ -433,7 +433,7 @@
                             </div>
                             <div style="display:flex;gap:6px">
                                 @if ($callPhone)
-                                    <a href="#" class="btn small soft" data-voice-dial="{{ $callPhone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
+                                    <a href="tel:{{ $callPhone }}" class="btn small soft" data-voice-dial="{{ $callPhone }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
                                         <i class="bi bi-telephone-fill" style="color:#dc2637"></i>
                                     </a>
                                     <a href="https://wa.me/{{ $whatsappPhone }}" target="_blank" rel="noopener" class="btn small success" title="{{ __('crm.whatsapp_chat') }}">
@@ -453,7 +453,7 @@
                                     <span dir="ltr" style="font-weight:700">{{ $addPhone->display_phone }}</span>
                                 </div>
                                 <div style="display:flex;gap:6px">
-                                    <a href="#" class="btn small soft" data-voice-dial="{{ $rawDigits }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
+                                    <a href="tel:{{ $rawDigits }}" class="btn small soft" data-voice-dial="{{ $rawDigits }}" data-lead-id="{{ $lead->id }}" data-lead-name="{{ $lead->name }}" title="{{ __('crm.call') ?? 'اتصال' }}">
                                         <i class="bi bi-telephone-fill" style="color:#dc2637"></i>
                                     </a>
                                     <a href="https://wa.me/{{ $rawDigits }}" target="_blank" rel="noopener" class="btn small success" title="{{ __('crm.whatsapp_chat') }}">
@@ -1117,7 +1117,7 @@
     })();
 </script>
 @endcan
-<script src="{{ asset('crm-sidebar.js') }}"></script>
+<script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 @include('partials.transition-popup')
 
 </body>

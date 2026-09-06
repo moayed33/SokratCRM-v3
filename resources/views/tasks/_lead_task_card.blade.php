@@ -136,7 +136,7 @@
   @if ($lead->phone)
    <a
     class="task-btn-main"
-    href="#"
+    href="tel:{{ $rawPhone }}"
     data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
     data-lead-name="{{ $lead->name }}"
     data-voice-dial="{{ $rawPhone }}"

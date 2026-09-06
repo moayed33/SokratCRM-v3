@@ -1,3 +1,27 @@
+// Universal MicroSIP Click-to-Call Handler via tel: protocol
+(function() {
+    function dialMicroSip(phone) {
+        if (!phone) return;
+        var clean = String(phone).replace(/[^0-9+]/g, '');
+        if (clean) {
+            window.location.href = 'tel:' + clean;
+        }
+    }
+
+    window.sokratVoiceDial = dialMicroSip;
+    globalThis.sokratVoiceDial = dialMicroSip;
+
+    document.addEventListener('click', function(e) {
+        var btn = e.target && e.target.closest ? e.target.closest('[data-voice-dial]') : null;
+        if (!btn) return;
+        if (btn.hasAttribute('data-transition-popup')) return;
+        var phone = btn.getAttribute('data-voice-dial');
+        if (!phone) return;
+        e.preventDefault();
+        dialMicroSip(phone);
+    }, true);
+})();
+
 (() => {
  if (window.__sokratCrmSidebarReady) {
   return;
