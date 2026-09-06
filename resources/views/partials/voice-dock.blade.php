@@ -1,3 +1,9 @@
+@if(Auth::check())
+<script>
+    window.__crmTelephonyMode = '{{ !empty(Auth::user()->voip_extension) ? "webrtc" : "microsip" }}';
+    window.__crmUserExtension = '{{ Auth::user()->voip_extension ?? "" }}';
+</script>
+@endif
 @if(Auth::check() && !empty(Auth::user()->voip_extension) && !request()->boolean('kanban_popup') && !request()->has('kanban_popup') && !request()->boolean('popup') && !request()->has('popup'))
 {{-- SOKRAT VOICE FLOATING DOCK & EMBED CONTROLLER --}}
 <aside id="sokratVoiceDock" class="sokrat-voice-dock" aria-label="Sokrat Voice">
@@ -702,11 +708,6 @@ body.in-iframe .sokrat-voice-dock {
         const cleanPhone = String(phone).replace(/[^0-9+]/g, '');
         if (!cleanPhone) return;
 
-        // MicroSIP launcher via OS tel: protocol
-        window.location.href = 'tel:' + cleanPhone;
-
-        /*
-        // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
         if (typeof window.__sokratVoiceTriggerDial === 'function') {
             window.__sokratVoiceTriggerDial(cleanPhone, leadName);
         } else {
@@ -714,7 +715,6 @@ body.in-iframe .sokrat-voice-dock {
             window.__sokratPendingLeadName = leadName;
             window.dispatchEvent(new CustomEvent('sokrat:voice-dial', { detail: { phone: cleanPhone, leadName } }));
         }
-        */
     };
 
     // Defense-in-depth: Never initialize or display CRM voice dock when page is embedded inside an iframe or popup
@@ -1257,16 +1257,6 @@ body.in-iframe .sokrat-voice-dock {
         });
 
         window.__sokratVoiceTriggerDial = function(cleanPhone, leadName) {
-            // MicroSIP launcher via OS tel: protocol
-            if (cleanPhone) {
-                window.location.href = 'tel:' + cleanPhone;
-                if (typeof showToast === 'function') {
-                    showToast('جاري الاتصال عبر MicroSIP (' + cleanPhone + ')...', 3000);
-                }
-            }
-
-            /*
-            // Sokrat Voice Softphone Launcher (commented out in favor of MicroSIP)
             expandPanel();
             if (leadName && remoteEl) remoteEl.textContent = leadName;
 
@@ -1284,9 +1274,10 @@ body.in-iframe .sokrat-voice-dock {
                 }, VOICE_ORIGIN);
             } else {
                 pendingDial = cleanPhone;
-                showToast('جاري تجهيز الهاتف والاتصال...', 3500);
+                if (typeof showToast === 'function') {
+                    showToast('جاري تجهيز الهاتف والاتصال...', 3500);
+                }
             }
-            */
         };
 
         if (window.__sokratPendingDial) {
@@ -1300,14 +1291,7 @@ body.in-iframe .sokrat-voice-dock {
                 window.__sokratVoiceTriggerDial(e.detail.phone, e.detail.leadName);
             }
         });
-        // Global Click-to-Call Handler for any [data-voice-dial]
-        document.addEventListener('click', (e) => {
-            const btn = e.target.closest('[data-voice-dial]');
-            if (!btn) return;
-            if (btn.hasAttribute('data-transition-popup')) return;
-            e.preventDefault();
-            window.sokratVoiceDial(btn.dataset.voiceDial, btn.dataset.leadName);
-        });
+// Handled authoritatively by crm-sidebar.js router
 
         // Quick Action Relays
         const muteBtn = dock.querySelector('[data-voice-mute]');

@@ -1,15 +1,22 @@
-// Universal MicroSIP Click-to-Call Handler via tel: protocol
+// Universal Dual-Mode Telephony Router (WebRTC & MicroSIP)
 (function() {
-    function dialMicroSip(phone) {
+    function dialPhone(phone, leadName) {
         if (!phone) return;
         var clean = String(phone).replace(/[^0-9+]/g, '');
-        if (clean) {
-            window.location.href = 'tel:' + clean;
+        if (!clean) return;
+
+        // Mode B: WebRTC Softphone (User has VoIP extension assigned)
+        if (window.__crmTelephonyMode === 'webrtc' && typeof window.__sokratVoiceTriggerDial === 'function') {
+            window.__sokratVoiceTriggerDial(clean, leadName || '');
+            return;
         }
+
+        // Mode A: MicroSIP via OS tel: protocol (User has no extension assigned)
+        window.location.href = 'tel:' + clean;
     }
 
-    window.sokratVoiceDial = dialMicroSip;
-    globalThis.sokratVoiceDial = dialMicroSip;
+    window.sokratVoiceDial = dialPhone;
+    globalThis.sokratVoiceDial = dialPhone;
 
     document.addEventListener('click', function(e) {
         var btn = e.target && e.target.closest ? e.target.closest('[data-voice-dial]') : null;
@@ -18,7 +25,7 @@
         var phone = btn.getAttribute('data-voice-dial');
         if (!phone) return;
         e.preventDefault();
-        dialMicroSip(phone);
+        dialPhone(phone, btn.getAttribute('data-lead-name') || '');
     }, true);
 })();
 
