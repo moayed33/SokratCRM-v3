@@ -89,9 +89,10 @@ class LeadTransferController extends Controller
                 $this->importTemplateColumns()
             ),
             [
-                ['أحمد محمد علي', '01012345678'],
+                ['أحمد محمد علي', '01012345678', '01123456789, 01234567890'],
+                ['سارة إبراهيم خليل', '01098765432', '01511223344'],
             ],
-            'crm-v2-leads-import-template.xlsx'
+            'crm-v3-leads-import-template.xlsx'
         );
     }
 
@@ -100,6 +101,7 @@ class LeadTransferController extends Controller
         return [
             'name' => 'اسم العميل / المتبرع',
             'phone' => 'رقم الهاتف الأساسي',
+            'additional_phones' => 'أرقام هواتف إضافية',
         ];
     }
 
