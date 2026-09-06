@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'per_page' => 'العدد بالصفحة',
     'app_name' => 'SokratCRM',
     'crm_subtitle' => 'إدارة علاقات العملاء',
     'collapse_sidebar' => 'طي القائمة',

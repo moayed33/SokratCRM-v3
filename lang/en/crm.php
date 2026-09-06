@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'per_page' => 'Per page',
     'app_name' => 'SokratCRM',
     'crm_subtitle' => 'Customer Relationship Management',
     'collapse_sidebar' => 'Collapse Menu',

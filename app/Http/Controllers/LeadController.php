@@ -367,7 +367,14 @@ class LeadController extends Controller
                 break;
         }
 
-        $leads = $query->paginate(20)->withQueryString();
+        $perPage = filter_var($request->query('per_page', 20), FILTER_VALIDATE_INT, [
+            'options' => ['default' => 20, 'min_range' => 5, 'max_range' => 500],
+        ]);
+        if ($perPage === false || $perPage <= 0) {
+            $perPage = 20;
+        }
+
+        $leads = $query->paginate($perPage)->withQueryString();
         $totalLeads = Lead::query()->accessibleTo($user)->count();
 
         $activeQuery = array_filter(
@@ -392,6 +399,7 @@ class LeadController extends Controller
             'queryWithoutStatus' => $queryWithoutStatus,
             'totalLeads' => $totalLeads,
             'filterFields' => $filterFields,
+            'perPage' => $perPage,
             'tableColumns' => LeadFieldSchema::tableColumns()
                 ->where('is_system', false)
                 ->values(),

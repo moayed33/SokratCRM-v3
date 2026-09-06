@@ -642,6 +642,107 @@ html.dark-mode .flash.success {
   .filter-apply-btn { flex: 1; justify-content: center; }
   .pagination-wrap { flex-direction: column; align-items: center; text-align: center; }
 }
+
+/* Leads Per-Page Slider */
+.col-per-page {
+  min-width: 190px;
+}
+.filter-range-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line, #e2e8f0);
+  outline: none;
+  margin: 7px 0 2px 0;
+  cursor: pointer;
+  accent-color: var(--red, #dc2637);
+}
+.filter-range-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--red, #dc2637);
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(220, 38, 55, 0.4);
+  transition: transform 0.12s ease, background-color 0.12s ease;
+}
+.filter-range-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  background: #b81829;
+}
+.filter-range-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--red, #dc2637);
+  cursor: pointer;
+  border: none;
+  box-shadow: 0 2px 6px rgba(220, 38, 55, 0.4);
+}
+
+/* ── ARABIC RTL SCROLLBAR ON LEFT + RED & THICKER ── */
+html[dir="rtl"] {
+  height: 100% !important;
+  overflow: hidden !important;
+  direction: rtl !important;
+}
+
+html[dir="rtl"] body {
+  height: 100% !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  direction: rtl !important;
+}
+
+html[dir="rtl"] .crm-app,
+html[dir="rtl"] .crm-main,
+html[dir="rtl"] .table-wrap,
+html[dir="rtl"] .filter-panel {
+  direction: rtl !important;
+}
+
+/* Red & Thicker Scrollbar (Global) */
+html,
+body,
+* {
+  scrollbar-color: #dc2637 transparent !important;
+  scrollbar-width: auto !important;
+}
+
+*::-webkit-scrollbar,
+::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+*::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
+  background-color: #dc2637 !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover {
+  background-color: #b91c1c !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:active,
+::-webkit-scrollbar-thumb:active {
+  background-color: #7f1d1d !important;
+  background-clip: padding-box !important;
+}
 </style>
 </head>
 <body>
@@ -813,16 +914,39 @@ html.dark-mode .flash.success {
                     </div>
                 @endforeach
 
-                <!-- Action Buttons: Next to filters -->
-                <div class="filter-actions-col">
-                    <button type="submit" class="btn primary small filter-apply-btn" title="{{ __('crm.apply_filter') }}">
-                        <i class="bi bi-funnel-fill"></i> {{ __('crm.apply') }}
-                    </button>
-                    @if ($activeQuery !== [])
-                        <a href="{{ route('v2.leads') }}" class="btn soft small filter-reset-btn" title="{{ __('crm.reset_filters') }}">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </a>
-                    @endif
+                <!-- Action Buttons & Slider: Next to filters -->
+                <div class="filter-actions-col" style="display: flex; align-items: flex-end; gap: 14px; grid-column: span 2; min-width: 270px;">
+                    <div class="col-per-page" style="flex: 1; min-width: 150px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; font-size: 11px; font-weight: 800; color: var(--muted); margin-bottom: 3px;">
+                            <label for="perPageSlider" style="margin: 0; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+                                <i class="bi bi-sliders" style="color: var(--red, #dc2637);"></i>
+                                <span>{{ __('crm.per_page') }}:</span>
+                            </label>
+                            <span id="perPageBadge" style="background: var(--red, #dc2637); color: #fff; padding: 1px 8px; border-radius: 999px; font-size: 11px; font-weight: 800; font-family: monospace;">{{ $perPage ?? 20 }}</span>
+                        </div>
+                        <input type="range" 
+                               id="perPageSlider" 
+                               name="per_page" 
+                               min="10" 
+                               max="200" 
+                               step="10" 
+                               value="{{ $perPage ?? 20 }}" 
+                               class="filter-range-slider"
+                               oninput="document.getElementById('perPageBadge').textContent = this.value"
+                               onchange="this.form.submit()"
+                               title="{{ __('crm.drag_to_change_per_page') ?? 'اسحب لتغيير عدد العملاء في الصفحة' }}">
+                    </div>
+
+                    <div style="display: flex; align-items: center; gap: 6px; height: 34px; flex-shrink: 0; margin-bottom: 2px;">
+                        <button type="submit" class="btn primary small filter-apply-btn" title="{{ __('crm.apply_filter') }}">
+                            <i class="bi bi-funnel-fill"></i> {{ __('crm.apply') }}
+                        </button>
+                        @if ($activeQuery !== [])
+                            <a href="{{ route('v2.leads') }}" class="btn soft small filter-reset-btn" title="{{ __('crm.reset_filters') }}">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </a>
+                        @endif
+                    </div>
                 </div>
             </form>
         </section>

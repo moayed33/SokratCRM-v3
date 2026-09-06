@@ -318,6 +318,37 @@
      </div>
     </div>
 
+    @if ($preview['valid_count'] > 0 && $preview['token'])
+     <div class="top-confirm-action-bar" style="margin: 18px 0; padding: 14px 18px; background: rgba(22, 163, 74, 0.08); border: 1px solid rgba(22, 163, 74, 0.3); border-radius: 12px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 10px;">
+       <span style="display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%; background: #16a34a; color: #fff; font-size: 16px;">✓</span>
+       <div>
+        <strong style="display: block; font-size: 14px; color: var(--dark, #182033);">
+         {{ __('جاهز للاستيراد الآن:') }} {{ $preview['valid_count'] }} {{ __('عميل صالح') }}
+        </strong>
+        <small style="color: var(--muted, #64748b); font-size: 11px;">
+         {{ __('يمكنك تأكيد الاستيراد مباشرة من هنا دون الحاجة للنزول لأسفل الصفحة.') }}
+        </small>
+       </div>
+      </div>
+      <form
+       class="confirmImportFormTop"
+       method="POST"
+       action="{{ route('v2.leads.import.confirm') }}"
+      >
+       @csrf
+       <input type="hidden" name="preview_token" value="{{ $preview['token'] }}">
+       <button
+        class="btn success"
+        type="submit"
+        style="height: 42px; padding: 0 20px; font-size: 13px; font-weight: 800; border-radius: 10px; box-shadow: 0 4px 14px rgba(22, 163, 74, 0.35); cursor: pointer;"
+       >
+        ✓ {{ __('تأكيد استيراد') }} {{ $preview['valid_count'] }} {{ __('عميل') }}
+       </button>
+      </form>
+     </div>
+    @endif
+
     @if (
      !empty(
       $preview['ignored_headers']
@@ -531,24 +562,16 @@
 @push('scripts')
 <script>
  (() => {
-  const confirmForm =
-   document.getElementById(
-    'confirmImportForm'
-   );
-
-  confirmForm?.addEventListener(
-   'submit',
-   (event) => {
-    const confirmed =
-     window.confirm(
-      '{{ __('سيتم الآن إضافة العملاء الصالحة فقط إلى CRM. العملاء المكررة أو الصفوف التي بها أخطاء لن تتم إضافتها. هل تريد المتابعة؟') }}'
-     );
-
-    if (!confirmed) {
-     event.preventDefault();
-    }
-   }
-  );
+  document.querySelectorAll('#confirmImportForm, .confirmImportFormTop').forEach(form => {
+    form.addEventListener('submit', (event) => {
+      const confirmed = window.confirm(
+        '{{ __('سيتم الآن إضافة العملاء الصالحة فقط إلى CRM. العملاء المكررة أو الصفوف التي بها أخطاء لن تتم إضافتها. هل تريد المتابعة؟') }}'
+      );
+      if (!confirmed) {
+        event.preventDefault();
+      }
+    });
+  });
  })();
 
   window.toggleDistributionOptions = function() {

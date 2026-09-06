@@ -971,6 +971,62 @@
 
   /* CRM TRANSFER SIDEBAR SYNC END */
 
+
+/* ── ARABIC RTL SCROLLBAR ON LEFT + RED & THICKER SCROLLBAR ── */
+html[dir="rtl"],
+html[lang="ar"],
+body[dir="rtl"],
+[dir="rtl"] {
+  direction: rtl !important;
+}
+
+html[dir="rtl"] body,
+html[lang="ar"] body,
+[dir="rtl"] .transfer-layout,
+[dir="rtl"] .transfer-main,
+[dir="rtl"] .transfer-content,
+[dir="rtl"] .table-wrap {
+  direction: rtl !important;
+}
+
+/* Red & Thicker Scrollbar */
+html,
+body,
+* {
+  scrollbar-color: #dc2637 transparent !important;
+  scrollbar-width: auto !important;
+}
+
+*::-webkit-scrollbar,
+::-webkit-scrollbar {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+*::-webkit-scrollbar-track,
+::-webkit-scrollbar-track {
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-thumb,
+::-webkit-scrollbar-thumb {
+  background-color: #dc2637 !important;
+  border-radius: 9999px !important;
+  border: 2px solid transparent !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:hover,
+::-webkit-scrollbar-thumb:hover {
+  background-color: #b91c1c !important;
+  background-clip: padding-box !important;
+}
+
+*::-webkit-scrollbar-thumb:active,
+::-webkit-scrollbar-thumb:active {
+  background-color: #7f1d1d !important;
+  background-clip: padding-box !important;
+}
 </style>
 
  @stack('styles')
