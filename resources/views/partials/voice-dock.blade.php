@@ -288,9 +288,10 @@ body.in-iframe .sokrat-voice-dock {
     max-width: calc(100vw - 40px) !important;
     max-height: calc(100vh - 90px) !important;
     background: #09090d !important;
-    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border: none !important;
+    outline: none !important;
     border-radius: 16px !important;
-    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.05) !important;
+    box-shadow: 0 24px 70px rgba(0, 0, 0, 0.6) !important;
     z-index: 2147483646 !important;
     overflow: hidden !important;
     display: flex !important;
@@ -830,24 +831,43 @@ body.in-iframe .sokrat-voice-dock {
                     voiceState.callId = payload.callId;
                     voiceState.remote = payload.phone || '';
                     setStatus('incall');
-                    callInfo.hidden = false;
+                    if (callInfo) {
+                        callInfo.hidden = false;
+                        callInfo.removeAttribute('hidden');
+                        callInfo.style.setProperty('display', 'inline-flex', 'important');
+                    }
                     quickActions.hidden = false;
-                    if (labelEl) labelEl.hidden = true;
+                    if (labelEl) {
+                        labelEl.hidden = true;
+                        labelEl.style.setProperty('display', 'none', 'important');
+                    }
                     remoteEl.textContent = voiceState.remote;
                     hideToast();
-                    startTimer();
+                    const callStart = payload.startTime ? Number(payload.startTime) : (voiceState.startTime || Date.now());
+                    const elapsed = Math.max(0, Math.floor((Date.now() - callStart) / 1000));
+                    startTimer(elapsed, callStart);
+                    saveActiveCallState(callStart);
                 } else if (state === 'ended' || state === 'failed') {
                     voiceState.inCall = false;
                     voiceState.callId = null;
                     currentIncomingCallId = null;
                     voiceState.remote = '';
                     setStatus(voiceState.registered ? 'online' : 'offline');
-                    callInfo.hidden = true;
+                    if (callInfo) {
+                        callInfo.hidden = true;
+                        callInfo.setAttribute('hidden', 'hidden');
+                        callInfo.style.setProperty('display', 'none', 'important');
+                    }
                     quickActions.hidden = true;
-                    if (labelEl) labelEl.hidden = false;
+                    if (labelEl) {
+                        labelEl.hidden = false;
+                        labelEl.removeAttribute('hidden');
+                        labelEl.style.removeProperty('display');
+                    }
                     hideToast();
                     hideScreenPop();
                     stopTimer();
+                    clearActiveCallState();
                 } else if (state === 'ringing') {
                     setStatus('ringing');
                 }
@@ -877,6 +897,10 @@ body.in-iframe .sokrat-voice-dock {
             statusDots.forEach(dot => dot.dataset.voiceStatus = status);
         }
         function loadFreshSession() {
+            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
+                frameLoaded = true;
+                return; // Persistent background worker handles audio
+            }
             const themeParam = isDarkMode() ? 'dark' : 'light';
             frameLoaded = false;
             frame.addEventListener('load', () => {
@@ -887,6 +911,11 @@ body.in-iframe .sokrat-voice-dock {
         }
 
         function expandPanel() {
+            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
+                panelOpen = true;
+                window.sokratDesktop.showSoftphone();
+                return;
+            }
             if (!frameLoaded || !frame.src || frame.src === 'about:blank') {
                 loadFreshSession();
             }
@@ -897,6 +926,11 @@ body.in-iframe .sokrat-voice-dock {
         }
 
         function collapsePanel() {
+            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
+                panelOpen = false;
+                window.sokratDesktop.hideSoftphone();
+                return;
+            }
             panel.setAttribute('hidden', 'hidden');
             panelOpen = false;
             try { sessionStorage.setItem('sokrat_voice_panel_open', '0'); } catch (_) {}
@@ -937,18 +971,30 @@ body.in-iframe .sokrat-voice-dock {
             });
         }
 
-        function startTimer(initialSeconds = 0) {
+        function startTimer(initialSeconds = 0, exactStartTime = null) {
             if (voiceState.timer) clearInterval(voiceState.timer);
+            voiceState.startTime = exactStartTime || (Date.now() - (initialSeconds * 1000));
             voiceState.seconds = initialSeconds;
+            if (callInfo) {
+                callInfo.hidden = false;
+                callInfo.removeAttribute('hidden');
+                callInfo.style.setProperty('display', 'inline-flex', 'important');
+            }
+            if (labelEl) {
+                labelEl.hidden = true;
+                labelEl.style.setProperty('display', 'none', 'important');
+            }
             const updateTicker = () => {
-                const m = String(Math.floor(voiceState.seconds / 60)).padStart(2, '0');
-                const s = String(voiceState.seconds % 60).padStart(2, '0');
-                timerEl.textContent = m + ':' + s;
+                const realElapsed = Math.max(0, Math.floor((Date.now() - voiceState.startTime) / 1000));
+                voiceState.seconds = realElapsed;
+                const m = String(Math.floor(realElapsed / 60)).padStart(2, '0');
+                const s = String(realElapsed % 60).padStart(2, '0');
+                if (timerEl) timerEl.textContent = m + ':' + s;
             };
             updateTicker();
             voiceState.timer = setInterval(() => {
-                voiceState.seconds++;
                 updateTicker();
+                saveActiveCallState(voiceState.startTime);
             }, 1000);
         }
 
@@ -957,11 +1003,66 @@ body.in-iframe .sokrat-voice-dock {
                 clearInterval(voiceState.timer);
                 voiceState.timer = null;
             }
-            timerEl.textContent = '00:00';
+            if (timerEl) timerEl.textContent = '00:00';
+            if (callInfo) {
+                callInfo.hidden = true;
+                callInfo.setAttribute('hidden', 'hidden');
+                callInfo.style.setProperty('display', 'none', 'important');
+            }
+            if (labelEl) {
+                labelEl.hidden = false;
+                labelEl.removeAttribute('hidden');
+                labelEl.style.removeProperty('display');
+            }
         }
 
-        // Clear any stale navigation call artifacts
-        try { sessionStorage.removeItem('sokrat_voice_active_call'); } catch (_) {}
+        function saveActiveCallState(exactStartTime = null) {
+            try {
+                sessionStorage.setItem('sokrat_voice_active_call', JSON.stringify({
+                    inCall: true,
+                    callId: voiceState.callId,
+                    remote: voiceState.remote,
+                    startTime: exactStartTime || voiceState.startTime || (Date.now() - (voiceState.seconds * 1000)),
+                    lastHeartbeat: Date.now()
+                }));
+            } catch (_) {}
+        }
+
+        function restoreActiveCallState() {
+            try {
+                const saved = JSON.parse(sessionStorage.getItem('sokrat_voice_active_call') || 'null');
+                if (saved && saved.inCall && saved.startTime && saved.lastHeartbeat) {
+                    const elapsedHeartbeat = (Date.now() - saved.lastHeartbeat) / 1000;
+                    if (elapsedHeartbeat < 15) {
+                        const elapsed = Math.max(0, Math.floor((Date.now() - saved.startTime) / 1000));
+                        voiceState.inCall = true;
+                        voiceState.callId = saved.callId;
+                        voiceState.remote = saved.remote || '';
+                        setStatus('incall');
+                        if (callInfo) {
+                            callInfo.hidden = false;
+                            callInfo.removeAttribute('hidden');
+                            callInfo.style.setProperty('display', 'inline-flex', 'important');
+                        }
+                        if (labelEl) {
+                            labelEl.hidden = true;
+                            labelEl.style.setProperty('display', 'none', 'important');
+                        }
+                        remoteEl.textContent = voiceState.remote;
+                        startTimer(elapsed);
+                    } else {
+                        clearActiveCallState();
+                    }
+                } else {
+                    clearActiveCallState();
+                }
+            } catch (_) {
+                clearActiveCallState();
+            }
+        }
+
+        // Restore active call and timer upon navigation across CRM tabs
+        restoreActiveCallState();
         function clearActiveCallState() {
             try {
                 sessionStorage.removeItem('sokrat_voice_active_call');
@@ -1160,9 +1261,14 @@ body.in-iframe .sokrat-voice-dock {
 
         // postMessage Event Listener from Voice Iframe
         window.addEventListener('message', (e) => {
-            if (e.source !== frame?.contentWindow || e.origin !== VOICE_ORIGIN) return;
+            const currentFrame = document.getElementById('sokratVoiceFrame');
+            const isFromFrame = currentFrame && (e.source === currentFrame.contentWindow || e.source === currentFrame);
+            const isFromSelf = e.source === window;
+            if (!isFromFrame && !isFromSelf) return;
+
             const msg = e.data;
-            if (!msg || msg.version !== 1 || typeof msg.type !== 'string') return;
+            if (!msg || typeof msg !== 'object') return;
+            if (msg.version !== 1 && msg.version !== '1') return;
 
             const type = msg.type;
             const payload = msg.payload && typeof msg.payload === 'object' ? msg.payload : {};
@@ -1245,16 +1351,17 @@ body.in-iframe .sokrat-voice-dock {
             expandPanel();
             if (leadName && remoteEl) remoteEl.textContent = leadName;
 
+            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
+                window.sokratDesktop.dial(cleanPhone, leadName);
+                return;
+            }
+
             if (frame && frame.contentWindow) {
                 frame.contentWindow.postMessage({
                     version: 1,
                     type: 'sokrat.voice.dial',
                     payload: { phone: cleanPhone, autoCall: true }
                 }, VOICE_ORIGIN);
-            }
-
-            if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
-                window.sokratDesktop.dial(cleanPhone, leadName);
             }
 
             if (voiceState.registered && frame && frame.contentWindow) {
@@ -1292,10 +1399,9 @@ body.in-iframe .sokrat-voice-dock {
             muteBtn.addEventListener('click', () => {
                 if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
                     window.sokratDesktop.callAction('toggle_mute', voiceState.callId);
-                    return;
                 }
                 if (frame && frame.contentWindow) {
-                    frame.contentWindow.postMessage({ version: 1, type: 'sokrat.voice.toggle_mute' }, VOICE_ORIGIN);
+                    frame.contentWindow.postMessage({ version: 1, type: 'sokrat.voice.toggle_mute' }, '*');
                 }
             });
         }
@@ -1303,10 +1409,9 @@ body.in-iframe .sokrat-voice-dock {
             hangupBtn.addEventListener('click', () => {
                 if (window.sokratDesktop && window.sokratDesktop.isDesktop) {
                     window.sokratDesktop.callAction('hangup', voiceState.callId);
-                    return;
                 }
                 if (frame && frame.contentWindow) {
-                    frame.contentWindow.postMessage({ version: 1, type: 'sokrat.voice.hangup' }, VOICE_ORIGIN);
+                    frame.contentWindow.postMessage({ version: 1, type: 'sokrat.voice.hangup' }, '*');
                 }
                 // Fallback: If frame was empty or no active call responded within 400ms, force-clear dock in-call state
                 setTimeout(() => {
