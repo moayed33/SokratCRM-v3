@@ -26,6 +26,8 @@ return [
     'status_new' => 'New',
     'status_donor' => 'Donor',
     'status_no_answer' => 'No Answer',
+    'status_followup_later' => 'Follow-up Later',
+    'stage_followup_later' => 'Follow-up Later',
     'status_interested' => 'Interested',
     'status_not_interested' => 'Not Interested',
     'status_meeting' => 'Meeting',

@@ -26,6 +26,8 @@ return [
     'status_new' => 'جديد',
     'status_donor' => 'متبرع',
     'status_no_answer' => 'لم يتم الرد',
+    'status_followup_later' => 'متابعة لاحقة',
+    'stage_followup_later' => 'متابعة لاحقة',
     'status_interested' => 'مهتم',
     'status_not_interested' => 'غير مهتم',
     'status_meeting' => 'مقابلة',

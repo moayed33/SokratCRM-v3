@@ -2069,7 +2069,7 @@ html.dark-mode .chip-group-label {
             type="button"
             class="outcome-btn outcome-btn--followup-later"
             data-outcome-status="followup_later"
-            data-outcome-id="{{ $lead->lead_status_id }}"
+            data-outcome-id="{{ $statusIdByCode->get('followup_later', '') }}"
            >
             <i class="bi bi-arrow-repeat"></i>
             {{ __('crm.outcome_followup_later') }}
@@ -3513,13 +3513,8 @@ html.dark-mode .chip-group-label {
   buttons.forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
 
-  const statusCode = btn.dataset.outcomeStatus;
   const targetId = btn.dataset.outcomeId;
-
-  if (statusCode === 'followup_later') {
-   // Keep current status - set select to current lead status
-   statusSelect.value = String(currentLeadStatusId);
-  } else {
+  if (targetId) {
    statusSelect.value = String(targetId);
   }
 
@@ -3527,25 +3522,12 @@ html.dark-mode .chip-group-label {
   statusSelect.dispatchEvent(new Event('change', { bubbles: true }));
  };
 
- // Preselect an explicit destination. Generic call/follow-up starts in
- // "follow up later" so the existing stage remains unchanged until the
- // agent deliberately selects another outcome.
  const preActivate = () => {
   buttons.forEach(btn => btn.classList.remove('active'));
 
-  if (!hasExplicitOutcome) {
-   outcomeBar
-    .querySelector('[data-outcome-status="followup_later"]')
-    ?.classList.add('active');
-   return;
-  }
-
   const currentVal = statusSelect.value;
   buttons.forEach(btn => {
-   if (
-    btn.dataset.outcomeStatus !== 'followup_later'
-    && String(btn.dataset.outcomeId) === String(currentVal)
-   ) {
+   if (String(btn.dataset.outcomeId) === String(currentVal)) {
     btn.classList.add('active');
    }
   });

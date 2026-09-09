@@ -161,6 +161,7 @@ main{
 }
 .kanban-column.new{--column-color:#3478f6}
 .kanban-column.no-answer{--column-color:#e59b16}
+.kanban-column.followup-later{--column-color:#7b61df}
 .kanban-column.not-interested{--column-color:#dc2637}
 .kanban-column.donor{--column-color:#16a34a}
 .column-head{
@@ -1765,6 +1766,7 @@ body.kanban-modal-open{
       $columnIconClass = match($column['code']) {
           'new' => 'bi bi-person-plus-fill',
           'no-answer', 'no_answer' => 'bi bi-telephone-x-fill',
+          'followup_later', 'followup-later' => 'bi bi-clock-history',
           'not_interested', 'not-interested' => 'bi bi-x-circle-fill',
           'donor' => 'bi bi-heart-fill',
           default => !empty($column['icon']) ? (str_starts_with($column['icon'], 'bi-') ? 'bi ' . $column['icon'] : 'bi bi-' . $column['icon']) : 'bi bi-app-indicator',

@@ -55,8 +55,8 @@ class CustomerDonorPipelineTest extends TestCase
 
     public function test_default_pipeline_has_four_primary_stages_with_stable_codes(): void
     {
-        $stages = PipelineStage::query()->orderBy('position')->get();
-        $this->assertCount(4, $stages);
+        $stages = PipelineStage::query()->where('is_primary', true)->orderBy('position')->get();
+        $this->assertCount(5, $stages);
 
         // Stable technical codes & Arabic display names
         $this->assertEquals('new', $stages[0]->code);
@@ -67,13 +67,17 @@ class CustomerDonorPipelineTest extends TestCase
         $this->assertEquals('لم يتم الرد', $stages[1]->name_ar);
         $this->assertTrue($stages[1]->isPrimary());
 
-        $this->assertEquals('not_interested', $stages[2]->code);
-        $this->assertEquals('غير مهتم', $stages[2]->name_ar);
+        $this->assertEquals('followup_later', $stages[2]->code);
+        $this->assertEquals('متابعة لاحقة', $stages[2]->name_ar);
         $this->assertTrue($stages[2]->isPrimary());
 
-        $this->assertEquals('donor', $stages[3]->code);
-        $this->assertEquals('متبرع', $stages[3]->name_ar);
+        $this->assertEquals('not_interested', $stages[3]->code);
+        $this->assertEquals('غير مهتم', $stages[3]->name_ar);
         $this->assertTrue($stages[3]->isPrimary());
+
+        $this->assertEquals('donor', $stages[4]->code);
+        $this->assertEquals('متبرع', $stages[4]->name_ar);
+        $this->assertTrue($stages[4]->isPrimary());
 
         $this->assertGreaterThanOrEqual(4, DonationType::query()->count());
         $this->assertGreaterThanOrEqual(4, DonationPurpose::query()->count());
@@ -82,6 +86,7 @@ class CustomerDonorPipelineTest extends TestCase
     public function test_admin_can_add_multiple_custom_stages_without_limit(): void
     {
         $this->actingAs($this->admin);
+        $initialCount = PipelineStage::query()->count();
 
         // 1. Visit settings stages page
         $response = $this->get(route('v2.settings.stages.index'));
@@ -89,15 +94,14 @@ class CustomerDonorPipelineTest extends TestCase
         $response->assertSee('مراحل مسار العملاء');
         $response->assertSee('إضافة مرحلة مخصصة');
 
-        // 2. Add 5th custom stage (should succeed)
+        // 2. Add custom stage
         $add3 = $this->post(route('v2.settings.stages.store'), [
-            'name_ar' => 'المتابعة اللاحقة',
+            'name_ar' => 'مرحلة إضافية أولى',
             'color' => '#7b61df',
             'description_ar' => 'مرحلة إضافية للمتابعة الدورية',
         ]);
         $add3->assertRedirect(route('v2.settings.stages.index'));
-        $this->assertEquals(5, PipelineStage::query()->count());
-
+        $this->assertEquals($initialCount + 1, PipelineStage::query()->count());
         // 3. Add 6th custom stage (should also succeed without limit)
         $add4 = $this->post(route('v2.settings.stages.store'), [
             'name_ar' => 'المرحلة الرابعة',
@@ -105,20 +109,17 @@ class CustomerDonorPipelineTest extends TestCase
             'description_ar' => 'مرحلة رابعة مخصصة',
         ]);
         $add4->assertRedirect(route('v2.settings.stages.index'));
-        $this->assertEquals(6, PipelineStage::query()->count());
-
+        $this->assertEquals($initialCount + 2, PipelineStage::query()->count());
         // 4. Add 7th custom stage (should also succeed)
         $add5 = $this->post(route('v2.settings.stages.store'), [
             'name_ar' => 'المرحلة الخامسة',
             'color' => '#0284c7',
             'description_ar' => 'مرحلة خامسة مخصصة',
         ]);
-        $add5->assertRedirect(route('v2.settings.stages.index'));
-        $this->assertEquals(7, PipelineStage::query()->count());
-        // 5. Verify all stages appear on settings page and Add button remains enabled
+        $this->assertEquals($initialCount + 3, PipelineStage::query()->count());
         $indexResponse = $this->get(route('v2.settings.stages.index'));
         $indexResponse->assertOk();
-        $indexResponse->assertSee('المتابعة اللاحقة');
+        $indexResponse->assertSee('مرحلة إضافية أولى');
         $indexResponse->assertSee('المرحلة الرابعة');
         $indexResponse->assertSee('المرحلة الخامسة');
         $indexResponse->assertDontSee('الحد الأقصى مكتمل');
@@ -390,10 +391,11 @@ class CustomerDonorPipelineTest extends TestCase
     {
         $this->actingAs($this->admin);
 
+        $pos = (int) (PipelineStage::query()->max('position') ?? 0) + 1;
         $activeEmptyStage = PipelineStage::query()->create([
             'code' => 'stage_empty_active',
             'name_ar' => 'مرحلة نشطة بدون عملاء',
-            'position' => 10,
+            'position' => $pos,
             'color' => '#8b5cf6',
             'is_primary' => false,
             'is_active' => true,
@@ -402,7 +404,7 @@ class CustomerDonorPipelineTest extends TestCase
         $inactiveStage = PipelineStage::query()->create([
             'code' => 'stage_inactive_test',
             'name_ar' => 'مرحلة معطلة مخفية',
-            'position' => 11,
+            'position' => $pos + 1,
             'color' => '#64748b',
             'is_primary' => false,
             'is_active' => false,

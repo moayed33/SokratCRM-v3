@@ -348,10 +348,10 @@ class LeadFollowupController extends Controller
         $businessStatusCodes = [
             'new',
             'no_answer',
+            'followup_later',
             'not_interested',
             'donor',
         ];
-
         $hasBusinessDetails = in_array(
             $status->code,
             $businessStatusCodes,
@@ -385,7 +385,7 @@ class LeadFollowupController extends Controller
          * destination status is:
          * new, not_interested or execution.
          */
-        $requiresNextFollowUp = $followupStatusCode === 'no_answer';
+        $requiresNextFollowUp = in_array($followupStatusCode, ['no_answer', 'followup_later'], true);
 
         /* CRM FOLLOWUP CONDITIONAL DATE V2 END */
 

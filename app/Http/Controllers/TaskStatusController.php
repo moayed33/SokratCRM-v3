@@ -17,6 +17,8 @@ class TaskStatusController extends Controller
         'new' => 'new',
         'no-answer' => 'no_answer',
         'no_answer' => 'no_answer',
+        'followup-later' => 'followup_later',
+        'followup_later' => 'followup_later',
         'not-interested' => 'not_interested',
         'not_interested' => 'not_interested',
         'donor' => 'donor',
@@ -25,6 +27,7 @@ class TaskStatusController extends Controller
     private const STATUS_LABELS = [
         'new' => 'جديد',
         'no_answer' => 'لم يتم الرد',
+        'followup_later' => 'متابعة لاحقة',
         'not_interested' => 'غير مهتم',
         'donor' => 'متبرع',
     ];

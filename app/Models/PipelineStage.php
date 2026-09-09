@@ -116,6 +116,9 @@ class PipelineStage extends Model
             if ($this->code === 'no_answer' || $this->code === 'no-answer') {
                 return __('crm.status_no_answer');
             }
+            if ($this->code === 'followup_later' || $this->code === 'followup-later') {
+                return __('crm.stage_followup_later');
+            }
             if ($this->code === 'not_interested' || $this->code === 'not-interested') {
                 return __('crm.status_not_interested');
             }

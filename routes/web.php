@@ -344,7 +344,7 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             [TaskStatusController::class, 'show'],
         )->where(
             'status',
-            'new|no-answer|no_answer|not-interested|not_interested|donor',
+            'new|no-answer|no_answer|followup-later|followup_later|not-interested|not_interested|donor',
         )->name('v2.tasks.status');
 
         Route::get('/tasks/followups/{scope}', static function (string $scope) {

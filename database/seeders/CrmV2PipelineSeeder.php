@@ -39,10 +39,18 @@ class CrmV2PipelineSeeder extends Seeder
                     'is_primary' => true,
                 ],
                 [
+                    'code' => 'followup_later',
+                    'name_ar' => 'متابعة لاحقة',
+                    'description_ar' => 'عميل تم التواصل معه وطلب تحديد موعد متابعة لاحقة',
+                    'position' => 3,
+                    'color' => '#7b61df',
+                    'is_primary' => true,
+                ],
+                [
                     'code' => 'not_interested',
                     'name_ar' => 'غير مهتم',
                     'description_ar' => 'عميل غير مهتم بالخدمة أو التبرع حالياً',
-                    'position' => 3,
+                    'position' => 4,
                     'color' => '#dc2637',
                     'is_primary' => true,
                 ],
@@ -50,7 +58,7 @@ class CrmV2PipelineSeeder extends Seeder
                     'code' => 'donor',
                     'name_ar' => 'متبرع',
                     'description_ar' => 'عميل متبرع مؤكد قام بتسليم أو تأكيد التبرع ويخضع للمتابعة الدورية',
-                    'position' => 4,
+                    'position' => 5,
                     'color' => '#16a34a',
                     'is_primary' => true,
                 ],
@@ -72,7 +80,7 @@ class CrmV2PipelineSeeder extends Seeder
                 );
             }
 
-            // 2. Exactly Four Canonical Lead Statuses (1:1 with Stages)
+            // 2. Exactly Five Canonical Lead Statuses (1:1 with Stages)
             $statuses = [
                 [
                     'stage' => 'new',
@@ -91,10 +99,18 @@ class CrmV2PipelineSeeder extends Seeder
                     'terminal' => false,
                 ],
                 [
+                    'stage' => 'followup_later',
+                    'code' => 'followup_later',
+                    'name_ar' => 'متابعة لاحقة',
+                    'position' => 3,
+                    'color' => '#7b61df',
+                    'terminal' => false,
+                ],
+                [
                     'stage' => 'not_interested',
                     'code' => 'not_interested',
                     'name_ar' => 'غير مهتم',
-                    'position' => 3,
+                    'position' => 4,
                     'color' => '#dc2637',
                     'terminal' => true,
                 ],
@@ -102,7 +118,7 @@ class CrmV2PipelineSeeder extends Seeder
                     'stage' => 'donor',
                     'code' => 'donor',
                     'name_ar' => 'متبرع',
-                    'position' => 4,
+                    'position' => 5,
                     'color' => '#16a34a',
                     'terminal' => false,
                 ],

@@ -43,6 +43,7 @@
     $stepShort = match($stepCol['code']) {
      'new' => 'ج',
      'no_answer' => 'ل',
+     'followup_later', 'followup-later' => 'ح',
      'not_interested' => 'غ',
      'donor' => 'م',
      default => mb_substr($stepCol['name'], 0, 1),
@@ -156,6 +157,7 @@
    $transitionStages = [
     'new' => ['icon' => 'bi-plus-circle', 'color' => '#3478f6'],
     'no_answer' => ['icon' => 'bi-telephone-x', 'color' => '#e59b16'],
+    'followup_later' => ['icon' => 'bi-clock-history', 'color' => '#7b61df'],
     'not_interested' => ['icon' => 'bi-x-circle', 'color' => '#dc2637'],
     'donor' => ['icon' => 'bi-heart', 'color' => '#16a34a'],
    ];

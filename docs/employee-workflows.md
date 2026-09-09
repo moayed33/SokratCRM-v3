@@ -299,7 +299,7 @@ All employees who can log follow-ups use the **same transition popup** regardles
 The popup always presents four outcome buttons:
 1. **تم التبرع (Donated)** — record a donation and advance to donor stage.
 2. **لم يرد / مشغول (No Answer / Busy)** — mark as unreachable, set callback date.
-3. **متابعة لاحقة (Follow-up Later)** — set next follow-up without changing stage.
+3. **متابعة لاحقة (Follow-up Later)** — advance lead to Follow-up Later stage and schedule next callback date.
 4. **غير مهتم (Not Interested)** — mark as disinterested, clear follow-up date.
 
 ### Business rules enforced by the popup

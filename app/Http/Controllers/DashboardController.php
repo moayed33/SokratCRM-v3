@@ -112,6 +112,7 @@ class DashboardController extends Controller
             $iconClass = match ($status->code) {
                 'new' => 'bi-person-plus-fill',
                 'no_answer', 'no-answer' => 'bi-telephone-x-fill',
+                'followup_later', 'followup-later' => 'bi-clock-history',
                 'not_interested', 'not-interested' => 'bi-x-circle-fill',
                 'donor' => 'bi-heart-fill',
                 default => 'bi-app-indicator',
