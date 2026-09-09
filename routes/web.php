@@ -227,6 +227,8 @@ Route::middleware(['auth', 'active'])->group(function (): void {
             ->name('v2.leads');
         Route::get('/leads/kanban', [DashboardController::class, 'kanban'])
             ->name('v2.leads.kanban');
+        Route::get('/leads/kanban/cards', [DashboardController::class, 'kanbanCards'])
+            ->name('v2.leads.kanban.cards');
         Route::get('/leads/{lead}', [LeadController::class, 'show'])
             ->whereNumber('lead')
             ->name('v2.leads.show');

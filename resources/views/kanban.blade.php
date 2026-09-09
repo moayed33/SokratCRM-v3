@@ -472,6 +472,11 @@ body.kanban-popup-view .board-shell{
  font-size:11px;
  color:#64748b
 }
+.kanban-column.is-loading .column-body {
+ opacity: 0.45;
+ pointer-events: none;
+ transition: opacity .15s ease;
+}
 html.dark-mode {
  --bg:#09090b;
  --card:#18181b;
@@ -1746,8 +1751,11 @@ body.kanban-modal-open{
     <article
      class="kanban-column {{ $column['class'] }}"
      data-kanban-column="{{ $column['code'] }}"
+     data-kanban-stage-id="{{ $column['id'] }}"
      data-kanban-status-id="{{ $column['status_id'] }}"
      data-kanban-status-name="{{ $column['name'] }}"
+     data-kanban-direct-status="{{ $kanbanDirectStatus ? '1' : '0' }}"
+     data-kanban-current-scope="today"
      style="
       --column-color:
        {{ $column['status_color'] }};
@@ -1964,237 +1972,12 @@ body.kanban-modal-open{
          $scopeLeads
          as $lead
         )
-         <article
-          class="kanban-card"
-          draggable="{{ auth()->user()->can('leads.followups.create') ? 'true' : 'false' }}"
-          data-kanban-lead="{{ $lead->id }}"
-          data-kanban-lead-name="{{ $lead->name }}"
-          data-kanban-lead-phone="{{ $lead->phone }}"
-          data-kanban-lead-company="{{ $lead->company_name ?: $lead->source }}"
-          data-kanban-lead-employee="{{ $lead->assignedUser?->name ?? $lead->assigned_employee }}"
-          data-kanban-lead-employee-id="{{ $lead->assigned_user_id ?? '' }}"
-          data-kanban-lead-scope="{{ $lead->next_follow_up_at ? $scope : 'no_date' }}"
-          data-kanban-lead-has-date="{{ $lead->next_follow_up_at ? '1' : '0' }}"
-          data-current-status-id="{{ $lead->lead_status_id ?? ($column['status_id'] ?? '') }}"
-          data-current-status-name="{{ $lead->status?->name_ar ?? $column['name'] }}"
-          data-followup-url="{{ route(
-           'v2.leads.followups.index',
-           $lead
-          ) }}"
-          style="
-           --card-stage-color:
-            {{ $column['stage_color'] }};
-          "
-          data-stage-position="{{ $column['position'] ?? 0 }}"
-         >
-          <div class="kanban-card-head">
-           <a
-            class="kanban-card-name"
-            href="{{ route(
-             'v2.leads.show',
-             $lead
-            ) }}"
-           >
-            {{ $lead->name }}
-           </a>
-
-           <span class="kanban-card-stage">
-            {{
-             $column['stage_name']
-             ?: $column['name']
-            }}
-           </span>
-          </div>
-
-          {{-- Stage progress stepper --}}
-          <div class="kanban-stage-stepper">
-           @foreach ($kanbanColumns as $stepIdx => $stepCol)
-            @if ($stepIdx > 0)
-             <span class="kanban-stepper-line{{ ($column['position'] ?? 0) > ($kanbanColumns[$stepIdx - 1]['position'] ?? 0) ? ' completed' : '' }}"></span>
-            @endif
-            @php
-             $stepPos = $stepCol['position'] ?? $stepIdx;
-             $curPos = $column['position'] ?? 0;
-             $stepClass = $stepPos === $curPos ? 'active' : ($stepPos < $curPos ? 'completed' : '');
-             $stepShort = match($stepCol['code']) {
-              'new' => 'ج',
-              'no_answer' => 'ل',
-              'not_interested' => 'غ',
-              'donor' => 'م',
-              default => mb_substr($stepCol['name'], 0, 1),
-             };
-            @endphp
-            <span class="kanban-stepper-step {{ $stepClass }}">
-             <span class="kanban-stepper-dot {{ $stepClass }}"></span>
-             <span class="kanban-stepper-label">{{ $stepShort }}</span>
-            </span>
-           @endforeach
-          </div>
-
-          <div class="kanban-card-info">
-           <div class="kanban-card-row">
-            <span><i class="bi bi-telephone"></i> {{ __('crm.phone') }}</span>
-
-            <strong>
-             @if ($lead->phone)
-              <a
-               class="kanban-phone"
-               href="tel:{{
-                preg_replace(
-                 '/[^0-9+]/',
-                 '',
-                 (string) $lead->phone
-                )
-               }}"
-              >
-               {{ $lead->phone }}
-              </a>
-             @else
-              {{ __('crm.not_registered') }}
-             @endif
-            </strong>
-           </div>
-
-           <div class="kanban-card-row">
-            <span><i class="bi bi-building"></i> {{ __('crm.company_or_source') }}</span>
-
-            <strong>
-             {{
-              $lead->company_name
-              ?: $lead->source
-              ?: __('crm.not_specified')
-             }}
-            </strong>
-           </div>
-
-           <div class="kanban-card-row">
-            <span><i class="bi bi-person-badge"></i> {{ __('crm.employee') }}</span>
-
-            <strong>
-             {{
-              $lead->assignedUser?->name
-              ?? $lead->assigned_employee
-              ?: __('crm.unassigned')
-             }}
-            </strong>
-           </div>
-
-           <div class="kanban-card-row">
-            <span><i class="bi bi-clock-history"></i> {{ __('crm.followup_date') }}</span>
-
-            <strong>
-             {{
-              $lead
-               ->next_follow_up_at
-               ?->format(
-                'd/m/Y H:i'
-               )
-              ?? __('crm.no_date')
-             }}
-            </strong>
-           </div>
-          </div>
-
-          <div class="kanban-card-actions">
-           @if ($lead->phone)
-            @php
-             $phoneClean = preg_replace('/[^0-9+]/', '', (string) $lead->phone);
-            @endphp
-            <a
-             class="btn call"
-             @can('leads.followups.create')
-             data-transition-popup="{{ route(
-              'v2.leads.followups.index',
-              ['lead' => $lead, 'channel' => 'call']
-             ) }}"
-             data-transition-context="kanban"
-             data-lead-name="{{ $lead->name }}"
-             @endcan
-             data-voice-dial="{{ $phoneClean }}"
-             href="tel:{{ $phoneClean }}"
-             draggable="false"
-             title="{{ __('crm.call_and_followup') }}"
-            >
-             <i class="bi bi-telephone-outbound-fill"></i> {{ __('crm.call') }}
-            </a>
-           @endif
-
-           @can('leads.followups.create')
-           <a
-            class="btn donation"
-            href="{{ route(
-             'v2.leads.followups.index',
-             [$lead, 'make_donation' => 1]
-            ) }}"
-            data-transition-popup="{{ route(
-             'v2.leads.followups.index',
-             [$lead, 'make_donation' => 1]
-            ) }}"
-            data-transition-context="kanban"
-            data-lead-name="{{ $lead->name }}"
-            title="{{ __('crm.record_donation') }}"
-           >
-            <i class="bi bi-heart-fill"></i> {{ __('crm.record_donation') }}
-           </a>
-           @endcan
-
-           <a
-            class="btn light"
-            href="{{ route(
-             'v2.leads.show',
-             $lead
-            ) }}"
-            draggable="false">
-            <i class="bi bi-eye"></i> {{ __('crm.view_lead') }}
-           </a>
-
-           @can('leads.followups.create')
-           <a
-            class="btn light"
-            href="{{ route(
-             'v2.leads.followups.index',
-             $lead
-            ) }}"
-            data-transition-popup="{{ route('v2.leads.followups.index', $lead) }}"
-            data-transition-context="kanban"
-            data-lead-name="{{ $lead->name }}"
-            draggable="false">
-            <i class="bi bi-plus-circle"></i> {{ __('crm.log_followup') }}
-           </a>
-           @endcan
-          </div>
-
-          {{-- Stage transition buttons --}}
-          @can('leads.followups.create')
-          <div class="kanban-stage-transitions">
-           @php
-            $transitionStages = [
-             'new' => ['icon' => 'bi-plus-circle', 'color' => '#3478f6'],
-             'no_answer' => ['icon' => 'bi-telephone-x', 'color' => '#e59b16'],
-             'not_interested' => ['icon' => 'bi-x-circle', 'color' => '#dc2637'],
-             'donor' => ['icon' => 'bi-heart', 'color' => '#16a34a'],
-            ];
-           @endphp
-           @foreach ($kanbanColumns as $targetCol)
-            @if ($targetCol['code'] !== $column['code'])
-             <a
-              class="kanban-stage-btn"
-              style="--btn-stage-color:{{ $transitionStages[$targetCol['code']]['color'] ?? $targetCol['stage_color'] }}"
-              href="{{ route('v2.leads.followups.index', [$lead, 'kanban_popup' => 1, 'target_status_code' => $targetCol['code']]) }}"
-              data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'target_status_code' => $targetCol['code']]) }}"
-              data-transition-context="kanban"
-              data-lead-name="{{ $lead->name }}"
-              data-transition-description="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
-              draggable="false"
-              title="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
-             >
-              <i class="bi {{ $transitionStages[$targetCol['code']]['icon'] ?? 'bi-arrow-right-circle' }}"></i>
-             </a>
-            @endif
-           @endforeach
-          </div>
-          @endcan
-         </article>
+         @include('partials.kanban-card', [
+          'lead' => $lead,
+          'column' => $column,
+          'kanbanColumns' => $kanbanColumns,
+          'scope' => $scope,
+         ])
         @empty
          <div class="kanban-scope-empty">
           <i><i class="bi bi-inbox-fill"></i></i>
@@ -2213,23 +1996,43 @@ body.kanban-modal-open{
        </div>
       @endforeach
      </div>
-     <footer class="kanban-column-pagination" data-kanban-pagination>
+    @php
+     $initialTotalPages = $column['total_pages'] ?? 1;
+     $initialCurrentPage = $column['current_page'] ?? 1;
+     $initialTotal = $kanbanDirectStatus ? ($column['total_count'] ?? 0) : ($column['scope_counts']['today'] ?? 0);
+     $initialFrom = $initialTotal > 0 ? 1 : 0;
+     $initialTo = min($column['per_page'] ?? 10, $initialTotal);
+    @endphp
+     <footer
+      class="kanban-column-pagination"
+      data-kanban-pagination
+      data-stage-id="{{ $column['id'] }}"
+      data-stage-code="{{ $column['code'] }}"
+      data-current-page="{{ $initialCurrentPage }}"
+      data-total-pages="{{ $initialTotalPages }}"
+      data-total-items="{{ $initialTotal }}"
+      style="{{ $initialTotalPages <= 1 ? 'display:none;' : 'display:flex;' }}"
+     >
       <button
        type="button"
        class="kanban-page-btn"
        data-page-action="prev"
        title="{{ __('crm.previous') }}"
        aria-label="{{ __('crm.previous') }}"
+       disabled
       >
        <i class="bi bi-chevron-right ltr:rotate-180"></i>
       </button>
-      <span class="kanban-page-info" data-page-info>1 / 1</span>
+      <span class="kanban-page-info" data-page-info>
+       {{ $initialTotalPages > 1 ? "{$initialCurrentPage} / {$initialTotalPages} ({$initialFrom}–{$initialTo})" : "1 / 1" }}
+      </span>
       <button
        type="button"
        class="kanban-page-btn"
        data-page-action="next"
        title="{{ __('crm.next') }}"
        aria-label="{{ __('crm.next') }}"
+       {{ $initialCurrentPage >= $initialTotalPages ? 'disabled' : '' }}
       >
        <i class="bi bi-chevron-left ltr:rotate-180"></i>
       </button>
@@ -2486,70 +2289,28 @@ document.addEventListener(
   dragData = null;
  };
 
- document
-  .querySelectorAll(
-   '.kanban-card[draggable="true"]'
-  )
-  .forEach(
-   (card) => {
-    card.addEventListener(
-     'dragstart',
-     (event) => {
-      dragData = {
-       leadId:
-        card.dataset
-         .kanbanLead || '',
+ document.addEventListener('dragstart', (event) => {
+  const card = event.target.closest('.kanban-card[draggable="true"]');
+  if (!card) return;
+  dragData = {
+   leadId: card.dataset.kanbanLead || '',
+   leadName: card.dataset.kanbanLeadName || @json(__('crm.client')),
+   currentStatusId: card.dataset.currentStatusId || '',
+   currentStatusName: card.dataset.currentStatusName || '',
+   followupUrl: card.dataset.followupUrl || '',
+  };
+  card.classList.add('is-dragging');
+  if (event.dataTransfer) {
+   event.dataTransfer.effectAllowed = 'move';
+   event.dataTransfer.setData('text/plain', dragData.leadId);
+  }
+ });
 
-       leadName:
-        card.dataset
-         .kanbanLeadName
-         || @json(__('crm.client')),
-
-       currentStatusId:
-        card.dataset
-         .currentStatusId
-         || '',
-
-       currentStatusName:
-        card.dataset
-         .currentStatusName
-         || '',
-
-       followupUrl:
-        card.dataset
-         .followupUrl
-         || '',
-      };
-
-      card.classList.add(
-       'is-dragging'
-      );
-
-      if (event.dataTransfer) {
-       event.dataTransfer
-        .effectAllowed = 'move';
-
-       event.dataTransfer
-        .setData(
-         'text/plain',
-         dragData.leadId
-        );
-      }
-     }
-    );
-
-    card.addEventListener(
-     'dragend',
-     () => {
-      card.classList.remove(
-       'is-dragging'
-      );
-
-      clearDropTargets();
-     }
-    );
-   }
-  );
+ document.addEventListener('dragend', (event) => {
+  const card = event.target.closest('.kanban-card');
+  if (card) card.classList.remove('is-dragging');
+  clearDropTargets();
+ });
 
  document
   .querySelectorAll(
@@ -2968,174 +2729,131 @@ document.addEventListener(
 
  if (!columns.length) return;
 
+ const cardsEndpoint = @json(route('v2.leads.kanban.cards'));
  let searchQuery = '';
  let scopeFilter = 'all';
  let employeeFilter = '';
- let leadsLimit = 10;
+ let leadsLimit = {{ $perPage ?? 10 }};
  const columnPages = new Map();
 
- const normalize = (str) => (str || '').toString().trim().toLowerCase();
+ columns.forEach(col => {
+  columnPages.set(col, 1);
+ });
 
- const matchesCard = (card) => {
-  if (searchQuery) {
-   const name = normalize(card.dataset.kanbanLeadName);
-   const phone = normalize(card.dataset.kanbanLeadPhone);
-   const company = normalize(card.dataset.kanbanLeadCompany);
-   const employee = normalize(card.dataset.kanbanLeadEmployee);
-   if (!name.includes(searchQuery) &&
-       !phone.includes(searchQuery) &&
-       !company.includes(searchQuery) &&
-       !employee.includes(searchQuery)) {
-    return false;
-   }
-  }
-
-  if (employeeFilter) {
-   const empId = card.dataset.kanbanLeadEmployeeId || '';
-   const empName = card.dataset.kanbanLeadEmployee || '';
-   if (empId !== employeeFilter && normalize(empName) !== normalize(employeeFilter)) {
-    return false;
-   }
-  }
-
+ const fetchColumnCards = async (column, page = 1) => {
+  const stageId = column.dataset.kanbanStageId;
+  const stageCode = column.dataset.kanbanColumn;
+  const isDirect = column.dataset.kanbanDirectStatus === '1';
+  let currentScope = column.dataset.kanbanCurrentScope || 'today';
   if (scopeFilter !== 'all') {
-   const cardScope = card.dataset.kanbanLeadScope || '';
-   const hasDate = card.dataset.kanbanLeadHasDate === '1';
-   if (scopeFilter === 'no_date') {
-    if (hasDate) return false;
-   } else {
-    if (cardScope !== scopeFilter) return false;
-   }
+   currentScope = scopeFilter;
   }
 
-  return true;
- };
-
- const updateColumn = (column) => {
-  const visibleCounter = column.querySelector('[data-kanban-visible-count]');
   const pagination = column.querySelector('[data-kanban-pagination]');
   const pageInfo = pagination?.querySelector('[data-page-info]');
   const prevBtn = pagination?.querySelector('[data-page-action="prev"]');
   const nextBtn = pagination?.querySelector('[data-page-action="next"]');
-  const columnBody = column.querySelector('.column-body');
+  const visibleCounter = column.querySelector('[data-kanban-visible-count]');
 
-  const panels = Array.from(column.querySelectorAll('[data-kanban-panel]'));
-  let activeCards = [];
-  const activePanel = panels.find(p => !p.hidden) || panels[0];
-
-  if (activePanel) {
-   activeCards = Array.from(activePanel.querySelectorAll('.kanban-card'));
-  } else {
-   activeCards = Array.from(column.querySelectorAll('.kanban-card'));
+  let activePanel = column.querySelector(`.kanban-scope-panel[data-kanban-panel="${currentScope}"]`);
+  if (!activePanel) {
+   activePanel = column.querySelector('.kanban-scope-panel:not([hidden])') || column.querySelector('.kanban-scope-panel');
   }
 
-  const matchingCards = [];
-  const nonMatchingCards = [];
+  column.classList.add('is-loading');
 
-  activeCards.forEach(card => {
-   if (matchesCard(card)) {
-    matchingCards.push(card);
-   } else {
-    nonMatchingCards.push(card);
-   }
-  });
+  const params = new URLSearchParams();
+  if (stageId) params.set('stage_id', stageId);
+  else if (stageCode) params.set('stage_code', stageCode);
 
-  nonMatchingCards.forEach(card => {
-   card.style.display = 'none';
-  });
+  params.set('scope', isDirect ? (scopeFilter !== 'all' ? scopeFilter : 'today') : currentScope);
+  params.set('page', String(page));
+  params.set('limit', String(leadsLimit));
 
-  const limit = (leadsLimit === 'all' || leadsLimit <= 0) ? Infinity : Number(leadsLimit);
-  const totalItems = matchingCards.length;
-  const totalPages = Math.max(1, limit === Infinity ? 1 : Math.ceil(totalItems / limit));
+  if (searchQuery) params.set('search', searchQuery);
+  if (employeeFilter) params.set('employee_id', employeeFilter);
 
-  let currentPage = columnPages.get(column) || 1;
-  if (currentPage > totalPages) currentPage = totalPages;
-  if (currentPage < 1) currentPage = 1;
-  columnPages.set(column, currentPage);
+  try {
+   const res = await fetch(`${cardsEndpoint}?${params.toString()}`, {
+    headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+    credentials: 'same-origin',
+   });
+   if (!res.ok) throw new Error('Failed to load cards');
+   const data = await res.json();
+   if (!data.success) throw new Error(data.error || 'Failed');
 
-  const startIdx = limit === Infinity ? 0 : (currentPage - 1) * limit;
-  const endIdx = limit === Infinity ? totalItems : startIdx + limit;
-
-  matchingCards.forEach((card, idx) => {
-   if (idx >= startIdx && idx < endIdx) {
-    card.style.display = '';
-   } else {
-    card.style.display = 'none';
-   }
-  });
-
-  if (visibleCounter) {
-   visibleCounter.textContent = new Intl.NumberFormat('en-US').format(totalItems);
-  }
-
-  let emptyFilterMsg = column.querySelector('.kanban-filter-empty');
-  if (totalItems === 0 && activeCards.length > 0) {
-   if (!emptyFilterMsg) {
-    emptyFilterMsg = document.createElement('div');
-    emptyFilterMsg.className = 'kanban-filter-empty';
-    emptyFilterMsg.innerHTML = '<i class="bi bi-search"></i><strong>' + @json(__('crm.no_matching_leads')) + '</strong>';
-    if (activePanel) activePanel.appendChild(emptyFilterMsg);
-    else if (columnBody) columnBody.appendChild(emptyFilterMsg);
-   }
-   emptyFilterMsg.style.display = 'flex';
-  } else if (emptyFilterMsg) {
-   emptyFilterMsg.style.display = 'none';
-  }
-
-  if (pagination) {
-   if (totalPages <= 1) {
-    pagination.style.display = 'none';
-   } else {
-    pagination.style.display = 'flex';
-    if (pageInfo) {
-     const fromItem = startIdx + 1;
-     const toItem = Math.min(endIdx, totalItems);
-     pageInfo.textContent = `${currentPage} / ${totalPages} (${fromItem}–${toItem})`;
-    }
-    if (prevBtn) {
-     prevBtn.disabled = (currentPage <= 1);
-    }
-    if (nextBtn) {
-     nextBtn.disabled = (currentPage >= totalPages);
+   if (activePanel) {
+    if (data.html && data.html.trim()) {
+     activePanel.innerHTML = data.html;
+    } else {
+     const noLeadsMsg = @json(__('crm.no_leads_found'));
+     const inColumnMsg = @json(__('crm.no_leads_in_column'));
+     const colName = column.dataset.kanbanStatusName || '';
+     activePanel.innerHTML = `
+      <div class="kanban-scope-empty">
+       <i><i class="bi bi-inbox-fill"></i></i>
+       <strong>${noLeadsMsg}</strong>
+       <p>${inColumnMsg} ${colName}.</p>
+      </div>`;
     }
    }
-  }
 
-  return totalItems;
+   columnPages.set(column, data.page);
+
+   if (visibleCounter && (searchQuery || employeeFilter)) {
+    visibleCounter.textContent = new Intl.NumberFormat('en-US').format(data.total);
+   }
+
+   if (pagination) {
+    pagination.dataset.currentPage = String(data.page);
+    pagination.dataset.totalPages = String(data.total_pages);
+    pagination.dataset.totalItems = String(data.total);
+
+    if (data.total_pages <= 1) {
+     pagination.style.display = 'none';
+    } else {
+     pagination.style.display = 'flex';
+     if (pageInfo) {
+      pageInfo.textContent = `${data.page} / ${data.total_pages} (${data.from}–${data.to})`;
+     }
+     if (prevBtn) prevBtn.disabled = (data.page <= 1);
+     if (nextBtn) nextBtn.disabled = (data.page >= data.total_pages);
+    }
+   }
+
+   return data.total;
+  } catch (err) {
+   console.error('Kanban cards fetch error:', err);
+  } finally {
+   column.classList.remove('is-loading');
+  }
+  return 0;
  };
 
- const render = () => {
-  let totalMatched = 0;
-  let totalAll = 0;
-
-  columns.forEach(col => {
-   const allCards = col.querySelectorAll('.kanban-card');
-   totalAll += allCards.length;
-   const matchedInCol = updateColumn(col);
-   totalMatched += matchedInCol;
-  });
-
+ const refreshAllColumns = () => {
   const isFiltered = Boolean(searchQuery || scopeFilter !== 'all' || employeeFilter || leadsLimit !== 10);
 
   if (resetBtn) {
    resetBtn.style.display = isFiltered ? 'inline-flex' : 'none';
   }
 
-  if (statusToolbar && filterCountText) {
-   if (isFiltered) {
-    statusToolbar.style.display = 'flex';
-    filterCountText.textContent = @json(__('crm.showing_leads_range'))
-     .replace(':from', '1')
-     .replace(':to', totalMatched.toString())
-     .replace(':total', totalAll.toString()) || `Showing ${totalMatched} of ${totalAll} leads`;
-   } else {
-    statusToolbar.style.display = 'none';
+  if (statusToolbar) {
+   statusToolbar.style.display = isFiltered ? 'flex' : 'none';
+   if (filterCountText) {
+    filterCountText.textContent = searchQuery
+     ? `"${searchQuery}"`
+     : (employeeFilter ? @json(__('crm.employee')) : @json(__('crm.period')));
    }
   }
 
   if (searchClear) {
    searchClear.style.display = searchQuery ? 'flex' : 'none';
   }
+
+  columns.forEach(col => {
+   columnPages.set(col, 1);
+   fetchColumnCards(col, 1);
+  });
  };
 
  let searchDebounceTimer = null;
@@ -3143,10 +2861,9 @@ document.addEventListener(
   searchInput.addEventListener('input', () => {
    window.clearTimeout(searchDebounceTimer);
    searchDebounceTimer = window.setTimeout(() => {
-    searchQuery = normalize(searchInput.value);
-    columns.forEach(col => columnPages.set(col, 1));
-    render();
-   }, 120);
+    searchQuery = (searchInput.value || '').trim();
+    refreshAllColumns();
+   }, 220);
   });
  }
 
@@ -3154,8 +2871,7 @@ document.addEventListener(
   searchClear.addEventListener('click', () => {
    if (searchInput) searchInput.value = '';
    searchQuery = '';
-   columns.forEach(col => columnPages.set(col, 1));
-   render();
+   refreshAllColumns();
    if (searchInput) searchInput.focus();
   });
  }
@@ -3168,25 +2884,23 @@ document.addEventListener(
      const btn = col.querySelector(`[data-kanban-scope="${scopeFilter}"]`);
      if (btn) btn.click();
     });
+   } else {
+    refreshAllColumns();
    }
-   columns.forEach(col => columnPages.set(col, 1));
-   render();
   });
  }
 
  if (employeeSelect) {
   employeeSelect.addEventListener('change', () => {
    employeeFilter = employeeSelect.value;
-   columns.forEach(col => columnPages.set(col, 1));
-   render();
+   refreshAllColumns();
   });
  }
 
  if (limitSelect) {
   limitSelect.addEventListener('change', () => {
-   leadsLimit = limitSelect.value === 'all' ? 'all' : parseInt(limitSelect.value, 10);
-   columns.forEach(col => columnPages.set(col, 1));
-   render();
+   leadsLimit = limitSelect.value === 'all' ? 100 : (parseInt(limitSelect.value, 10) || 10);
+   refreshAllColumns();
   });
  }
 
@@ -3207,10 +2921,14 @@ document.addEventListener(
     const todayBtn = col.querySelector('[data-kanban-scope="today"]');
     if (todayBtn && !todayBtn.classList.contains('active')) {
      todayBtn.click();
+    } else {
+     fetchColumnCards(col, 1);
     }
    });
 
-   render();
+   if (resetBtn) resetBtn.style.display = 'none';
+   if (statusToolbar) statusToolbar.style.display = 'none';
+   if (searchClear) searchClear.style.display = 'none';
   });
  }
 
@@ -3223,29 +2941,30 @@ document.addEventListener(
    if (!actionBtn || actionBtn.disabled) return;
 
    const action = actionBtn.dataset.pageAction;
-   let cur = columnPages.get(col) || 1;
+   let curPage = columnPages.get(col) || parseInt(pagination.dataset.currentPage || '1', 10);
+   const totalPages = parseInt(pagination.dataset.totalPages || '1', 10);
 
    if (action === 'prev') {
-    cur = Math.max(1, cur - 1);
+    curPage = Math.max(1, curPage - 1);
    } else if (action === 'next') {
-    cur += 1;
+    curPage = Math.min(totalPages, curPage + 1);
    }
 
-   columnPages.set(col, cur);
-   updateColumn(col);
+   columnPages.set(col, curPage);
+   fetchColumnCards(col, curPage);
   });
  });
 
  columns.forEach(col => {
   col.querySelectorAll('[data-kanban-scope]').forEach(btn => {
    btn.addEventListener('click', () => {
+    const scope = btn.dataset.kanbanScope;
+    col.dataset.kanbanCurrentScope = scope;
     columnPages.set(col, 1);
-    window.setTimeout(() => updateColumn(col), 0);
+    fetchColumnCards(col, 1);
    });
   });
  });
-
- render();
 
  const syncIframeTheme = (frameEl) => {
   try {
@@ -3275,6 +2994,8 @@ document.addEventListener(
    syncIframeTheme(frameEl);
   });
  });
+
+ window.fetchKanbanColumnCards = fetchColumnCards;
 })();
 </script>
 <!-- CRM KANBAN FILTER & PAGINATION JS END -->

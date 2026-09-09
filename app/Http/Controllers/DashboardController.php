@@ -19,6 +19,7 @@ use App\Support\BranchContext;
 use App\Support\CrmDatabaseGuard;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class DashboardController extends Controller
@@ -405,6 +406,11 @@ class DashboardController extends Controller
         $todayStart = now()->startOfDay();
         $todayEnd = now()->endOfDay();
 
+        $perPage = (int) $request->query('limit', 10);
+        if ($perPage < 1 || $perPage > 100) {
+            $perPage = 10;
+        }
+
         // 1. Dynamic active pipeline stages ordered by configured position
         $pipelineStages = PipelineStage::query()
             ->with(['statuses'])
@@ -413,6 +419,36 @@ class DashboardController extends Controller
             ->get();
 
         $statuses = $pipelineStages;
+        $allStatusIds = $pipelineStages->flatMap(static fn ($s) => $s->statuses->pluck('id'))->all();
+
+        // 2. High-performance SQL aggregation for stage & scope counts across all active stages
+        $countsMap = [];
+        if (! empty($allStatusIds)) {
+            $rawCounts = Lead::query()
+                ->accessibleTo($user)
+                ->whereIn('lead_status_id', $allStatusIds)
+                ->selectRaw('lead_status_id,
+                    COUNT(*) as total,
+                    SUM(CASE WHEN next_follow_up_at IS NOT NULL AND next_follow_up_at >= ? AND next_follow_up_at <= ? THEN 1 ELSE 0 END) as today_count,
+                    SUM(CASE WHEN next_follow_up_at IS NOT NULL AND next_follow_up_at < ? THEN 1 ELSE 0 END) as overdue_count,
+                    SUM(CASE WHEN next_follow_up_at IS NOT NULL AND next_follow_up_at > ? THEN 1 ELSE 0 END) as upcoming_count,
+                    SUM(CASE WHEN next_follow_up_at IS NULL THEN 1 ELSE 0 END) as no_date_count',
+                    [$todayStart, $todayEnd, $todayStart, $todayEnd]
+                )
+                ->groupBy('lead_status_id')
+                ->get();
+
+            foreach ($rawCounts as $rc) {
+                $countsMap[$rc->lead_status_id] = [
+                    'total' => (int) $rc->total,
+                    'today' => (int) $rc->today_count,
+                    'overdue' => (int) $rc->overdue_count,
+                    'upcoming' => (int) $rc->upcoming_count,
+                    'no_date' => (int) $rc->no_date_count,
+                ];
+            }
+        }
+
         $kanbanColumns = [];
         $totalLeads = 0;
 
@@ -422,35 +458,79 @@ class DashboardController extends Controller
             $destinationStatusId = $destinationStatus?->id;
             $destinationStatusName = $destinationStatus?->name_ar ?? $stage->localizedName();
 
-            if (! empty($statusIds)) {
-                $leads = Lead::query()
-                    ->accessibleTo($user)
-                    ->with(['assignedUser:id,name', 'phones', 'status.stage'])
-                    ->whereIn('lead_status_id', $statusIds)
-                    ->orderByRaw('next_follow_up_at IS NULL')
-                    ->orderBy('next_follow_up_at')
-                    ->orderByDesc('updated_at')
-                    ->get();
-            } else {
-                $leads = collect();
+            $stageTotal = 0;
+            $stageToday = 0;
+            $stageOverdue = 0;
+            $stageUpcoming = 0;
+            $stageNoDate = 0;
+            foreach ($statusIds as $sId) {
+                if (isset($countsMap[$sId])) {
+                    $stageTotal += $countsMap[$sId]['total'];
+                    $stageToday += $countsMap[$sId]['today'];
+                    $stageOverdue += $countsMap[$sId]['overdue'];
+                    $stageUpcoming += $countsMap[$sId]['upcoming'];
+                    $stageNoDate += $countsMap[$sId]['no_date'];
+                }
             }
-            $totalCount = $leads->count();
-            $totalLeads += $totalCount;
+            $totalLeads += $stageTotal;
 
-            $datedLeads = $leads->filter(static fn (Lead $lead): bool => $lead->next_follow_up_at !== null);
+            $isDirectStatus = in_array($stage->code, ['new', 'not_interested'], true);
 
-            $todayLeads = $datedLeads->filter(static function (Lead $lead) use ($todayStart, $todayEnd): bool {
-                $at = $lead->next_follow_up_at;
-                return $at !== null && $at->gte($todayStart) && $at->lte($todayEnd);
-            })->sortBy(static fn (Lead $lead): int => $lead->next_follow_up_at?->getTimestamp() ?? 0)->values();
+            if (! empty($statusIds)) {
+                if ($isDirectStatus) {
+                    $todayLeads = Lead::query()
+                        ->accessibleTo($user)
+                        ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                        ->whereIn('lead_status_id', $statusIds)
+                        ->orderByRaw('next_follow_up_at IS NULL')
+                        ->orderBy('next_follow_up_at')
+                        ->orderByDesc('updated_at')
+                        ->limit($perPage)
+                        ->get();
+                    $overdueLeads = collect();
+                    $upcomingLeads = collect();
+                } else {
+                    $todayLeads = $stageToday > 0 ? Lead::query()
+                        ->accessibleTo($user)
+                        ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                        ->whereIn('lead_status_id', $statusIds)
+                        ->whereNotNull('next_follow_up_at')
+                        ->whereBetween('next_follow_up_at', [$todayStart, $todayEnd])
+                        ->orderBy('next_follow_up_at')
+                        ->orderByDesc('updated_at')
+                        ->limit($perPage)
+                        ->get() : collect();
 
-            $overdueLeads = $datedLeads->filter(static fn (Lead $lead): bool => $lead->next_follow_up_at?->lt($todayStart) ?? false)
-                ->sortByDesc(static fn (Lead $lead): int => $lead->next_follow_up_at?->getTimestamp() ?? 0)->values();
+                    $overdueLeads = $stageOverdue > 0 ? Lead::query()
+                        ->accessibleTo($user)
+                        ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                        ->whereIn('lead_status_id', $statusIds)
+                        ->whereNotNull('next_follow_up_at')
+                        ->where('next_follow_up_at', '<', $todayStart)
+                        ->orderByDesc('next_follow_up_at')
+                        ->orderByDesc('updated_at')
+                        ->limit($perPage)
+                        ->get() : collect();
 
-            $upcomingLeads = $datedLeads->filter(static fn (Lead $lead): bool => $lead->next_follow_up_at?->gt($todayEnd) ?? false)
-                ->sortBy(static fn (Lead $lead): int => $lead->next_follow_up_at?->getTimestamp() ?? 0)->values();
+                    $upcomingLeads = $stageUpcoming > 0 ? Lead::query()
+                        ->accessibleTo($user)
+                        ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                        ->whereIn('lead_status_id', $statusIds)
+                        ->whereNotNull('next_follow_up_at')
+                        ->where('next_follow_up_at', '>', $todayEnd)
+                        ->orderBy('next_follow_up_at')
+                        ->orderByDesc('updated_at')
+                        ->limit($perPage)
+                        ->get() : collect();
+                }
+            } else {
+                $todayLeads = collect();
+                $overdueLeads = collect();
+                $upcomingLeads = collect();
+            }
 
-            $noDateLeads = $leads->filter(static fn (Lead $lead): bool => $lead->next_follow_up_at === null)->values();
+            $activeScopeTotal = $isDirectStatus ? $stageTotal : $stageToday;
+            $totalPages = max(1, (int) ceil($activeScopeTotal / $perPage));
 
             $kanbanColumns[] = [
                 'id' => $stage->id,
@@ -466,26 +546,29 @@ class DashboardController extends Controller
                 'stage_color' => $stage->color ?: '#3478f6',
                 'icon' => $stage->icon,
                 'class' => str_replace(['_', ' '], '-', (string) $stage->code),
-                'total' => $totalCount,
-                'total_count' => $totalCount,
+                'total' => $stageTotal,
+                'total_count' => $stageTotal,
                 'scope_counts' => [
-                    'today' => $todayLeads->count(),
-                    'overdue' => $overdueLeads->count(),
-                    'upcoming' => $upcomingLeads->count(),
+                    'today' => $stageToday,
+                    'overdue' => $stageOverdue,
+                    'upcoming' => $stageUpcoming,
                 ],
                 'scope_leads' => [
                     'today' => $todayLeads,
                     'overdue' => $overdueLeads,
                     'upcoming' => $upcomingLeads,
                 ],
-                'no_date_count' => $noDateLeads->count(),
-                'leads' => $leads,
+                'no_date_count' => $stageNoDate,
+                'leads' => $todayLeads,
                 'today_leads' => $todayLeads,
                 'overdue_leads' => $overdueLeads,
                 'upcoming_leads' => $upcomingLeads,
-                'no_date_leads' => $noDateLeads,
+                'no_date_leads' => collect(),
                 'position' => $stage->position,
                 'has_destination_status' => $destinationStatusId !== null,
+                'per_page' => $perPage,
+                'current_page' => 1,
+                'total_pages' => $totalPages,
             ];
         }
         $employees = User::query()
@@ -500,6 +583,180 @@ class DashboardController extends Controller
             'totalStagesCount' => count($kanbanColumns),
             'statuses' => $pipelineStages,
             'employees' => $employees,
+            'perPage' => $perPage,
+        ]);
+    }
+
+    public function kanbanCards(Request $request): JsonResponse
+    {
+        $this->assertCrmDatabase();
+        $user = $request->user();
+
+        $stageId = $request->query('stage_id');
+        $stageCode = $request->query('stage_code');
+
+        $stage = PipelineStage::query()
+            ->with('statuses')
+            ->where('is_active', true)
+            ->when($stageId, static fn ($q) => $q->where('id', (int) $stageId))
+            ->when(! $stageId && $stageCode, static fn ($q) => $q->where('code', $stageCode))
+            ->first();
+
+        if (! $stage) {
+            return response()->json(['success' => false, 'error' => 'Stage not found'], 404);
+        }
+
+        $statusIds = $stage->statuses->pluck('id')->all();
+        if (empty($statusIds)) {
+            return response()->json([
+                'success' => true,
+                'stage_id' => $stage->id,
+                'stage_code' => $stage->code,
+                'scope' => 'today',
+                'page' => 1,
+                'per_page' => 10,
+                'total' => 0,
+                'total_pages' => 1,
+                'from' => 0,
+                'to' => 0,
+                'count' => 0,
+                'html' => '',
+            ]);
+        }
+
+        $scope = (string) $request->query('scope', 'today');
+        $page = max(1, (int) $request->query('page', 1));
+        $limit = (int) $request->query('limit', 10);
+        if ($limit < 1 || $limit > 100) {
+            $limit = 10;
+        }
+
+        $search = mb_substr(trim((string) $request->query('search', '')), 0, 150);
+        $employeeId = $request->query('employee_id');
+
+        $todayStart = now()->startOfDay();
+        $todayEnd = now()->endOfDay();
+
+        $query = Lead::query()
+            ->accessibleTo($user)
+            ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+            ->whereIn('lead_status_id', $statusIds);
+
+        $isDirectStatus = in_array($stage->code, ['new', 'not_interested'], true);
+        if (! $isDirectStatus) {
+            if ($scope === 'today') {
+                $query->whereNotNull('next_follow_up_at')
+                    ->whereBetween('next_follow_up_at', [$todayStart, $todayEnd])
+                    ->orderBy('next_follow_up_at')
+                    ->orderByDesc('updated_at');
+            } elseif ($scope === 'overdue') {
+                $query->whereNotNull('next_follow_up_at')
+                    ->where('next_follow_up_at', '<', $todayStart)
+                    ->orderByDesc('next_follow_up_at')
+                    ->orderByDesc('updated_at');
+            } elseif ($scope === 'upcoming') {
+                $query->whereNotNull('next_follow_up_at')
+                    ->where('next_follow_up_at', '>', $todayEnd)
+                    ->orderBy('next_follow_up_at')
+                    ->orderByDesc('updated_at');
+            } elseif ($scope === 'no_date') {
+                $query->whereNull('next_follow_up_at')
+                    ->orderByDesc('updated_at');
+            } else {
+                $query->orderByRaw('next_follow_up_at IS NULL')
+                    ->orderBy('next_follow_up_at')
+                    ->orderByDesc('updated_at');
+            }
+        } else {
+            if ($scope === 'no_date') {
+                $query->whereNull('next_follow_up_at');
+            } elseif ($scope === 'today') {
+                $query->whereNotNull('next_follow_up_at')->whereBetween('next_follow_up_at', [$todayStart, $todayEnd]);
+            } elseif ($scope === 'overdue') {
+                $query->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '<', $todayStart);
+            } elseif ($scope === 'upcoming') {
+                $query->whereNotNull('next_follow_up_at')->where('next_follow_up_at', '>', $todayEnd);
+            }
+            $query->orderByRaw('next_follow_up_at IS NULL')
+                ->orderBy('next_follow_up_at')
+                ->orderByDesc('updated_at');
+        }
+
+        if ($employeeId !== null && $employeeId !== '') {
+            $query->where('assigned_user_id', (int) $employeeId);
+        }
+
+        if ($search !== '') {
+            $query->where(static function ($q) use ($search): void {
+                $q->where('name', 'like', "%{$search}%")
+                    ->orWhere('phone', 'like', "%{$search}%")
+                    ->orWhere('company_name', 'like', "%{$search}%")
+                    ->orWhere('source', 'like', "%{$search}%")
+                    ->orWhereHas('assignedUser', static fn ($uq) => $uq->where('name', 'like', "%{$search}%"));
+            });
+        }
+
+        $paginated = $query->paginate($limit, ['*'], 'page', $page);
+
+        $allStages = PipelineStage::query()
+            ->with('statuses')
+            ->where('is_active', true)
+            ->orderBy('position')
+            ->get();
+
+        $kanbanColumns = [];
+        $currentColumn = null;
+        foreach ($allStages as $st) {
+            $destStatus = $st->statuses->first();
+            $colData = [
+                'id' => $st->id,
+                'stage_id' => $st->id,
+                'code' => $st->code,
+                'status_id' => $destStatus?->id,
+                'destination_status_id' => $destStatus?->id,
+                'name' => $st->localizedName(),
+                'stage_name' => $st->localizedName(),
+                'status_name' => $destStatus?->name_ar ?? $st->localizedName(),
+                'color' => $st->color ?: '#3478f6',
+                'status_color' => $st->color ?: '#3478f6',
+                'stage_color' => $st->color ?: '#3478f6',
+                'position' => $st->position,
+                'class' => str_replace(['_', ' '], '-', (string) $st->code),
+            ];
+            $kanbanColumns[] = $colData;
+            if ($st->id === $stage->id) {
+                $currentColumn = $colData;
+            }
+        }
+
+        $html = '';
+        foreach ($paginated->items() as $lead) {
+            $html .= view('partials.kanban-card', [
+                'lead' => $lead,
+                'column' => $currentColumn,
+                'kanbanColumns' => $kanbanColumns,
+                'scope' => $scope,
+            ])->render();
+        }
+
+        $total = $paginated->total();
+        $totalPages = max(1, (int) ceil($total / $limit));
+        $from = $total > 0 ? ($page - 1) * $limit + 1 : 0;
+        $to = min($page * $limit, $total);
+
+        return response()->json([
+            'success' => true,
+            'stage_id' => $stage->id,
+            'stage_code' => $stage->code,
+            'scope' => $scope,
+            'page' => $page,
+            'per_page' => $limit,
+            'total' => $total,
+            'total_pages' => $totalPages,
+            'from' => $from,
+            'to' => $to,
+            'count' => count($paginated->items()),
+            'html' => $html,
         ]);
     }
 
