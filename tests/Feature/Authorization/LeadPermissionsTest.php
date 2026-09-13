@@ -170,6 +170,19 @@ class LeadPermissionsTest extends TestCase
             ->assertRedirect(route('v2.leads'));
 
         $this->assertDatabaseMissing('leads', ['id' => $this->lead->id]);
+
+        $lead2 = Lead::query()->create([
+            'lead_status_id' => $this->lead->lead_status_id,
+            'name' => 'عميل سوبر أدمن',
+            'email' => 'admin_lead@example.test',
+            'phone' => '01099998888',
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->delete(route('v2.leads.destroy', $lead2))
+            ->assertRedirect(route('v2.leads'));
+
+        $this->assertDatabaseMissing('leads', ['id' => $lead2->id]);
     }
 
     public function test_sales_agent_cannot_import_or_export_leads(): void

@@ -825,6 +825,32 @@ html.crm-monochrome.dark-mode .kanban-card-row { background: #1a1a1a !important;
  background:#15803d
 }
 
+.kanban-card-delete-btn{
+ background:transparent;
+ border:none;
+ color:#94a3b8;
+ cursor:pointer;
+ padding:2px 4px;
+ font-size:13px;
+ line-height:1;
+ border-radius:4px;
+ transition:all 0.15s ease;
+ display:inline-flex;
+ align-items:center;
+ justify-content:center;
+}
+.kanban-card-delete-btn:hover{
+ color:#dc2637;
+ background:#fee2e2;
+}
+html.dark-mode .kanban-card-delete-btn{
+ color:#64748b;
+}
+html.dark-mode .kanban-card-delete-btn:hover{
+ color:#f87171;
+ background:rgba(220,38,55,0.2);
+}
+
 .kanban-empty{
  margin:auto
 }
@@ -931,7 +957,27 @@ html.crm-monochrome.dark-mode .kanban-card-row { background: #1a1a1a !important;
  border-color:color-mix(in srgb,var(--btn-stage-color,#3478f6) 50%,transparent)
 }
 .kanban-stage-btn:active{
- transform:scale(0.95)
+  transform:scale(0.95)
+}
+.kanban-stage-delete-btn{
+  border-color:color-mix(in srgb,#dc2637 30%,transparent);
+  background:color-mix(in srgb,#dc2637 8%,transparent);
+  color:#dc2637;
+}
+.kanban-stage-delete-btn:hover{
+  background:color-mix(in srgb,#dc2637 18%,transparent);
+  border-color:color-mix(in srgb,#dc2637 50%,transparent);
+  color:#b91c1c;
+}
+html.dark-mode .kanban-stage-delete-btn{
+  border-color:rgba(220,38,55,0.35);
+  background:rgba(220,38,55,0.12);
+  color:#f87171;
+}
+html.dark-mode .kanban-stage-delete-btn:hover{
+  background:rgba(220,38,55,0.25);
+  border-color:rgba(220,38,55,0.5);
+  color:#fca5a5;
 }
 @media(max-width:760px){
  .kanban-stage-btn{width:26px;height:26px;font-size:12px}
@@ -1028,7 +1074,27 @@ html.crm-monochrome.dark-mode .kanban-card-row { background: #1a1a1a !important;
  border-radius:999px;
  background:#f1f3f6;
  color:#8a93a2;
- white-space:nowrap
+ white-space:nowrap;
+ cursor:pointer;
+ border:1px solid transparent;
+ transition:all 0.15s ease;
+}
+.kanban-no-date:hover,
+.kanban-no-date.active{
+ background:#fff;
+ border-color:var(--line);
+ color:var(--dark);
+ box-shadow:0 1px 4px rgba(0,0,0,0.06);
+}
+html.dark-mode .kanban-no-date{
+ background:rgba(255,255,255,0.06);
+ color:#a1a1aa;
+}
+html.dark-mode .kanban-no-date:hover,
+html.dark-mode .kanban-no-date.active{
+ background:rgba(255,255,255,0.12);
+ border-color:rgba(255,255,255,0.2);
+ color:#f4f4f5;
 }
 
 .kanban-scope-panel[hidden]{
@@ -1749,19 +1815,19 @@ body.kanban-modal-open{
       );
     @endphp
 
-    <article
-     class="kanban-column {{ $column['class'] }}"
-     data-kanban-column="{{ $column['code'] }}"
-     data-kanban-stage-id="{{ $column['id'] }}"
-     data-kanban-status-id="{{ $column['status_id'] }}"
-     data-kanban-status-name="{{ $column['name'] }}"
-     data-kanban-direct-status="{{ $kanbanDirectStatus ? '1' : '0' }}"
-     data-kanban-current-scope="today"
-     style="
-      --column-color:
-       {{ $column['status_color'] }};
-     "
-    >
+     <article
+      class="kanban-column {{ $column['class'] }}"
+      data-kanban-column="{{ $column['code'] }}"
+      data-kanban-stage-id="{{ $column['id'] }}"
+      data-kanban-status-id="{{ $column['status_id'] }}"
+      data-kanban-status-name="{{ $column['name'] }}"
+      data-kanban-direct-status="{{ $kanbanDirectStatus ? '1' : '0' }}"
+      data-kanban-current-scope="{{ $column['active_scope'] ?? 'today' }}"
+      style="
+       --column-color:
+        {{ $column['status_color'] }};
+      "
+     >
      @php
       $columnIconClass = match($column['code']) {
           'new' => 'bi bi-person-plus-fill',
@@ -1801,15 +1867,18 @@ body.kanban-modal-open{
           @if (!$kanbanDirectStatus)
 <div class="kanban-followup-toolbar">
       <div class="kanban-scope-buttons">
+       @php
+        $activeScope = $column['active_scope'] ?? 'today';
+       @endphp
        <button
-        class="kanban-scope-btn active"
+        class="kanban-scope-btn {{ $activeScope === 'today' ? 'active' : '' }}"
         type="button"
         data-kanban-scope="today"
         data-count="{{
          $column['scope_counts']['today']
         }}"
         data-label="{{ __('crm.today') }}"
-        aria-pressed="true"
+        aria-pressed="{{ $activeScope === 'today' ? 'true' : 'false' }}"
         title="{{ __('crm.today') }}"
        >
         <span><i class="bi bi-calendar-check" style="margin-inline-end:3px"></i> {{ __('crm.today') }}</span>
@@ -1825,14 +1894,14 @@ body.kanban-modal-open{
        </button>
 
        <button
-        class="kanban-scope-btn"
+        class="kanban-scope-btn {{ $activeScope === 'overdue' ? 'active' : '' }}"
         type="button"
         data-kanban-scope="overdue"
         data-count="{{
          $column['scope_counts']['overdue']
         }}"
         data-label="{{ __('crm.overdue') }}"
-        aria-pressed="false"
+        aria-pressed="{{ $activeScope === 'overdue' ? 'true' : 'false' }}"
         title="{{ __('crm.overdue') }}"
        >
         <span><i class="bi bi-exclamation-triangle" style="margin-inline-end:3px"></i> {{ __('crm.overdue') }}</span>
@@ -1848,14 +1917,14 @@ body.kanban-modal-open{
        </button>
 
        <button
-        class="kanban-scope-btn"
+        class="kanban-scope-btn {{ $activeScope === 'upcoming' ? 'active' : '' }}"
         type="button"
         data-kanban-scope="upcoming"
         data-count="{{
          $column['scope_counts']['upcoming']
         }}"
         data-label="{{ __('crm.upcoming') }}"
-        aria-pressed="false"
+        aria-pressed="{{ $activeScope === 'upcoming' ? 'true' : 'false' }}"
         title="{{ __('crm.upcoming') }}"
        >
         <span><i class="bi bi-calendar-week" style="margin-inline-end:3px"></i> {{ __('crm.upcoming') }}</span>
@@ -1881,44 +1950,33 @@ body.kanban-modal-open{
         ) > 0
        )
         <button
-         class="kanban-no-date"
+         class="kanban-no-date kanban-scope-btn {{ $activeScope === 'no_date' ? 'active' : '' }}"
          type="button"
-         data-kanban-no-date-popup
-         data-status-name="{{ $column['name'] }}"
+         data-kanban-scope="no_date"
          data-count="{{ $column['no_date_count'] }}"
-         data-popup-url="{{
-          route(
-           'v2.leads',
-           [
-            'status' =>
-             $column['code'],
-
-            'follow_up' =>
-             'none',
-           ]
-          )
-         }}"
+         data-label="{{ __('crm.no_date') }}"
+         aria-pressed="{{ $activeScope === 'no_date' ? 'true' : 'false' }}"
          title="{{ __('crm.no_date') }}"
         >
-         <span><i class="bi bi-calendar-minus" style="margin-inline-end:3px"></i> {{ __('crm.no_date') }}</span>
+          <span><i class="bi bi-calendar-minus" style="margin-inline-end:3px"></i> {{ __('crm.no_date') }}</span>
 
-         <b>
-          {{
-           number_format(
-            $column[
-             'no_date_count'
-            ]
-           )
-          }}
-         </b>
-        </button>
-       @endif
-      </div>
+          <b>
+           {{
+            number_format(
+             $column[
+              'no_date_count'
+             ]
+            )
+           }}
+          </b>
+         </button>
+        @endif
+       </div>
 
-      <div class="kanban-followup-current">
-       <strong data-kanban-scope-label>
-        {{ __('crm.today') }}
-       </strong>
+       <div class="kanban-followup-current">
+        <strong data-kanban-scope-label>
+         {{ ($column['scope_counts']['today'] > 0 || ($column['scope_counts']['overdue'] == 0 && $column['scope_counts']['upcoming'] == 0 && $column['no_date_count'] == 0)) ? __('crm.today') : ($column['scope_counts']['overdue'] > 0 ? __('crm.overdue') : ($column['scope_counts']['upcoming'] > 0 ? __('crm.upcoming') : __('crm.no_date'))) }}
+        </strong>
 
        <span>
         {{ __('crm.total_status') }}:
@@ -1941,9 +1999,12 @@ body.kanban-modal-open{
        'overdue' =>
         __('crm.overdue'),
 
-       'upcoming' =>
-        __('crm.upcoming'),
-      ]
+        'upcoming' =>
+         __('crm.upcoming'),
+
+        'no_date' =>
+         __('crm.no_date'),
+       ]
       as $scope => $scopeLabel
      )
        @php
@@ -1966,7 +2027,7 @@ body.kanban-modal-open{
        <div
         class="kanban-scope-panel"
         data-kanban-panel="{{ $scope }}"
-        @if ($scope !== 'today')
+        @if ($scope !== ($column['active_scope'] ?? 'today'))
          hidden
         @endif
        >
@@ -2001,7 +2062,8 @@ body.kanban-modal-open{
     @php
      $initialTotalPages = $column['total_pages'] ?? 1;
      $initialCurrentPage = $column['current_page'] ?? 1;
-     $initialTotal = $kanbanDirectStatus ? ($column['total_count'] ?? 0) : ($column['scope_counts']['today'] ?? 0);
+     $activeInitScope = $column['active_scope'] ?? 'today';
+     $initialTotal = $kanbanDirectStatus ? ($column['total_count'] ?? 0) : ($column['scope_counts'][$activeInitScope] ?? ($column['scope_counts']['today'] ?? 0));
      $initialFrom = $initialTotal > 0 ? 1 : 0;
      $initialTo = min($column['per_page'] ?? 10, $initialTotal);
     @endphp
@@ -2104,93 +2166,7 @@ body.kanban-modal-open{
 
 <!-- CRM KANBAN FOLLOWUP FILTER JS START -->
 <script>
-document.addEventListener(
- 'DOMContentLoaded',
- () => {
-  document
-   .querySelectorAll(
-    '[data-kanban-column]'
-   )
-   .forEach(
-    (column) => {
-     const buttons =
-      Array.from(
-       column.querySelectorAll(
-        '[data-kanban-scope]'
-       )
-      );
-
-     const panels =
-      Array.from(
-       column.querySelectorAll(
-        '[data-kanban-panel]'
-       )
-      );
-
-     const visibleCount =
-      column.querySelector(
-       '[data-kanban-visible-count]'
-      );
-
-     const scopeLabel =
-      column.querySelector(
-       '[data-kanban-scope-label]'
-      );
-
-     buttons.forEach(
-      (button) => {
-       button.addEventListener(
-        'click',
-        () => {
-         const scope =
-          button.dataset.kanbanScope;
-
-         buttons.forEach(
-          (item) => {
-           const active =
-            item === button;
-
-           item.classList.toggle(
-            'active',
-            active
-           );
-
-           item.setAttribute(
-            'aria-pressed',
-            active
-             ? 'true'
-             : 'false'
-           );
-          }
-         );
-
-         panels.forEach(
-          (panel) => {
-           panel.hidden =
-            panel.dataset.kanbanPanel
-            !== scope;
-          }
-         );
-
-         if (visibleCount) {
-          visibleCount.textContent =
-           button.dataset.count
-           || '0';
-         }
-
-         if (scopeLabel) {
-          scopeLabel.textContent =
-           button.dataset.label
-           || '';
-         }
-        }
-       );
-      }
-     );
-    }
-   );
- }
-);
+// Scopes managed by unified Kanban fetch & pagination controller
 </script>
 <!-- CRM KANBAN FOLLOWUP FILTER JS END -->
 
@@ -2756,6 +2732,7 @@ document.addEventListener(
   const prevBtn = pagination?.querySelector('[data-page-action="prev"]');
   const nextBtn = pagination?.querySelector('[data-page-action="next"]');
   const visibleCounter = column.querySelector('[data-kanban-visible-count]');
+  const scopeLabel = column.querySelector('[data-kanban-scope-label]');
 
   let activePanel = column.querySelector(`.kanban-scope-panel[data-kanban-panel="${currentScope}"]`);
   if (!activePanel) {
@@ -2802,7 +2779,7 @@ document.addEventListener(
 
    columnPages.set(column, data.page);
 
-   if (visibleCounter && (searchQuery || employeeFilter)) {
+   if (visibleCounter && (searchQuery || employeeFilter || scopeFilter !== 'all')) {
     visibleCounter.textContent = new Intl.NumberFormat('en-US').format(data.total);
    }
 
@@ -2881,7 +2858,7 @@ document.addEventListener(
  if (scopeSelect) {
   scopeSelect.addEventListener('change', () => {
    scopeFilter = scopeSelect.value;
-   if (['today', 'overdue', 'upcoming'].includes(scopeFilter)) {
+   if (['today', 'overdue', 'upcoming', 'no_date'].includes(scopeFilter)) {
     columns.forEach(col => {
      const btn = col.querySelector(`[data-kanban-scope="${scopeFilter}"]`);
      if (btn) btn.click();
@@ -2958,10 +2935,29 @@ document.addEventListener(
  });
 
  columns.forEach(col => {
-  col.querySelectorAll('[data-kanban-scope]').forEach(btn => {
+  const scopeButtons = col.querySelectorAll('[data-kanban-scope]');
+  const panels = col.querySelectorAll('[data-kanban-panel]');
+  const scopeLabel = col.querySelector('[data-kanban-scope-label]');
+
+  scopeButtons.forEach(btn => {
    btn.addEventListener('click', () => {
     const scope = btn.dataset.kanbanScope;
     col.dataset.kanbanCurrentScope = scope;
+
+    scopeButtons.forEach(b => {
+     const active = (b === btn);
+     b.classList.toggle('active', active);
+     b.setAttribute('aria-pressed', active ? 'true' : 'false');
+    });
+
+    panels.forEach(p => {
+     p.hidden = (p.dataset.kanbanPanel !== scope);
+    });
+
+    if (scopeLabel) {
+     scopeLabel.textContent = btn.dataset.label || '';
+    }
+
     columnPages.set(col, 1);
     fetchColumnCards(col, 1);
    });
@@ -2995,6 +2991,17 @@ document.addEventListener(
   document.querySelectorAll('.kanban-followup-frame').forEach((frameEl) => {
    syncIframeTheme(frameEl);
   });
+ });
+
+ document.addEventListener('submit', (event) => {
+  const form = event.target.closest('.js-delete-lead-form');
+  if (!form) return;
+  const warningTemplate = @json(__('crm.confirm_delete_lead_warning'));
+  const fallbackName = @json(__('crm.client'));
+  const clientName = form.dataset.leadName || fallbackName;
+  if (!window.confirm(warningTemplate.replace(':name', clientName))) {
+   event.preventDefault();
+  }
  });
 
  window.fetchKanbanColumnCards = fetchColumnCards;

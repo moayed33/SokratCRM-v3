@@ -489,6 +489,20 @@ html.dark-mode .btn-action.whatsapp:focus-visible {
   background: rgba(16, 185, 129, 0.18);
   border-color: rgba(52, 211, 153, 0.4);
 }
+.btn-action.danger {
+  color: #dc2637;
+}
+.btn-action.danger:hover {
+  background: #fef2f2;
+  border-color: #fecdd3;
+}
+html.dark-mode .btn-action.danger {
+  color: #f87171;
+}
+html.dark-mode .btn-action.danger:hover {
+  background: rgba(220, 38, 55, 0.2);
+  border-color: rgba(220, 38, 55, 0.4);
+}
 .btn-action.is-disabled {
   opacity: 0.45;
   cursor: not-allowed;
@@ -1126,6 +1140,15 @@ body,
                                                 <i class="bi bi-whatsapp"></i>
                                             </span>
                                         @endif
+                                        @can('delete', $lead)
+                                            <form method="POST" action="{{ route('v2.leads.destroy', $lead) }}" class="js-delete-lead-form" data-lead-name="{{ $lead->name }}" style="display:inline-block;margin:0;">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="btn-action danger" title="{{ __('crm.delete') }}" aria-label="{{ __('crm.delete') }}">
+                                                    <i class="bi bi-trash"></i>
+                                                </button>
+                                            </form>
+                                        @endcan
                                     </div>
                                 </td>
                             </tr>
@@ -1169,6 +1192,16 @@ document.addEventListener('click', (e) => {
     if (!e.target.closest('.extra-phones-dropdown-wrap')) {
         document.querySelectorAll('.extra-phones-popover').forEach(p => p.style.display = 'none');
     }
+});
+document.querySelectorAll('.js-delete-lead-form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        const warningTemplate = @json(__('crm.confirm_delete_lead_warning'));
+        const fallbackName = @json(__('crm.client'));
+        const clientName = form.dataset.leadName || fallbackName;
+        if (!window.confirm(warningTemplate.replace(':name', clientName))) {
+            event.preventDefault();
+        }
+    });
 });
 </script>
 </body>

@@ -114,38 +114,51 @@ class Lead extends Model
                     ->orWhere('leads.created_by_user_id', $user->getKey());
             });
 
-            // 2. Branch-scoped visibility for broader team/branch access
-            if ($user->branch_id !== null) {
-                $accessQuery->orWhere(function (Builder $branchQuery) use ($user): void {
-                    $branchQuery->where('leads.branch_id', (int) $user->branch_id);
+            // 2. LEADS_SCOPE_ALL allows access to leads across all branches (or scoped to their branch if user has branch_id)
+            if ($user->hasPermission(CrmPermission::LEADS_SCOPE_ALL)) {
+                $accessQuery->orWhere(function (Builder $allQuery) use ($user): void {
+                    if ($user->branch_id !== null) {
+                        $allQuery->where('leads.branch_id', (int) $user->branch_id);
+                    } else {
+                        $allQuery->whereRaw('1 = 1');
+                    }
+                });
+            }
 
-                    if (! $user->hasPermission(CrmPermission::LEADS_SCOPE_ALL)) {
-                        $groupIds = [];
+            // 3. Group-scoped visibility (leads assigned to users in the same group or reporting to this manager)
+            if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
+                $user->loadMissing('groups');
+                $groupIds = $user->groups->modelKeys();
 
-                        if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
-                            $user->loadMissing('groups');
-                            $groupIds = $user->groups->modelKeys();
+                $accessQuery->orWhere(function (Builder $groupScopeQuery) use ($user, $groupIds): void {
+                    if ($user->branch_id !== null) {
+                        $groupScopeQuery->where('leads.branch_id', (int) $user->branch_id);
+                    }
+
+                    $groupScopeQuery->where(function (Builder $subScope) use ($user, $groupIds): void {
+                        $subScope->whereHas(
+                            'assignedUser',
+                            static fn (Builder $uq): Builder => $uq->where('users.manager_id', $user->getKey()),
+                        );
+
+                        if ($groupIds !== []) {
+                            $subScope->orWhereHas(
+                                'assignedUser.groups',
+                                static fn (Builder $groupQuery): Builder => $groupQuery->whereKey($groupIds),
+                            );
                         }
+                    });
+                });
+            }
 
-                        $branchQuery->where(function (Builder $scopeQuery) use ($user, $groupIds): void {
+            // 4. Branch-scoped fallback for users with branch_id
+            if ($user->branch_id !== null && ! $user->hasPermission(CrmPermission::LEADS_SCOPE_ALL) && ! $user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
+                $accessQuery->orWhere(function (Builder $branchQuery) use ($user): void {
+                    $branchQuery->where('leads.branch_id', (int) $user->branch_id)
+                        ->where(function (Builder $scopeQuery) use ($user): void {
                             $scopeQuery->where('leads.assigned_user_id', $user->getKey())
                                 ->orWhere('leads.created_by_user_id', $user->getKey());
-
-                            if ($user->hasPermission(CrmPermission::LEADS_SCOPE_GROUP)) {
-                                $scopeQuery->orWhereHas(
-                                    'assignedUser',
-                                     static fn (Builder $uq): Builder => $uq->where('users.manager_id', $user->getKey()),
-                                );
-                            }
-
-                            if ($groupIds !== []) {
-                                $scopeQuery->orWhereHas(
-                                    'assignedUser.groups',
-                                    static fn (Builder $groupQuery): Builder => $groupQuery->whereKey($groupIds),
-                                );
-                            }
                         });
-                    }
                 });
             }
         });

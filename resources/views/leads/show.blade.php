@@ -249,6 +249,15 @@
                         <i class="bi bi-pencil-square"></i> {{ __('crm.edit_data') }}
                     </a>
                 @endcan
+                @can('delete', $lead)
+                    <form method="POST" action="{{ route('v2.leads.destroy', $lead) }}" class="js-delete-lead-form" data-lead-name="{{ $lead->name }}" style="display:inline-block;margin:0;">
+                        @csrf
+                        @method('DELETE')
+                        <button type="submit" class="btn danger" style="color:#dc2637; border-color:#fecdd3;">
+                            <i class="bi bi-trash"></i> {{ __('crm.delete') }}
+                        </button>
+                    </form>
+                @endcan
                 @can('createFollowup', $lead)
                     <a href="{{ route('v2.leads.followups.index', [$lead, 'make_donation' => 1]) }}" class="btn success" style="background:#16a34a;border-color:#16a34a;color:#fff;"
                        data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'make_donation' => 1]) }}"
@@ -1119,6 +1128,18 @@
 @endcan
 <script src="{{ asset('crm-sidebar.js') }}?v={{ filemtime(public_path('crm-sidebar.js')) }}"></script>
 @include('partials.transition-popup')
+<script>
+document.querySelectorAll('.js-delete-lead-form').forEach((form) => {
+    form.addEventListener('submit', (event) => {
+        const warningTemplate = @json(__('crm.confirm_delete_lead_warning'));
+        const fallbackName = @json(__('crm.client'));
+        const clientName = form.dataset.leadName || fallbackName;
+        if (!window.confirm(warningTemplate.replace(':name', clientName))) {
+            event.preventDefault();
+        }
+    });
+});
+</script>
 
 </body>
 </html>

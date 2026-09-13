@@ -560,8 +560,11 @@
 
   document.querySelectorAll('.js-delete-lead-form').forEach((form) => {
    form.addEventListener('submit', (event) => {
-    if (!window.confirm(@json(__('crm.confirm_delete_lead_warning')).replace(':name', form.dataset.leadName || @json(__('crm.client')))) {
-     event.preventDefault();
+    const warningTemplate = @json(__('crm.confirm_delete_lead_warning'));
+    const fallbackName = @json(__('crm.client'));
+    const clientName = form.dataset.leadName || fallbackName;
+    if (!window.confirm(warningTemplate.replace(':name', clientName))) {
+      event.preventDefault();
     }
    });
   });

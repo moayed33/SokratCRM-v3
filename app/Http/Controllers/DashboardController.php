@@ -476,6 +476,7 @@ class DashboardController extends Controller
             $totalLeads += $stageTotal;
 
             $isDirectStatus = in_array($stage->code, ['new', 'not_interested'], true);
+            $activeInitialScope = 'today';
 
             if (! empty($statusIds)) {
                 if ($isDirectStatus) {
@@ -490,7 +491,18 @@ class DashboardController extends Controller
                         ->get();
                     $overdueLeads = collect();
                     $upcomingLeads = collect();
+                    $noDateLeads = collect();
                 } else {
+                    if ($stageToday === 0) {
+                        if ($stageOverdue > 0) {
+                            $activeInitialScope = 'overdue';
+                        } elseif ($stageUpcoming > 0) {
+                            $activeInitialScope = 'upcoming';
+                        } elseif ($stageNoDate > 0) {
+                            $activeInitialScope = 'no_date';
+                        }
+                    }
+
                     $todayLeads = $stageToday > 0 ? Lead::query()
                         ->accessibleTo($user)
                         ->with(['assignedUser:id,name', 'phones', 'status.stage'])
@@ -523,14 +535,30 @@ class DashboardController extends Controller
                         ->orderByDesc('updated_at')
                         ->limit($perPage)
                         ->get() : collect();
+
+                    $noDateLeads = $stageNoDate > 0 ? Lead::query()
+                        ->accessibleTo($user)
+                        ->with(['assignedUser:id,name', 'phones', 'status.stage'])
+                        ->whereIn('lead_status_id', $statusIds)
+                        ->whereNull('next_follow_up_at')
+                        ->orderByDesc('updated_at')
+                        ->limit($perPage)
+                        ->get() : collect();
                 }
             } else {
                 $todayLeads = collect();
                 $overdueLeads = collect();
                 $upcomingLeads = collect();
+                $noDateLeads = collect();
+                $activeInitialScope = 'today';
             }
 
-            $activeScopeTotal = $isDirectStatus ? $stageTotal : $stageToday;
+            $activeScopeTotal = match ($activeInitialScope) {
+                'overdue' => $stageOverdue,
+                'upcoming' => $stageUpcoming,
+                'no_date' => $stageNoDate,
+                default => ($isDirectStatus ? $stageTotal : $stageToday),
+            };
             $totalPages = max(1, (int) ceil($activeScopeTotal / $perPage));
 
             $kanbanColumns[] = [
@@ -549,22 +577,25 @@ class DashboardController extends Controller
                 'class' => str_replace(['_', ' '], '-', (string) $stage->code),
                 'total' => $stageTotal,
                 'total_count' => $stageTotal,
+                'active_scope' => $activeInitialScope,
                 'scope_counts' => [
                     'today' => $stageToday,
                     'overdue' => $stageOverdue,
                     'upcoming' => $stageUpcoming,
+                    'no_date' => $stageNoDate,
                 ],
                 'scope_leads' => [
                     'today' => $todayLeads,
                     'overdue' => $overdueLeads,
                     'upcoming' => $upcomingLeads,
+                    'no_date' => $noDateLeads,
                 ],
                 'no_date_count' => $stageNoDate,
-                'leads' => $todayLeads,
+                'leads' => $activeInitialScope === 'today' ? $todayLeads : ($activeInitialScope === 'overdue' ? $overdueLeads : ($activeInitialScope === 'upcoming' ? $upcomingLeads : $noDateLeads)),
                 'today_leads' => $todayLeads,
                 'overdue_leads' => $overdueLeads,
                 'upcoming_leads' => $upcomingLeads,
-                'no_date_leads' => collect(),
+                'no_date_leads' => $noDateLeads,
                 'position' => $stage->position,
                 'has_destination_status' => $destinationStatusId !== null,
                 'per_page' => $perPage,
@@ -644,7 +675,13 @@ class DashboardController extends Controller
             ->whereIn('lead_status_id', $statusIds);
 
         $isDirectStatus = in_array($stage->code, ['new', 'not_interested'], true);
-        if (! $isDirectStatus) {
+        if ($isDirectStatus && $scope === 'today') {
+            // Direct status columns (new, not_interested) do not require followup scheduling;
+            // "today" defaults to showing all leads in the stage unless explicitly filtered.
+            $query->orderByRaw('next_follow_up_at IS NULL')
+                ->orderBy('next_follow_up_at')
+                ->orderByDesc('updated_at');
+        } elseif (! $isDirectStatus) {
             if ($scope === 'today') {
                 $query->whereNotNull('next_follow_up_at')
                     ->whereBetween('next_follow_up_at', [$todayStart, $todayEnd])

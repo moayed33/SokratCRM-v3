@@ -150,35 +150,45 @@
   @endcan
  </div>
 
- {{-- Stage transition buttons --}}
- @can('leads.followups.create')
- <div class="kanban-stage-transitions">
-  @php
-   $transitionStages = [
-    'new' => ['icon' => 'bi-plus-circle', 'color' => '#3478f6'],
-    'no_answer' => ['icon' => 'bi-telephone-x', 'color' => '#e59b16'],
-    'followup_later' => ['icon' => 'bi-clock-history', 'color' => '#7b61df'],
-    'not_interested' => ['icon' => 'bi-x-circle', 'color' => '#dc2637'],
-    'donor' => ['icon' => 'bi-heart', 'color' => '#16a34a'],
-   ];
-  @endphp
-  @foreach ($kanbanColumns as $targetCol)
-   @if ($targetCol['code'] !== $column['code'])
-    <a
-     class="kanban-stage-btn"
-     style="--btn-stage-color:{{ $transitionStages[$targetCol['code']]['color'] ?? ($targetCol['stage_color'] ?? ($targetCol['color'] ?? '#3478f6')) }}"
-     href="{{ route('v2.leads.followups.index', [$lead, 'kanban_popup' => 1, 'target_status_code' => $targetCol['code']]) }}"
-     data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'target_status_code' => $targetCol['code']]) }}"
-     data-transition-context="kanban"
-     data-lead-name="{{ $lead->name }}"
-     data-transition-description="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
-     draggable="false"
-     title="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
-    >
-     <i class="bi {{ $transitionStages[$targetCol['code']]['icon'] ?? 'bi-arrow-right-circle' }}"></i>
-    </a>
-   @endif
-  @endforeach
- </div>
- @endcan
+  {{-- Stage transition buttons --}}
+  <div class="kanban-stage-transitions">
+   @can('leads.followups.create')
+    @php
+     $transitionStages = [
+      'new' => ['icon' => 'bi-plus-circle', 'color' => '#3478f6'],
+      'no_answer' => ['icon' => 'bi-telephone-x', 'color' => '#e59b16'],
+      'followup_later' => ['icon' => 'bi-clock-history', 'color' => '#7b61df'],
+      'not_interested' => ['icon' => 'bi-x-circle', 'color' => '#dc2637'],
+      'donor' => ['icon' => 'bi-heart', 'color' => '#16a34a'],
+     ];
+    @endphp
+    @foreach ($kanbanColumns as $targetCol)
+     @if ($targetCol['code'] !== $column['code'])
+      <a
+       class="kanban-stage-btn"
+       style="--btn-stage-color:{{ $transitionStages[$targetCol['code']]['color'] ?? ($targetCol['stage_color'] ?? ($targetCol['color'] ?? '#3478f6')) }}"
+       href="{{ route('v2.leads.followups.index', [$lead, 'kanban_popup' => 1, 'target_status_code' => $targetCol['code']]) }}"
+       data-transition-popup="{{ route('v2.leads.followups.index', [$lead, 'target_status_code' => $targetCol['code']]) }}"
+       data-transition-context="kanban"
+       data-lead-name="{{ $lead->name }}"
+       data-transition-description="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
+       draggable="false"
+       title="{{ __('crm.move_to_stage') }} {{ $targetCol['name'] }}"
+      >
+       <i class="bi {{ $transitionStages[$targetCol['code']]['icon'] ?? 'bi-arrow-right-circle' }}"></i>
+      </a>
+     @endif
+    @endforeach
+   @endcan
+
+   @can('delete', $lead)
+    <form method="POST" action="{{ route('v2.leads.destroy', $lead) }}" class="js-delete-lead-form" data-lead-name="{{ $lead->name }}" style="display:inline-flex;margin:0;margin-inline-start:auto;" draggable="false">
+     @csrf
+     @method('DELETE')
+     <button type="submit" class="kanban-stage-btn kanban-stage-delete-btn" title="{{ __('crm.delete') }}" aria-label="{{ __('crm.delete') }}" draggable="false">
+      <i class="bi bi-trash"></i>
+     </button>
+    </form>
+   @endcan
+  </div>
 </article>
